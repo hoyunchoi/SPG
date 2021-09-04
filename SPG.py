@@ -1,11 +1,10 @@
 #! /usr/bin/python
-import os
 import sys
 import argparse
 import colorama
-import threading
 import subprocess
 from typing import Callable
+from threading import Thread
 from termcolor import colored
 from collections import deque, Counter
 
@@ -42,7 +41,7 @@ class SPG:
             self.terminalWidth = sys.maxsize    # Not running at normal terminal: maximum terminal width
 
         # Super Short for list, kill
-        self.superShortPrintWidth = 44
+        self.superShortPrintWidth = 45
         self.superShortStrLine = self.getStrLine(self.superShortPrintWidth)
 
         # Short for free
@@ -131,11 +130,14 @@ class SPG:
                 userName: whose job to scan
                 scanLevel: refer Job.isImportant
         """
-        threadList = [None] * len(groupList)
-        for i, group in enumerate(groupList):
-            group.barWidth = self.barWidth
-            scan = group.scanJob_silent if self.silent else group.scanJob
-            threadList[i] = threading.Thread(target=scan, args=(userName, scanLevel))
+        # Scan job without tqdm bar
+        if self.silent:
+            threadList = [Thread(target=group.scanJob_silent, args=(userName, scanLevel)) for group in groupList]
+        # Scan job with tqdm bar
+        else:
+            for group in groupList:
+                group.barWidth = self.barWidth
+            threadList = [Thread(target=group.scanJob, args=(userName, scanLevel)) for group in groupList]
         for thread in threadList:
             thread.start()
         for thread in threadList:
@@ -154,12 +156,8 @@ class SPG:
                 userName: Refer Machine.scanJob
                 scanLevel: refer Job.isImportant
         """
-        threadList = [None] * len(machineNameList)
-        machineList = [None] * len(machineNameList)
-        for i, machineName in enumerate(machineNameList):
-            machine = self.findMachineFromName(machineName)
-            machineList[i] = machine
-            threadList[i] = threading.Thread(target=machine.scanJob, args=(userName, scanLevel))
+        machineList = [self.findMachineFromName(machineName) for machineName in machineNameList]
+        threadList = [Thread(target=machine.scanJob, args=(userName, scanLevel)) for machine in machineList]
         for thread in threadList:
             thread.start()
         for thread in threadList:
@@ -167,7 +165,6 @@ class SPG:
         return machineList
 
     ####################################### SPG command #######################################
-
     def list(self, args: argparse.Namespace) -> None:
         """
             Print information of machines registered in SPG
@@ -418,9 +415,17 @@ class SPG:
             print(self.superShortStrLine)
 
         # Kill jobs
+        threadList = [Thread(target=group.KILL, args=(args,)) for group in groupList]
+        for thread in threadList:
+            thread.start()
+        for thread in threadList:
+            thread.join()
+
+        # Summarize the kill result
         nKill = 0
+        self.killErrList = []
         for group in groupList:
-            nKill += group.KILL(args)
+            nKill += group.nKill
             self.killErrList += group.killErrList
         print(f'\nKilled {nKill} jobs')
         return None

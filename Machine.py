@@ -8,7 +8,6 @@ from collections import Counter
 
 from Job import Job
 
-
 class Machine:
     """ Save the information of each machine """
 
@@ -33,6 +32,9 @@ class Machine:
         # Error lists
         self.scanErrList = []                   # List of errors during scanning
         self.killErrList = []                   # List of errors during killing job
+
+        # KILL
+        self.nKill: int = 0                     # Number of killed jobs
 
         # Default variables
         self.cmdSSH = f'ssh -o StrictHostKeyChecking=no -o ConnectTimeout=4 -o UpdateHostKeys=no {self.name} '
@@ -199,16 +201,16 @@ class Machine:
         print(f'{self.name}: killed \"{self.findCmdFromPID(pid)}\"')
         return None
 
-    def KILL(self, args:argparse.Namespace) -> int:
+    def KILL(self, args:argparse.Namespace) -> None:
         """
             Kill every job satisfying args
         """
-        nKill = 0
+        self.nKill = 0
         for job in self.jobList:
             if job.checkKill(args):
                 self.killPID(job.pid)
-                nKill += 1
-        return nKill
+                self.nKill += 1
+        return None
 
 
     ######################################## Deprecate ########################################

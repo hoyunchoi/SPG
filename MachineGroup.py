@@ -34,18 +34,6 @@ class MachineGroup:
         self.busyMachineList: list[Machine] = []    # List of machines running one or more jobs
         self.nJob: int = 0                          # Number of running jobs
 
-        # Initialize list of machines
-        file = open(groupFile, "r")
-        informations = file.readlines()
-        file.close()
-        for information in informations[4:]:        # First 4 lines are comments
-            machine = Machine(information)
-            if machine.use:
-                self.machineList.append(machine)
-                self.nCore += machine.nCore
-        self.machineList.sort()
-        self.nMachine = len(self.machineList)
-
         # Error lists
         self.scanErrList = []
         self.killErrList = []
@@ -53,7 +41,22 @@ class MachineGroup:
         # Progress bar
         self.bar: tqdm.tqdm = None
         self.barWidth: int = None
-        self.scanningMachineSet: set[str] = set()        # Set of machine names who are still scanning
+        self.scanningMachineSet: set[str] = set()   # Set of machine names who are still scanning
+
+        # KILL
+        self.nKill: int = 0                         # Number of killed jobs
+
+        # Read group file
+        file = open(groupFile, "r")
+        informationList = file.readlines()
+        file.close()
+
+        # Initialize list of machines
+        self.machineList = [Machine(information) for information in informationList[4:]     # First 4 lines are comments
+                            if bool(int(information[0]))]
+        self.nCore += sum(machine.nCore for machine in self.machineList)
+        self.machineList.sort()
+        self.nMachine = len(self.machineList)
 
     ###################################### Basic Utility ######################################
     def updateBar(self, machineName: str) -> None:
@@ -117,7 +120,7 @@ class MachineGroup:
         """
         nFreeCore = 0
         freeMachineList = [machine for machine in self.machineList if machine.nFreeCore]
-        nFreeCore = sum([machine.nFreeCore for machine in freeMachineList])
+        nFreeCore = sum(machine.nFreeCore for machine in freeMachineList)
         return nFreeCore, freeMachineList
 
     def getUserCount(self) -> Counter[str, int]:
@@ -242,12 +245,20 @@ class MachineGroup:
         # Return the remining command queue
         return cmdQueue
 
-    def KILL(self, args: argparse.Namespace) -> int:
-        nKill = 0
+    def KILL(self, args: argparse.Namespace) -> None:
+        threadList = [Thread(target=machine.KILL, args=(args,)) for machine in self.busyMachineList]
+        for thread in threadList:
+            thread.start()
+        for thread in threadList:
+            thread.join()
+
+        # Summarize the kill result
+        self.nKill = 0
+        self.killErrList = []
         for machine in self.busyMachineList:
-            nKill += machine.KILL(args)
+            self.nKill += machine.nKill
             self.killErrList += machine.killErrList
-        return nKill
+        return None
 
     ######################################## Deprecate ########################################
     def killAll(self) -> int:

@@ -1,4 +1,3 @@
-from os import get_inheritable
 import tqdm
 import argparse
 from threading import Thread
@@ -35,8 +34,8 @@ class MachineGroup:
         self.nJob: int = 0                          # Number of running jobs
 
         # Error lists
-        self.scanErrList = []
-        self.killErrList = []
+        self.scanErrList: list[str] = []            # List of errors during scanning
+        self.killErrList: list[str] = []            # List of errors during killing job
 
         # Progress bar
         self.bar: tqdm.tqdm = None
@@ -51,11 +50,11 @@ class MachineGroup:
         informationList = file.readlines()
         file.close()
 
-        # Initialize list of machines
-        self.machineList = [Machine(information) for information in informationList[4:]     # First 4 lines are comments
+        # Initialize list of machines. First 4 lines are comments
+        self.machineList = [Machine(information) for information in informationList[4:]
                             if bool(int(information[0]))]
-        self.nCore += sum(machine.nCore for machine in self.machineList)
         self.machineList.sort()
+        self.nCore += sum(machine.nCore for machine in self.machineList)
         self.nMachine = len(self.machineList)
 
     ###################################### Basic Utility ######################################
@@ -87,6 +86,9 @@ class MachineGroup:
                                  ncols=self.barWidth,
                                  miniters=1)
 
+            # Define scanning machine set to be printed at progressbar
+            self.scanningMachineSet = set([machine.name for machine in self.machineList])
+
             # Main function
             func(self, *args, **kwargs)
 
@@ -103,12 +105,8 @@ class MachineGroup:
                 nJob: number of running jobs
                 busyMachineList: list of machines who is running one or more jobs
         """
-        nJob = 0
-        busyMachineList = []
-        for machine in self.machineList:
-            if machine.nJob:
-                nJob += machine.nJob
-                busyMachineList.append(machine)
+        busyMachineList = [machine for machine in self.machineList if machine.nJob]
+        nJob = sum(busyMachine.nJob for busyMachine in busyMachineList)
         return nJob, busyMachineList
 
     def getFreeInfo(self) -> tuple[int, list[Machine]]:
@@ -118,7 +116,6 @@ class MachineGroup:
                 nFreeCore: number of free cores
                 freeMachineList: list of machine who has one or more free cores
         """
-        nFreeCore = 0
         freeMachineList = [machine for machine in self.machineList if machine.nFreeCore]
         nFreeCore = sum(machine.nFreeCore for machine in freeMachineList)
         return nFreeCore, freeMachineList
@@ -143,7 +140,7 @@ class MachineGroup:
         """
             Return list of job informations in line format
         """
-        return [machine.getJobLine() for machine in self.busyMachineList]
+        return [machine.getJobLine() + strLine for machine in self.busyMachineList]
 
     def getFreeInfoLineList(self) -> list[str]:
         """
@@ -162,7 +159,6 @@ class MachineGroup:
                 userName: refer Machine.getJobList
                 scanLevel: refer Job.isImportant
         """
-        self.scanningMachineSet = set([machine.name for machine in self.machineList])
 
         def scanJob_updateBar(machine: Machine):
             """ Scan job and update bar """
@@ -234,8 +230,7 @@ class MachineGroup:
             for _ in range(machine.nFreeCore):
                 if cmdQueue:
                     command = cmdQueue.popleft().strip()
-                    t = Thread(target=machine.run, args=(curPath, command))
-                    threadList.append(t)
+                    threadList.append(Thread(target=machine.run, args=(curPath, command)))
                     print(f'spg run {machine.name} {command}')
         for thread in threadList:
             thread.start()

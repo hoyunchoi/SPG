@@ -2,7 +2,7 @@ import os
 import subprocess
 
 # User who is running spg
-currentUser = subprocess.check_output('whoami', text=True).strip()
+currentUser = subprocess.check_output('whoami', text=True, shell=True).strip()
 
 # Path where the spg is called
 defaultPath = os.getcwd()
@@ -10,7 +10,7 @@ defaultPath = os.getcwd()
 # Machine list for SPG
 spgDir = os.path.join('/root', 'spg')
 spgDir = '.'
-if subprocess.check_output('whoami', text=True).strip() in ['yunsik']:
+if currentUser in ['yunsik']:
     groupFileDict = {
         'tenet': os.path.join(spgDir, 'tenet_baek.machine'),
     }

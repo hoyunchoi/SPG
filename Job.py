@@ -19,12 +19,13 @@ class Job:
         self.userName = jobInfo[0]                              # Name of user who is reponsible for the job
         self.state = jobInfo[1]                                 # Current state of job. Ex) R, S, D, ...
         self.pid = jobInfo[2]                                   # Process ID of job
-        self.cpuPercent = jobInfo[3]                            # Single core utilization percentage
-        self.memPercent = jobInfo[4]                            # Memory utilization percentage
-        self.mem = str(round(int(jobInfo[5]) / 1024)) + 'MB'    # Absolute value of memory utilization in 'MB'
-        self.time = jobInfo[6]                                  # Time since the job started
-        self.startTime = jobInfo[7]                             # Time when the job started
-        self.cmd = ' '.join(jobInfo[8:])                        # Command of the job
+        self.sid = jobInfo[3]                                   # Process ID of session leader
+        self.cpuPercent = jobInfo[4]                            # Single core utilization percentage
+        self.memPercent = jobInfo[5]                            # Memory utilization percentage
+        self.mem = str(round(int(jobInfo[6]) / 1024)) + 'MB'    # Absolute value of memory utilization in 'MB'
+        self.time = jobInfo[7]                                  # Time since the job started
+        self.startTime = jobInfo[8]                             # Time when the job started
+        self.cmd = ' '.join(jobInfo[9:])                        # Command of the job
 
     ###################################### Basic Utility ######################################
     def getTimeWindow(self) -> int:

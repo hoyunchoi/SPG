@@ -8,6 +8,7 @@ from collections import Counter
 
 from Job import Job
 
+
 class Machine:
     """ Save the information of each machine """
 
@@ -30,8 +31,8 @@ class Machine:
         self.freeMem: str = ''                  # Size of free memory
 
         # Error lists
-        self.scanErrList = []                   # List of errors during scanning
-        self.killErrList = []                   # List of errors during killing job
+        self.scanErrList: list[str] = []        # List of errors during scanning
+        self.killErrList: list[str] = []        # List of errors during killing job
 
         # KILL
         self.nKill: int = 0                     # Number of killed jobs
@@ -55,7 +56,7 @@ class Machine:
     def findCmdFromPID(self, pid: str) -> str:
         """
             Find command line in userJobList by pid
-            CAUTION
+            CAUTION!
             You should run scanUserJob before this function
         """
         for job in self.jobList:
@@ -98,11 +99,11 @@ class Machine:
         if userName is None:
             # Scan every user registered in group 'user'
             cmdGetProcess = self.cmdSSH + '\"ps H --user $(getent group users | cut -d: -f4)\
-                                            --format ruser:15,stat,pid,pcpu,pmem,rss:10,time:15,start_time,args\"'
+                                            --format ruser:15,stat,pid,sid,pcpu,pmem,rss:10,time:15,start_time,args\"'
         else:
             # Scan specifically input user
             cmdGetProcess = self.cmdSSH + f'\"ps H --user {userName}\
-                                            --format ruser:15,stat,pid,pcpu,pmem,rss:10,time:15,start_time,args\"'
+                                            --format ruser:15,stat,pid,sid,pcpu,pmem,rss:10,time:15,start_time,args\"'
         result = subprocess.run(cmdGetProcess,
                                 capture_output=True,
                                 text=True,
@@ -183,9 +184,21 @@ class Machine:
                 path: Where command is done
                 cmds: list of commands including program/arguments
         """
-        # Go to machine
+        # cd to path and run the command as background process
         cmdRun = self.cmdSSH + f'\"cd {path}; {command}\" &'
         subprocess.run(cmdRun, shell=True)
+        return None
+
+    def KILL(self, args: argparse.Namespace) -> None:
+        """
+            Kill every job satisfying args
+        """
+        self.nKill = 0
+        for job in self.jobList:
+            if job.checkKill(args):
+                # self.killPID(job.pid)
+                self.killJob(job)
+                self.nKill += 1
         return None
 
     def killPID(self, pid: str) -> None:
@@ -201,17 +214,41 @@ class Machine:
         print(f'{self.name}: killed \"{self.findCmdFromPID(pid)}\"')
         return None
 
-    def KILL(self, args:argparse.Namespace) -> None:
+    def killJob(self, job: Job) -> None:
         """
-            Kill every job satisfying args
+            Kill job and all the process until it's session leader
         """
-        self.nKill = 0
-        for job in self.jobList:
-            if job.checkKill(args):
-                self.killPID(job.pid)
-                self.nKill += 1
-        return None
+        killErrList = []
+        # Input job is session leader
+        if job.pid == job.sid:
+            cmdKill = self.cmdSSH + f'\"kill -9 {job.pid}\"'
+            result = subprocess.run(cmdKill, shell=True, capture_output=True, text=True)
+            killErrList += result.stderr.strip().split('\n') if result.stderr else []
 
+        # Input job is not session leader. Kill it's parent process until reaching session leader
+        else:
+            cmdKill = self.cmdSSH + '\"'
+            pid = job.pid
+            while pid != job.sid:
+                # kill command of current pid
+                cmdKill += f'kill -9 {pid}; '
+
+                # Find ppid of current pid (pid of parent) before killing current pid
+                pid = subprocess.check_output(self.cmdSSH + f'\"ps -q {pid} --format ppid\"',
+                                              text=True, shell=True).split('\n')[1].strip()
+
+            # Kill all parent processes
+            cmdKill += '\"'
+            result = subprocess.run(cmdKill, shell=True, capture_output=True, text=True)
+            killErrList += result.stderr.strip().split('\n') if result.stderr else []
+
+        # When error occurs, save it
+        for killErr in killErrList:
+            self.killErrList.append(f'ERROR from {self.name}: {killErr}')
+
+        # Print the result
+        print(f'{self.name}: killed \"{self.findCmdFromPID(job.pid)}\"')
+        return None
 
     ######################################## Deprecate ########################################
     def killAll(self) -> int:
@@ -249,6 +286,7 @@ class Machine:
                 self.killPID(job.pid)
                 nKill += 1
         return nKill
+
 
 if __name__ == "__main__":
     print("This is moudle 'Machine' from SPG")

@@ -29,8 +29,8 @@ class SPG:
                                               for groupName, groupFile in groupFileDict.items()]
 
         # Initialize error list
-        self.scanErrList = []
-        self.killErrList = []
+        self.scanErrList: list[str] = []
+        self.killErrList: list[str] = []
 
         # Print option
         self.silent: bool = None
@@ -83,6 +83,7 @@ class SPG:
         """
 
         def decorator(self, *args, **kwargs) -> None:
+            # main function
             func(self, *args, **kwargs)
 
             # Report error
@@ -188,15 +189,13 @@ class SPG:
         else:
             groupList = self.groupList
         for group in groupList:
-            if group.nMachine:
-                for machineInfoLine in group.getInfoLineList():
-                    print(machineInfoLine)
-                print(self.superShortStrLine)
+            for machineInfoLine in group.getInfoLineList():
+                print(machineInfoLine)
+            print(self.superShortStrLine)
 
         # Print total summary
         for group in groupList:
-            if group.nMachine:
-                print('| {:<10} | total {:3d} machines & {:3d} cores'.format(group.name, group.nMachine, group.nCore))
+            print('| {:<10} | total {:3d} machines & {:3d} cores'.format(group.name, group.nMachine, group.nCore))
         print(self.superShortStrLine)
         return None
 
@@ -210,9 +209,9 @@ class SPG:
             print(self.shortStrLine)
             machineList = self.scanJob_machine(args.machineNameList, userName=None, scanLevel=2)
             for machine in machineList:
-                self.scanErrList += machine.scanErrList
                 if machine.nFreeCore:
                     print(machine.getFreeInfoLine())
+                self.scanErrList += machine.scanErrList
             print(self.shortStrLine)
             return None
 
@@ -224,15 +223,14 @@ class SPG:
 
         # Start print
         print(self.shortStrLine)
-        if not self.silent:
-            self.barWidth = min(self.shortPrintWidth, self.terminalWidth)
+        self.barWidth = min(self.shortPrintWidth, self.terminalWidth)
         self.scanJob(groupList, userName=None, scanLevel=2)
-
-        # Print by machine
         if not self.silent:
             print(self.shortStrLine)
         print("| SPG Machine Information :: Free Cores")
         print(self.shortStrLine)
+
+        # Print result
         for group in groupList:
             if group.nFreeMachine:
                 for machineFreeInfoLine in group.getFreeInfoLineList():
@@ -256,10 +254,10 @@ class SPG:
             print(self.longStrLine)
             machineList = self.scanJob_machine(args.machineNameList, userName=args.userName, scanLevel=2)
             for machine in machineList:
-                self.scanErrList += machine.scanErrList
                 if machine.nJob:
                     print(machine.getJobLine(), end='')
                     print(self.longStrLine)
+                self.scanErrList += machine.scanErrList
             return None
 
         # When machine list is not specified
@@ -268,12 +266,9 @@ class SPG:
         else:
             groupList = self.groupList
 
-        # Set width
-        if not self.silent:
-            self.barWidth = min(self.longPrintWidth, self.terminalWidth)
-
         # Start print
         print(self.longStrLine)
+        self.barWidth = min(self.longPrintWidth, self.terminalWidth)
         self.scanJob(groupList, userName=args.userName, scanLevel=2)
         if not self.silent:
             print(self.longStrLine)
@@ -314,8 +309,8 @@ class SPG:
             print(strLine)
 
         # Get user count
-        userCount = Counter()
-        groupUserCountDict = {}
+        userCount = Counter()       # Total number of jobs per user
+        groupUserCountDict = {}     # Number of jobs per user per group
         for group in groupList:
             if group.nJob:
                 groupUserCount = group.getUserCount()
@@ -349,9 +344,17 @@ class SPG:
         """
             Run a job
         """
+        # Find machine and scan current state
         machine = self.findMachineFromName(args.machineName)
-        machine.run(self.defaultPath, args.command)
+        machine.scanJob(userName=None, scanLevel=2)
 
+        # When no free core is detected, doule check the run command
+        if machine.nFreeCore == 0:
+            print(f"{args.machineName} has no free core. Do you really want to run a job?")
+            Arguments.YesNo()
+
+        # Run a job
+        machine.run(self.defaultPath, args.command)
         return None
 
     @errReport

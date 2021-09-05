@@ -81,13 +81,8 @@ class Arguments:
 
         return question + '?'
 
-    def killYesNo(self, question: str) -> None:
-        """
-            Double check if user really wants to kill their jobs
-            If 'yes', 'y', 'Y', 'Ye', ... are given, kill the job
-            If 'no', 'n', 'No', ... are given, exit the command
-        """
-        print(question)
+    @staticmethod
+    def YesNo() -> None:
         while True:
             reply = str(input('(y/n): ')).strip().lower()
             if reply[0] == 'y':
@@ -96,6 +91,16 @@ class Arguments:
                 exit()
             else:
                 print("You should provied either 'y' or 'n'", end=' ')
+
+    def killYesNo(self, question: str) -> None:
+        """
+            Double check if user really wants to kill their jobs
+            If 'yes', 'y', 'Y', 'Ye', ... are given, kill the job
+            If 'no', 'n', 'No', ... are given, exit the command
+        """
+        print(question)
+        self.YesNo()
+
 
     def redirectDeprecated(self, args:argparse.Namespace) -> argparse.Namespace:
         # Redirect to list
@@ -156,57 +161,88 @@ class Arguments:
             print(colored('Run \'spg KILL -h\' for more help', 'red'))
             exit()
 
-    def getArgs(self) -> argparse.Namespace:
+    @staticmethod
+    def checkCMDOption(args: argparse.Namespace) -> argparse.Namespace:
         """
-            Return arguments as namespace
+            Change option command from list of string to string
         """
-        colorama.init()
-        args = self.parser.parse_args()
-        args = self.redirectDeprecated(args)
-
-        #Change command from list of string to string
         try:
             args.command = ' '.join(args.command)
         # When command is not given, do nothing
         except (AttributeError, TypeError):
             pass
+        return args
 
-        # Job
+    @staticmethod
+    def checkJobOption(args: argparse.Namespace) -> argparse.Namespace:
+        """
+            Check args for option 'job'
+        """
+        # When 'all' flag is true, set user name to None
+        # Refer Machine.getJobList for the reason
+        if args.all:
+            args.userName = None
+        return args
+
+    def checkKILLOption(self, args: argparse.Namespace) -> argparse.Namespace:
+        """
+            Check args for option 'KILL'
+        """
+        # Double check if you really want to kill job
+        question = self.getKillQuestion(args)
+        self.killYesNo(question)
+
+        # When specifying user name, you should be root
+        if (args.userName != self.currentUser) and (self.currentUser != 'root'):
+            self.parser.error(colored('When specifying user at kill option, you should be root', 'red'))
+
+        # When pid list is given, you should specify machine name
+        if (args.pidList) and (len(args.machineNameList) != 1):
+            self.parser.error(colored('When killing job with pid list, you should specify machine name', 'red'))
+
+        # When time is given, change it to integer
+        if args.time:
+            args.time = self.toSeconds(args.time)
+        return args
+
+    def checkRunsOption(self, args: argparse.Namespace) -> argparse.Namespace:
+        """
+            Check args for option 'Run'
+        """
+        # Only group name is specified
+        if len(args.groupName) == 1:
+            args.startEnd = None
+            args.groupName = args.groupName[0]
+        # Group name and their start, end numbers are specified
+        elif len(args.groupName) == 3:
+            args.startEnd = tuple([int(args.groupName[1]), int(args.groupName[2])])
+            args.groupName = args.groupName[0]
+        else:
+            self.parser.error('When running several jobs, you should specifiy machine group and optional start/end number')
+        return args
+
+    def getArgs(self) -> argparse.Namespace:
+        """
+            Return arguments as namespace
+        """
+        args = self.parser.parse_args()
+
+        # Redirect deprecated options
+        colorama.init()
+        args = self.redirectDeprecated(args)
+
+        # option command
+        args = self.checkCMDOption(args)
+
+        # When main option is Job
         if args.option == 'job':
-            # When 'all' flag is true, set user name to None
-            # Refer Machine.getJobList for the reason
-            if args.all:
-                args.userName = None
-
-        # KILL
+            args = self.checkJobOption(args)
+        # When main option is KILL
         elif args.option == 'KILL':
-            # Double check if you really want to kill job
-            question = self.getKillQuestion(args)
-            self.killYesNo(question)
-
-            # When specifying user name, you should be root
-            if (args.userName != self.currentUser) and (self.currentUser != 'root'):
-                self.parser.error(colored('When specifying user at kill option, you should be root', 'red'))
-
-            # When pid list is given, you should specify machine name
-            if (args.pidList) and (len(args.machineNameList) != 1):
-                self.parser.error(colored('When killing job with pid list, you should specify machine name', 'red'))
-
-            # When time is given, change it to integer
-            if args.time:
-                args.time = self.toSeconds(args.time)
-
-        # Runs
+            args = self.checkKILLOption(args)
+        # When main option is Runs
         elif args.option == 'runs':
-            # Only group name is specified
-            if len(args.groupName) == 1:
-                args.startEnd = None
-                args.groupName = args.groupName[0]
-            elif len(args.groupName) == 3:
-                args.startEnd = tuple([int(args.groupName[1]), int(args.groupName[2])])
-                args.groupName = args.groupName[0]
-            else:
-                self.parser.error('When running several jobs, you should specifiy machine group and optional start/end number')
+            args = self.checkRunsOption(args)
 
         return args
 
@@ -472,8 +508,10 @@ class Arguments:
         """
         document = textwrap.dedent('''\
                                    spg kill (-m machine list) (-g group list) (-u user name) (-p pidList) (-c command) (-t time)
-                                   When group/machine are both given, group is ignored.
-                                   \"and\" operation is done to given options.
+                                   CAUTION!!
+                                   1. Jobs to be killed should satisfy all the given options.
+                                   2. When given a multi-threaded job, this command kills it's session leader.
+                                   3. When group/machine are both given, group is ignored.
                                    ''')
         parser_KILL = self.optionParser.add_parser('KILL',
                                                    help='kill job',

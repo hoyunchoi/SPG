@@ -20,7 +20,7 @@ class MachineGroup:
 
         # Default informations
         self.name: str = groupName                  # Name of machine group. Ex) tenet
-        self.machineList: list[Machine] = []        # List of machines in the group
+        self.machineDict: dict[str, Machine] = {}   # Dictionary of machines with key of machine name
         self.nMachine: int = 0                      # Number of machines in the group = len(machineList)
         self.nCore: int = 0                         # Number of cores in the group
 
@@ -51,11 +51,12 @@ class MachineGroup:
         file.close()
 
         # Initialize list of machines. First 4 lines are comments
-        self.machineList = [Machine(information) for information in informationList[4:]
-                            if bool(int(information[0]))]
-        self.machineList.sort()
-        self.nCore += sum(machine.nCore for machine in self.machineList)
-        self.nMachine = len(self.machineList)
+        for information in informationList[4:]:
+            machine = Machine(information)
+            if machine.use:
+                self.machineDict[machine.name] = machine
+        self.nCore += sum(machine.nCore for machine in self.machineDict.values())
+        self.nMachine = len(self.machineDict)
 
     ###################################### Basic Utility ######################################
     def updateBar(self, machineName: str) -> None:
@@ -79,15 +80,13 @@ class MachineGroup:
         """
 
         def decorator(self, *args, **kwargs) -> None:
-            # Define progressbar
+            # Define progressbar and related variables
+            self.scanningMachineSet = set(machineName for machineName in self.machineDict)
             self.bar = tqdm.tqdm(total=self.nMachine,
                                  bar_format='{desc}{bar}|{percentage:3.1f}%|',
                                  ascii=True,
                                  ncols=self.barWidth,
                                  miniters=1)
-
-            # Define scanning machine set to be printed at progressbar
-            self.scanningMachineSet = set([machine.name for machine in self.machineList])
 
             # Main function
             func(self, *args, **kwargs)
@@ -105,7 +104,7 @@ class MachineGroup:
                 nJob: number of running jobs
                 busyMachineList: list of machines who is running one or more jobs
         """
-        busyMachineList = [machine for machine in self.machineList if machine.nJob]
+        busyMachineList = [machine for machine in self.machineDict.values() if machine.nJob]
         nJob = sum(busyMachine.nJob for busyMachine in busyMachineList)
         return nJob, busyMachineList
 
@@ -116,7 +115,7 @@ class MachineGroup:
                 nFreeCore: number of free cores
                 freeMachineList: list of machine who has one or more free cores
         """
-        freeMachineList = [machine for machine in self.machineList if machine.nFreeCore]
+        freeMachineList = [machine for machine in self.machineDict.values() if machine.nFreeCore]
         nFreeCore = sum(machine.nFreeCore for machine in freeMachineList)
         return nFreeCore, freeMachineList
 
@@ -125,7 +124,7 @@ class MachineGroup:
             Return the dictionary of {user name: number of jobs}
         """
         userCount = Counter()
-        for machine in self.machineList:
+        for machine in self.machineDict.values():
             userCount += machine.getUserCount()
         return userCount
 
@@ -134,7 +133,7 @@ class MachineGroup:
         """
             Return list of machine information in line format
         """
-        return [machine.getInfoLine() for machine in self.machineList]
+        return [machine.getInfoLine() for machine in self.machineDict.values()]
 
     def getJobLineList(self, strLine: str) -> list[str]:
         """
@@ -167,12 +166,12 @@ class MachineGroup:
 
         # Scan job
         threadList = [Thread(target=scanJob_updateBar, args=(machine,))
-                      for machine in self.machineList]
+                      for machine in self.machineDict.values()]
         for thread in threadList:
             thread.start()
         for thread in threadList:
             thread.join()
-        for machine in self.machineList:
+        for machine in self.machineDict.values():
             self.scanErrList += machine.scanErrList
 
         # Save the scanned information
@@ -192,12 +191,12 @@ class MachineGroup:
         """
         # Scan job
         threadList = [Thread(target=machine.scanJob, args=(userName, scanLevel))
-                      for machine in self.machineList]
+                      for machine in self.machineDict.values()]
         for thread in threadList:
             thread.start()
         for thread in threadList:
             thread.join()
-        for machine in self.machineList:
+        for machine in self.machineDict.values():
             self.scanErrList += machine.scanErrList
 
         # Save the scanned information
@@ -222,7 +221,7 @@ class MachineGroup:
             freeMachineList = self.freeMachineList
         else:                       # When start/end machine index is given
             freeMachineList = [freeMachine for freeMachine in self.freeMachineList
-                               if startEnd[0] <= freeMachine.getIndex() <= startEnd[1]]
+                               if startEnd[0] <= Machine.getIndex(freeMachine.name) <= startEnd[1]]
 
         # Run commands
         threadList = []

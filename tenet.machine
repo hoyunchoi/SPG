@@ -218,7 +218,7 @@
 1|tenet214|i7-10700|8|64G|
 1|tenet215|i7-10700K|8|64G|
 1|tenet216|i7-10700K|8|64G|
-1|tenet217|i7-10700K|8|64G|
+0|tenet217|i7-10700K|8|64G|  # Boot problem: unable to request dhcp (2021.09.06)
 1|tenet218|i7-10700K|8|64G|
 1|tenet219|i7-10700K|8|64G|
 1|tenet220|i7-10700K|8|64G|

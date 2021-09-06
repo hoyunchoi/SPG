@@ -23,7 +23,7 @@ class Machine:
         self.memory = information[4]            # Size of memory inside machine
 
         # Current job information
-        self.jobList: list[Job] = []            # List of running jobs
+        self.jobDict: dict[str, Job] = {}       # Dictionary of running jobs with key of PID
         self.nJob: int = 0                      # Number of running jobs = len(jobList)
 
         # Current free information
@@ -45,7 +45,7 @@ class Machine:
         """
             Comparison of machine w.r.t name
         """
-        return self.getIndex() < other.getIndex()
+        return self.getIndex(self.machineName) < other.getIndex(other.machineName)
 
     def __str__(self) -> str:
         """
@@ -59,19 +59,32 @@ class Machine:
             CAUTION!
             You should run scanUserJob before this function
         """
-        for job in self.jobList:
-            if job.pid == pid:
-                return job.cmd
-        colorama.init()
-        print(colored(f"ERROR: No such process in {self.name}: {pid}", 'red'))
-        exit()
+        job = self.jobDict.get(pid)
 
-    def getIndex(self) -> int:
+        # Job with input pid is not registered
+        # Print warning and exit the program
+        if job is None:
+            colorama.init()
+            print(colored(f"ERROR: No such process in {self.name}: {pid}", 'red'))
+            exit()
+
+        return job.cmd
+
+    @staticmethod
+    def getGroupName(machineName: str) -> int:
+        """
+            Get group name of machine
+            ex) tenet100 -> tenet
+        """
+        return re.sub('[0-9]', '', machineName)
+
+    @staticmethod
+    def getIndex(machineName: str) -> int:
         """
             Get index of machine.
             ex) tenet100 -> 100
         """
-        return int(re.sub('[^0-9]', '', self.name))
+        return int(re.sub('[^0-9]', '', machineName))
 
     ########################### Get Information of Machine Instance ###########################
     def getFreeMem(self) -> str:
@@ -85,50 +98,37 @@ class Machine:
                                 shell=True)
         return result.stdout.strip()
 
-    def getJobList(self, scanLevel: int, userName: str) -> Optional[list[Job]]:
+    def getRawProcess(self, userName: str) -> Optional[list[str]]:
         """
-            Scan the sub-process of input user.
-            When error occurs during scanning, save the error to scanErrList and return None
+            Get raw output of 'ps' command
+            When error occurs, scanErrList is updated
             Args
-                scanLevel: Refer 'Job.isImportant' for more description
-                userName: user name to find jobs. If none, take every users registered in group 'user'
-            Return
-                userJobList: List of jobs that is important.
+                userName: user name to find processes. If None, take every users registered in group 'user'
         """
-        # Get list of jobs
+        # Scan every user registered in group 'user'
         if userName is None:
-            # Scan every user registered in group 'user'
             cmdGetProcess = self.cmdSSH + '\"ps H --user $(getent group users | cut -d: -f4)\
                                             --format ruser:15,stat,pid,sid,pcpu,pmem,rss:10,time:15,start_time,args\"'
+        # Scan specifically input user
         else:
-            # Scan specifically input user
             cmdGetProcess = self.cmdSSH + f'\"ps H --user {userName}\
                                             --format ruser:15,stat,pid,sid,pcpu,pmem,rss:10,time:15,start_time,args\"'
-        result = subprocess.run(cmdGetProcess,
-                                capture_output=True,
-                                text=True,
-                                shell=True)
+
+        # get result of ps command
+        result = subprocess.run(cmdGetProcess, capture_output=True, text=True, shell=True)
 
         # Check scan error
         if result.stderr:
             self.scanErrList.append(f'ERROR from {self.name}: {result.stderr.strip()}')
             return None
-
-        # Save important sub-process into joblist
-        jobInfoList = result.stdout.strip().split('\n')[1:]     # First line is header
-        jobList = []
-        for jobInfo in jobInfoList:
-            job = Job(self.name, jobInfo)
-            if job.isImportant(scanLevel):
-                jobList.append(job)
-        return jobList
+        return result.stdout.strip().split('\n')[1:]    # First line is header
 
     def getUserCount(self) -> Counter[str, int]:
         """
             Return the dictionary of {user name: number of jobs}
             CAUTION! You should run scanUserJob before running this function
         """
-        userList = [job.userName for job in self.jobList]
+        userList = [job.userName for job in self.jobDict.values()]
         return Counter(userList)
 
     ########################## Get Line Format Information for Print ##########################
@@ -151,29 +151,39 @@ class Machine:
             Return list of jobs running in line format
         """
         jobLine = ''
-        for job in self.jobList:
+        for job in self.jobDict.values():
             jobLine += job.getLine() + "\n"
         return jobLine
 
     ############################## Scan Job Information and Save ##############################
     def scanJob(self, userName: str, scanLevel: int) -> None:
         """
-            nJob, jobList will be updated
+            Scan the sub-process of input user.
+            When error occurs during scanning, save the error to scanErrList and return None
+            nJob, jobDict will be updated
             when userName is None, nFreeCore, freeMem will also be updated
+            Args
+                userName: Refer getRawProcess for more description
+                scanLevel: Refer 'Job.isImportant' for more description
         """
-        jobList = self.getJobList(scanLevel=scanLevel, userName=userName)
+        # Get list of raw process
+        rawProcess = self.getRawProcess(userName)
 
-        # When error occurs during getJobList
-        if jobList is None:
+        # When error occurs, rawProcess is None. Do nothing and return
+        if rawProcess is None:
             return None
 
-        # Save the scanned information
-        self.jobList = jobList
-        self.nJob = len(jobList)
+        # Save scanned job informations
+        for process in rawProcess:
+            job = Job(self.name, process)
+            if job.isImportant(scanLevel):
+                self.jobDict[job.pid] = job
+        self.nJob = len(self.jobDict)
+
+        # If user name is None, update free informations too
         if userName is None:
             self.nFreeCore = max(0, self.nCore - self.nJob)
             self.freeMem = self.getFreeMem()
-
         return None
 
     ##################################### Run or Kill Job #####################################
@@ -194,61 +204,51 @@ class Machine:
             Kill every job satisfying args
         """
         self.nKill = 0
-        for job in self.jobList:
+        for job in self.jobDict.values():
             if job.checkKill(args):
                 # self.killPID(job.pid)
                 self.killJob(job)
                 self.nKill += 1
         return None
 
-    def killPID(self, pid: str) -> None:
-        """
-            Kill process by input pid
-        """
-        cmdKill = self.cmdSSH + f'\"kill -9 {pid}\"'
-        result = subprocess.run(cmdKill, shell=True, capture_output=True, text=True)
-        killErrList = result.stderr.strip().split('\n') if result.stderr else []
-        for killErr in killErrList:
-            self.killErrList.append(f'ERROR from {self.name}: {killErr}')
-
-        print(f'{self.name}: killed \"{self.findCmdFromPID(pid)}\"')
-        return None
-
     def killJob(self, job: Job) -> None:
         """
             Kill job and all the process until it's session leader
         """
-        killErrList = []
-        # Input job is session leader
-        if job.pid == job.sid:
-            cmdKill = self.cmdSSH + f'\"kill -9 {job.pid}\"'
-            result = subprocess.run(cmdKill, shell=True, capture_output=True, text=True)
-            killErrList += result.stderr.strip().split('\n') if result.stderr else []
+        # Command to kill very processes until reaching session leader
+        cmdKill = self.cmdSSH + f'\" kill -9 {job.pid}; '
+        pid = job.pid
+        while pid != job.sid:
+            # Update pid to it's ppid
+            pid = subprocess.check_output(self.cmdSSH + f'\"ps -q {pid} --format ppid\"',
+                                          text=True, shell=True).split('\n')[1].strip()
+            cmdKill += f'kill -9 {pid}; '
+        cmdKill += '\"'
 
-        # Input job is not session leader. Kill it's parent process until reaching session leader
-        else:
-            cmdKill = self.cmdSSH + '\"'
-            pid = job.pid
-            while pid != job.sid:
-                # kill command of current pid
-                cmdKill += f'kill -9 {pid}; '
-
-                # Find ppid of current pid (pid of parent) before killing current pid
-                pid = subprocess.check_output(self.cmdSSH + f'\"ps -q {pid} --format ppid\"',
-                                              text=True, shell=True).split('\n')[1].strip()
-
-            # Kill all parent processes
-            cmdKill += '\"'
-            result = subprocess.run(cmdKill, shell=True, capture_output=True, text=True)
-            killErrList += result.stderr.strip().split('\n') if result.stderr else []
+        # Run kill command
+        result = subprocess.run(cmdKill, shell=True, capture_output=True, text=True)
 
         # When error occurs, save it
+        killErrList = result.stderr.strip().split('\n') if result.stderr else []
         for killErr in killErrList:
             self.killErrList.append(f'ERROR from {self.name}: {killErr}')
 
         # Print the result
         print(f'{self.name}: killed \"{self.findCmdFromPID(job.pid)}\"')
         return None
+
+    # def killPID(self, pid: str) -> None:
+    #     """
+    #         Kill process by input pid
+    #     """
+    #     cmdKill = self.cmdSSH + f'\"kill -9 {pid}\"'
+    #     result = subprocess.run(cmdKill, shell=True, capture_output=True, text=True)
+    #     killErrList = result.stderr.strip().split('\n') if result.stderr else []
+    #     for killErr in killErrList:
+    #         self.killErrList.append(f'ERROR from {self.name}: {killErr}')
+
+    #     print(f'{self.name}: killed \"{self.findCmdFromPID(pid)}\"')
+    #     return None
 
     ######################################## Deprecate ########################################
     def killAll(self) -> int:
@@ -257,7 +257,7 @@ class Machine:
             Get user job from self.userJobList
         """
         nKill = 0
-        for job in self.jobList:
+        for job in self.jobDict.values():
             self.killPID(job.pid)
             nKill += 1
         return nKill
@@ -268,7 +268,7 @@ class Machine:
             Get user job from self.userJobList
         """
         nKill = 0
-        for job in self.jobList:
+        for job in self.jobDict.values():
             # Get user job as list if it matches pattern
             if job.cmd.find(' '.join(pattern)) != -1:
                 self.killPID(job.pid)
@@ -281,12 +281,11 @@ class Machine:
             Get user job from self.userJobList
         """
         nKill = 0
-        for job in self.jobList:
+        for job in self.jobDict.values():
             if job.getTimeWindow() < timeWindow:
                 self.killPID(job.pid)
                 nKill += 1
         return nKill
-
 
 if __name__ == "__main__":
     print("This is moudle 'Machine' from SPG")

@@ -22,19 +22,21 @@ class SPG:
 
     def __init__(self) -> None:
         global groupFileDict, defaultPath
-        self.defaultPath = defaultPath
+        self.defaultPath = defaultPath                      # Path of current location where spg is executed
+        self.groupDict: dict[str, MachineGroup] = {}        # Dictionary of machine group with key of group name
 
-        # Initialize machine group list
-        self.groupList: list[MachineGroup] = [MachineGroup(groupName, groupFile)
-                                              for groupName, groupFile in groupFileDict.items()]
-
-        # Initialize error list
-        self.scanErrList: list[str] = []
-        self.killErrList: list[str] = []
+        # Error lists
+        self.scanErrList: list[str] = []                    # List of errors during scanning
+        self.killErrList: list[str] = []                    # List of errors during killing job
 
         # Print option
-        self.silent: bool = None
-        self.barWidth: int = None
+        self.silent: bool = None                            # Whether to print progressbar or not. Will be determined by arguments
+        self.terminalWidth: int = None                      # Width of current terminal
+        self.barWidth: int = None                           # Progressbar width.
+
+        # Initialization
+        for groupName, groupFile in groupFileDict.items():
+            self.groupDict[groupName] = MachineGroup(groupName, groupFile)
         try:
             self.terminalWidth = int(subprocess.check_output(['stty', 'size']).split()[-1])
         except subprocess.CalledProcessError:
@@ -52,26 +54,22 @@ class SPG:
         self.longPrintWidth = 104
         self.longStrLine = self.getStrLine(self.longPrintWidth)
 
+        # Options
+        self.option = {'list': self.list,
+                       'free': self.free,
+                       'job': self.job,
+                       'user': self.user,
+                       'run': self.run,
+                       'runs': self.runs,
+                       'KILL': self.KILL}
+
     ###################################### Basic Utility ######################################
     def __call__(self, args: argparse.Namespace) -> None:
         """
             Run functions according to the input argumetns
         """
         self.silent = args.silent
-        if args.option == 'list':
-            self.list(args)
-        elif args.option == 'free':
-            self.free(args)
-        elif args.option == 'job':
-            self.job(args)
-        elif args.option == 'user':
-            self.user(args)
-        elif args.option == 'run':
-            self.run(args)
-        elif args.option == 'runs':
-            self.runs(args)
-        elif args.option == 'KILL':
-            self.KILL(args)
+        self.option.get(args.option)(args)
 
     @staticmethod
     def getStrLine(width: int) -> str:
@@ -97,28 +95,34 @@ class SPG:
         """
             Find Machine instance in groupList
         """
-        for group in self.groupList:
-            for machine in group.machineList:
-                if machine.name == machineName:
-                    return machine
-
-        # Can't find machine in spg list
         colorama.init()
-        print(colored(f"ERROR: No such machine: {machineName}", 'red'))
-        exit()
+        groupName = Machine.getGroupName(machineName)
+
+        # Find group
+        group = self.groupDict.get(groupName)
+        if group is None:
+            print(colored(f"ERROR: No such machine group: {groupName}", 'red'))
+            exit()
+
+        # Find machine
+        machine = group.machineDict.get(machineName)
+        if machine is None:
+            print(colored(f"ERROR: No such machine: {machineName}", 'red'))
+            exit()
+
+        return machine
 
     def findGroupFromName(self, groupName: str) -> MachineGroup:
         """
             Find group instance in groupList
         """
-        for group in self.groupList:
-            if group.name == groupName:
-                return group
-
-        # Can't find group in spg list
         colorama.init()
-        print(colored(f"ERROR: No such machine group: {groupName}", 'red'))
-        exit()
+        group = self.groupDict.get(groupName)
+        if group is None:
+            print(colored(f"ERROR: No such machine group: {groupName}", 'red'))
+            exit()
+
+        return group
 
     ############################## Scan Job Information and Save ##############################
     def scanJob(self, groupList: list[MachineGroup],
@@ -187,7 +191,7 @@ class SPG:
         if args.groupNameList:
             groupList = [self.findGroupFromName(groupName) for groupName in args.groupNameList]
         else:
-            groupList = self.groupList
+            groupList = list(self.groupDict.values())
         for group in groupList:
             for machineInfoLine in group.getInfoLineList():
                 print(machineInfoLine)
@@ -219,7 +223,7 @@ class SPG:
         if args.groupNameList:
             groupList = [self.findGroupFromName(groupName) for groupName in args.groupNameList]
         else:
-            groupList = self.groupList
+            groupList = list(self.groupDict.values())
 
         # Start print
         print(self.shortStrLine)
@@ -264,7 +268,7 @@ class SPG:
         if args.groupNameList:
             groupList = [self.findGroupFromName(groupName) for groupName in args.groupNameList]
         else:
-            groupList = self.groupList
+            groupList = list(self.groupDict.values())
 
         # Start print
         print(self.longStrLine)
@@ -295,7 +299,7 @@ class SPG:
         if args.groupNameList:
             groupList = [self.findGroupFromName(groupName) for groupName in args.groupNameList]
         else:
-            groupList = self.groupList
+            groupList = list(self.groupDict.values())
 
         # Set width
         strLine = '+' + '=' * (29 + 10 * (len(groupList)))
@@ -407,7 +411,7 @@ class SPG:
         if args.groupNameList:
             groupList = [self.findGroupFromName(groupName) for groupName in args.groupNameList]
         else:
-            groupList = self.groupList
+            groupList = list(self.groupDict.values())
 
         # Scanning
         if not self.silent:

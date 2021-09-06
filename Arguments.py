@@ -179,7 +179,7 @@ class Arguments:
             Check args for option 'job'
         """
         # When 'all' flag is true, set user name to None
-        # Refer Machine.getJobList for the reason
+        # Refer Machine.getRawProcess for the reason
         if args.all:
             args.userName = None
         return args

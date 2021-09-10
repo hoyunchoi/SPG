@@ -27,6 +27,10 @@ class Job:
         self.startTime = jobInfo[8]                             # Time when the job started
         self.cmd = ' '.join(jobInfo[9:])                        # Command of the job
 
+    ########################## Get Line Format Information for Print ##########################
+    def __format__(self, format_spec: str) -> str:
+        return f'| {self.machineName:<10} | {self.userName:<15} | {self.state:<2} | {self.pid:>7} | {self.cpuPercent:>6} | {self.memPercent:>6} | {self.mem:>6} | {self.time:>11} | {self.startTime:>5} | {self.cmd}'
+
     ###################################### Basic Utility ######################################
     def getTimeWindow(self) -> int:
         """
@@ -40,18 +44,6 @@ class Job:
         toSecondList = [1, 60, 3600, 62400] # second, minute, hour, day
         second = sum(int(time) * toSecond for time, toSecond in zip(reversed(timeList), toSecondList))
         return second
-
-    ########################## Get Line Format Information for Print ##########################
-    def getLine(self) -> str:
-        """
-            Return information of job with line format
-        """
-
-        line = '| {:<10} | {:<15} | {:<2} | {:>7} | {:>6} | {:>6} | {:>6} | {:>11} | {:>5} | {}'.format(
-            self.machineName, self.userName, self.state, self.pid, self.cpuPercent,
-            self.memPercent, self.mem, self.time, self.startTime, self.cmd
-        )
-        return line
 
     ################################## Check job information ##################################
     def isImportant(self, scanLevel: int) -> bool:

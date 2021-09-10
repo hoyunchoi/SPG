@@ -37,10 +37,11 @@ class MachineGroup:
         self.scanErrList: list[str] = []            # List of errors during scanning
         self.killErrList: list[str] = []            # List of errors during killing job
 
-        # Progress bar
+        # Print option
         self.bar: tqdm.tqdm = None
         self.barWidth: int = None
         self.scanningMachineSet: set[str] = set()   # Set of machine names who are still scanning
+        self.strLine: str = None                    # String line to be printed
 
         # KILL
         self.nKill: int = 0                         # Number of killed jobs
@@ -71,7 +72,7 @@ class MachineGroup:
             self.bar.set_description_str(desc=f'|Scanning {next(iter(self.scanningMachineSet))}|')
         # When nothing remains at scanningMachineSet, scanning is finished
         except StopIteration:
-            self.bar.set_description_str(desc=f'|Scanning finished|')
+            self.bar.set_description_str(desc='|Scanning finished|')
 
     def progressBar(func: Callable) -> Callable:
         """
@@ -129,23 +130,22 @@ class MachineGroup:
         return userCount
 
     ########################## Get Line Format Information for Print ##########################
-    def getInfoLineList(self) -> list[str]:
+    def __format__(self, format_spec: str) -> str:
         """
-            Return list of machine information in line format
+            Return machine information in line format
+            Args
+                format_spec: which information to return
+                    - job: return formatted job information
+                    - free: return formatted free information
+                    - None: return formatted group information
+            When 'free' is given, return free information of machine
         """
-        return [machine.getInfoLine() for machine in self.machineDict.values()]
-
-    def getJobLineList(self, strLine: str) -> list[str]:
-        """
-            Return list of job informations in line format
-        """
-        return [machine.getJobLine() + strLine for machine in self.busyMachineList]
-
-    def getFreeInfoLineList(self) -> list[str]:
-        """
-            Return line format of machine free informations belongs to the group
-        """
-        return [machine.getFreeInfoLine() for machine in self.freeMachineList]
+        if format_spec == 'job':
+            return '\n'.join(f'{machine:job}' + '\n' + self.strLine for machine in self.busyMachineList)
+        elif format_spec == 'free':
+            return '\n'.join(f'{machine:free}' for machine in self.freeMachineList)
+        else:
+            return '\n'.join(f'{machine}' for machine in self.machineDict.values())
 
     ############################## Scan Job Information and Save ##############################
     @progressBar
@@ -253,28 +253,6 @@ class MachineGroup:
             self.nKill += machine.nKill
             self.killErrList += machine.killErrList
         return None
-
-    ######################################## Deprecate ########################################
-    def killAll(self) -> int:
-        nKill = 0
-        for machine in self.userMachineList:
-            nKill += machine.killAll()
-            self.killErrList += machine.killErrList
-        return nKill
-
-    def killThis(self, pattern: list[str]) -> int:
-        nKill = 0
-        for machine in self.userMachineList:
-            nKill += machine.killThis(pattern)
-            self.killErrList += machine.killErrList
-        return nKill
-
-    def killBefore(self, timeWindow: int) -> int:
-        nKill = 0
-        for machine in self.userMachineList:
-            nKill += machine.killBefore(timeWindow)
-            self.killErrList += machine.killErrList
-        return nKill
 
 
 if __name__ == "__main__":

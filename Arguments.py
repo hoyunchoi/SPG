@@ -556,6 +556,7 @@ class Arguments:
                                  dest='time',
                                  help=timeDocument)
 
+    ######################################## Deprecate ########################################
     def optionKill(self) -> None:
         """
             Add 'kill' option
@@ -646,7 +647,3 @@ class Arguments:
 
 if __name__ == "__main__":
     print("This is moudel Argument from SPG")
-
-    arguments = Arguments()
-    args = arguments.getArgs()
-    print(args)

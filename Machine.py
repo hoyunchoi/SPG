@@ -47,12 +47,6 @@ class Machine:
         """
         return self.getIndex(self.machineName) < other.getIndex(other.machineName)
 
-    def __str__(self) -> str:
-        """
-            When print the machine, it prints it's name
-        """
-        return self.name
-
     def findCmdFromPID(self, pid: str) -> str:
         """
             Find command line in userJobList by pid
@@ -132,28 +126,22 @@ class Machine:
         return Counter(userList)
 
     ########################## Get Line Format Information for Print ##########################
-    def getInfoLine(self) -> str:
+    def __format__(self, format_spec: str) -> str:
         """
-            Return line format of machine information
+            Return machine information in line format
+            Args
+                format_spec: which information to return
+                    - job: return formatted job information
+                    - free: return formatted free information
+                    - None: return formatted machine information
+            When 'free' is given, return free information of machine
         """
-        line = '| {:<10} | {:<11} | {:2d} cores | {:>5}'.format(self.name, self.cpu, self.nCore, self.memory)
-        return line
-
-    def getFreeInfoLine(self) -> str:
-        """
-            Return line format of machine free information
-        """
-        line = '| {:<10} | {:<11} | {:2d} cores | {:>5} free'.format(self.name, self.cpu, self.nFreeCore, self.freeMem)
-        return line
-
-    def getJobLine(self) -> str:
-        """
-            Return list of jobs running in line format
-        """
-        jobLine = ''
-        for job in self.jobDict.values():
-            jobLine += job.getLine() + "\n"
-        return jobLine
+        if format_spec.lower() == 'job':
+            return '\n'.join(f'{job}' for job in self.jobDict.values())
+        elif format_spec.lower() == 'free':
+            return f'| {self.name:<10} | {self.cpu:<11} | {self.nFreeCore:3d} cores | {self.freeMem:>5} free'
+        else:
+            return f'| {self.name:<10} | {self.cpu:<11} | {self.nCore:3d} cores | {self.memory:>5}'
 
     ############################## Scan Job Information and Save ##############################
     def scanJob(self, userName: str, scanLevel: int) -> None:
@@ -249,43 +237,6 @@ class Machine:
 
     #     print(f'{self.name}: killed \"{self.findCmdFromPID(pid)}\"')
     #     return None
-
-    ######################################## Deprecate ########################################
-    def killAll(self) -> int:
-        """
-            Kill every job belongs to user
-            Get user job from self.userJobList
-        """
-        nKill = 0
-        for job in self.jobDict.values():
-            self.killPID(job.pid)
-            nKill += 1
-        return nKill
-
-    def killThis(self, pattern: list[str]) -> int:
-        """
-            Kill every job which has sepcific patter
-            Get user job from self.userJobList
-        """
-        nKill = 0
-        for job in self.jobDict.values():
-            # Get user job as list if it matches pattern
-            if job.cmd.find(' '.join(pattern)) != -1:
-                self.killPID(job.pid)
-                nKill += 1
-        return nKill
-
-    def killBefore(self, timeWindow: int) -> int:
-        """
-            Kill all user job started before timeWindow (seconds)
-            Get user job from self.userJobList
-        """
-        nKill = 0
-        for job in self.jobDict.values():
-            if job.getTimeWindow() < timeWindow:
-                self.killPID(job.pid)
-                nKill += 1
-        return nKill
 
 if __name__ == "__main__":
     print("This is moudle 'Machine' from SPG")

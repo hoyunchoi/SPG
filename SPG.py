@@ -311,32 +311,25 @@ class SPG:
             print(strLine)
 
         # Get user count
-        userCount = Counter()       # Total number of jobs per user
-        groupUserCountDict = {}     # Number of jobs per user per group
+        totalUserCount = Counter()      # Total number of jobs per user
+        groupUserCountDict = dict()     # Number of jobs per user per group
         for group in groupList:
-            if group.nJob:
-                groupUserCount = group.getUserCount()
-                groupUserCountDict[group.name] = groupUserCount
-                userCount += groupUserCount
+            groupUserCount = group.getUserCount()
+            groupUserCountDict[group.name] = groupUserCount
+            totalUserCount.update(groupUserCount)
 
-        # Print result
+        # Print result per user
         lineformat = '| {:<15} | {:>8} |' + '{:>8} |' * len(groupList)
         print(lineformat.format('User', 'total', *tuple([group.name for group in groupList])))
         print(strLine)
-        for user, totCount in userCount.items():
-            count = [None] * len(groupList)
-            for i, group in enumerate(groupList):
-                try:
-                    count[i] = groupUserCountDict[group.name][user]
-                except KeyError:
-                    count[i] = 0
-                count.append(groupUserCount.get(user, 0))
-            print(lineformat.format(user, totCount, *tuple(count)))
+        for user, totCount in totalUserCount.items():
+            print(lineformat.format(user, totCount,
+                                    *tuple(groupUserCountDict[group.name].get(user, 0) for group in groupList)))
         print(strLine)
 
         # Print summary
-        nJobList = [group.nJob for group in groupList]
-        print(lineformat.format('total', sum(nJobList), *tuple(nJobList)))
+        print(lineformat.format('total', sum(totalUserCount.values()),
+                                *tuple(group.nJob for group in groupList)))
         print(strLine)
 
         return None
@@ -434,6 +427,7 @@ class SPG:
             self.killErrList += group.killErrList
         print(f'\nKilled {nKill} jobs')
         return None
+
 
 def main():
     # Get arguments

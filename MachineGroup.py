@@ -126,7 +126,7 @@ class MachineGroup:
         """
         userCount = Counter()
         for machine in self.machineDict.values():
-            userCount += machine.getUserCount()
+            userCount.update(machine.getUserCount())
         return userCount
 
     ########################## Get Line Format Information for Print ##########################

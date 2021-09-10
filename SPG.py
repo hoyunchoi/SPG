@@ -101,13 +101,13 @@ class SPG:
         # Find group
         group = self.groupDict.get(groupName)
         if group is None:
-            print(colored(f"ERROR: No such machine group: {groupName}", 'red'))
+            print(colored(f"ERROR: No such machine group: {groupName}", 'red'), file=sys.stderr)
             exit()
 
         # Find machine
         machine = group.machineDict.get(machineName)
         if machine is None:
-            print(colored(f"ERROR: No such machine: {machineName}", 'red'))
+            print(colored(f"ERROR: No such machine: {machineName}", 'red'), file=sys.stderr)
             exit()
 
         return machine
@@ -119,7 +119,7 @@ class SPG:
         colorama.init()
         group = self.groupDict.get(groupName)
         if group is None:
-            print(colored(f"ERROR: No such machine group: {groupName}", 'red'))
+            print(colored(f"ERROR: No such machine group: {groupName}", 'red'), file=sys.stderr)
             exit()
 
         return group

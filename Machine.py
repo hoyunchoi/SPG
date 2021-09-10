@@ -1,4 +1,5 @@
 import re
+import sys
 import colorama
 import subprocess
 import argparse
@@ -13,9 +14,9 @@ class Machine:
     """ Save the information of each machine """
 
     def __init__(self, information: str) -> None:
+        # 0.Use|#1.Name|#2.CPU|#3.nCore|#4.Memory
         information = information.strip().split("|")
 
-        # 0.Use|#1.Name|#2.CPU|#3.nCore|#4.Memory
         self.use = bool(int(information[0]))    # Whether to be used or not: 1 for use, 0 for not use
         self.name = information[1]              # Name of machine. ex) tenet1
         self.cpu = information[2]               # Name of cpu inside machine
@@ -59,7 +60,7 @@ class Machine:
         # Print warning and exit the program
         if job is None:
             colorama.init()
-            print(colored(f"ERROR: No such process in {self.name}: {pid}", 'red'))
+            print(colored(f"ERROR: No such process in {self.name}: {pid}", 'red'), file=sys.stderr)
             exit()
 
         return job.cmd

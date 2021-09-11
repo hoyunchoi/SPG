@@ -345,8 +345,8 @@ class SPG:
 
         # When no free core is detected, doule check the run command
         if machine.nFreeCore == 0:
-            print(f"{args.machineName} has no free core. Do you really want to run a job?")
-            Arguments.YesNo()
+            colorama.init()
+            print(colored(f'WARNING: {args.machineName} has no free core!', 'red'), file=sys.stderr)
 
         # Run a job
         machine.run(self.defaultPath, args.command)

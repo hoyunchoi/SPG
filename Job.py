@@ -24,12 +24,12 @@ class Job:
         self.memPercent = jobInfo[5]                            # Memory utilization percentage
         self.mem = str(round(int(jobInfo[6]) / 1024)) + 'MB'    # Absolute value of memory utilization in 'MB'
         self.time = jobInfo[7]                                  # Time since the job started
-        self.startTime = jobInfo[8]                             # Time when the job started
+        self.start = jobInfo[8]                                 # Time when the job started
         self.cmd = ' '.join(jobInfo[9:])                        # Command of the job
 
     ########################## Get Line Format Information for Print ##########################
     def __format__(self, format_spec: str) -> str:
-        return f'| {self.machineName:<10} | {self.userName:<15} | {self.state:<2} | {self.pid:>7} | {self.cpuPercent:>6} | {self.memPercent:>6} | {self.mem:>6} | {self.time:>11} | {self.startTime:>5} | {self.cmd}'
+        return f'| {self.machineName:<10} | {self.userName:<15} | {self.state:<2} | {self.pid:>7} | {self.cpuPercent:>6} | {self.memPercent:>6} | {self.mem:>6} | {self.time:>11} | {self.start:>5} | {self.cmd}'
 
     ###################################### Basic Utility ######################################
     def getTimeWindow(self) -> int:
@@ -90,15 +90,19 @@ class Job:
             Check if this job should be killed
         """
         # When pid list is given, job's pid should be one of them
-        if (args.pidList) and (self.pid not in args.pidList):
+        if (args.pidList is not None) and (self.pid not in args.pidList):
             return False
 
         # When command pattern is given, job's command should include the pattern
-        if (args.command) and (args.command not in self.cmd):
+        if (args.command is not None) and (args.command not in self.cmd):
             return False
 
         # When time is given, job's time should be less than the time
-        if (args.time) and (self.getTimeWindow() >= args.time):
+        if (args.time is not None) and (self.getTimeWindow() >= args.time):
+            return False
+
+        # When start is given, job's start should be same as the argument
+        if (args.start is not None) and (self.start != args.start):
             return False
 
         # Every options are considered. When passed, the job should be killed

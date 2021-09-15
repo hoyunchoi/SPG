@@ -5,6 +5,7 @@ from termcolor import colored
 
 from Common import groupFileDict, currentUser
 
+
 class Arguments:
     def __init__(self) -> None:
         global groupFileDict, currentUser
@@ -101,8 +102,7 @@ class Arguments:
         print(question)
         self.YesNo()
 
-
-    def redirectDeprecated(self, args:argparse.Namespace) -> argparse.Namespace:
+    def redirectDeprecated(self, args: argparse.Namespace) -> argparse.Namespace:
         # Redirect to list
         if args.option == 'machine':
             args.option = 'list'
@@ -292,32 +292,7 @@ class Arguments:
                             dest='userName',
                             help=document)
 
-    def addPositionalGroupArgument(self, parser: argparse.ArgumentParser) -> None:
-        """
-            Add positional argument 'groupName' to input parser
-        """
-        parser.add_argument('groupName',
-                            help='target machine group name')
-        return None
-
-    def addPositionalMachineArgument(self, parser: argparse.ArgumentParser) -> None:
-        """
-            Add positional argument 'machineName' to input parser
-        """
-        parser.add_argument('machineName',
-                            help='target machine name')
-        return None
-
     ####################################### Sub parsers #######################################
-    def optionMachine(self) -> None:
-        """
-            deprecated
-        """
-        parser_machine = self.optionParser.add_parser('machine', help='Deprecated')
-        self.addOptionalGroupArgument(parser_machine)
-        self.addOptionalMachineArgument(parser_machine)
-        return None
-
     def optionList(self) -> None:
         """
             Add 'list' option
@@ -384,53 +359,6 @@ class Arguments:
                                 help='Target user name. Default: me')
         return None
 
-    def optionAll(self) -> None:
-        """
-            Add 'all' option
-            'group', 'machine' as optional argument
-            When group/machine names are both given, group name is ignored
-        """
-        document = textwrap.dedent('''\
-                                   spg all (-g group list) (-m machine list)
-                                   When group/machine are both given, group is ignored
-                                   When machine is specified, there is no group summary
-                                   ''')
-        parser_all = self.optionParser.add_parser('all', help='Deprecated',
-                                                  formatter_class=argparse.RawTextHelpFormatter,
-                                                  usage=document)
-        self.addOptionalGroupArgument(parser_all)
-        self.addOptionalMachineArgument(parser_all)
-        parser_all.add_argument('-u', '--userName',
-                                metavar='',
-                                default=None,
-                                dest='userName',
-                                help='Target user name')
-        return None
-
-    def optionMe(self) -> None:
-        """
-            Add 'me' option
-            'group', 'machine' as optional argument
-            When group/machine names are both given, group name is ignored
-        """
-        document = textwrap.dedent('''\
-                                   spg me (-g group list) (-m machine list)
-                                   When group/machine are both given, group is ignored
-                                   When machine is specified, there is no group summary
-                                   ''')
-        parser_me = self.optionParser.add_parser('me', help='Deprecated',
-                                                 formatter_class=argparse.RawTextHelpFormatter,
-                                                 usage=document)
-        parser_me.add_argument('-u', '--userName',
-                               metavar='',
-                               default=self.currentUser,
-                               dest='userName',
-                               help='Target user name')
-        self.addOptionalGroupArgument(parser_me)
-        self.addOptionalMachineArgument(parser_me)
-
-        return None
-
     def optionUser(self) -> None:
         """
             Add 'user' option
@@ -453,7 +381,7 @@ class Arguments:
                                    spg run [machine name] [program] (arguments)
 
                                    CAUTION!
-                                   1. Invoke the job in the directory where you want the prrun
+                                   1. Invoke the job in the directory where you want the program to run
                                    2. Don't append \'&\' character at the tail of commands.
                                       spg will do it for you
                                    3. If you want to use redirection symbols < or >,
@@ -463,7 +391,8 @@ class Arguments:
                                                   help='Run a job',
                                                   formatter_class=argparse.RawTextHelpFormatter,
                                                   usage=document)
-        self.addPositionalMachineArgument(parser_run)
+        parser_run.add_argument('machineName',
+                                help='target machine name')
         parser_run.add_argument('command',
                                 nargs='+',
                                 help='command you want to run. [program] (arguments)')
@@ -479,7 +408,7 @@ class Arguments:
                                    spg runs [command file] [group name] (start end)
 
                                    CAUTION!
-                                   1. Invoke the job in the directory where you want the prrun
+                                   1. Invoke the job in the directory where you want the program to run
                                    2. Don't append \'&\' character at the tail of commands.
                                       spg will do it for you
                                    3. If you want to use redirection symbols < or >,
@@ -546,7 +475,7 @@ class Arguments:
 
         # Kill by time
         timeDocument = textwrap.dedent('''\
-                                       Kill my jobs started less than given time.
+                                       Kill my jobs running less than given time.
                                        Time interval seperated by space.
                                        ex) 1w 5d 11h 50m 1s
                                        ''')
@@ -556,7 +485,89 @@ class Arguments:
                                  dest='time',
                                  help=timeDocument)
 
+        # Kill by start
+        startDocument = textwrap.dedent('''\
+                                        Kill my jobs started at specific time
+                                        Start time should exactly match with the result of "spg job"
+                                        ''')
+        parser_KILL.add_argument('-s', '--start',
+                                 metavar='',
+                                 dest='start',
+                                 help=startDocument)
+
     ######################################## Deprecate ########################################
+    def addPositionalGroupArgument(self, parser: argparse.ArgumentParser) -> None:
+        """
+            Add positional argument 'groupName' to input parser
+        """
+        parser.add_argument('groupName',
+                            help='target machine group name')
+        return None
+
+    def addPositionalMachineArgument(self, parser: argparse.ArgumentParser) -> None:
+        """
+            Add positional argument 'machineName' to input parser
+        """
+        parser.add_argument('machineName',
+                            help='target machine name')
+        return None
+
+    def optionMachine(self) -> None:
+        """
+            deprecated
+        """
+        parser_machine = self.optionParser.add_parser('machine', help='Deprecated')
+        self.addOptionalGroupArgument(parser_machine)
+        self.addOptionalMachineArgument(parser_machine)
+        return None
+
+    def optionAll(self) -> None:
+        """
+            Add 'all' option
+            'group', 'machine' as optional argument
+            When group/machine names are both given, group name is ignored
+        """
+        document = textwrap.dedent('''\
+                                   spg all (-g group list) (-m machine list)
+                                   When group/machine are both given, group is ignored
+                                   When machine is specified, there is no group summary
+                                   ''')
+        parser_all = self.optionParser.add_parser('all', help='Deprecated',
+                                                  formatter_class=argparse.RawTextHelpFormatter,
+                                                  usage=document)
+        self.addOptionalGroupArgument(parser_all)
+        self.addOptionalMachineArgument(parser_all)
+        parser_all.add_argument('-u', '--userName',
+                                metavar='',
+                                default=None,
+                                dest='userName',
+                                help='Target user name')
+        return None
+
+    def optionMe(self) -> None:
+        """
+            Add 'me' option
+            'group', 'machine' as optional argument
+            When group/machine names are both given, group name is ignored
+        """
+        document = textwrap.dedent('''\
+                                   spg me (-g group list) (-m machine list)
+                                   When group/machine are both given, group is ignored
+                                   When machine is specified, there is no group summary
+                                   ''')
+        parser_me = self.optionParser.add_parser('me', help='Deprecated',
+                                                 formatter_class=argparse.RawTextHelpFormatter,
+                                                 usage=document)
+        parser_me.add_argument('-u', '--userName',
+                               metavar='',
+                               default=self.currentUser,
+                               dest='userName',
+                               help='Target user name')
+        self.addOptionalGroupArgument(parser_me)
+        self.addOptionalMachineArgument(parser_me)
+
+        return None
+
     def optionKill(self) -> None:
         """
             Add 'kill' option

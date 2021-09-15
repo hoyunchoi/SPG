@@ -4,7 +4,7 @@ import subprocess
 # User group
 administrator = ['root']
 kahngUser = ['hoyun', 'jongshin', 'ysl', 'jmj', 'bkjhun', 'esudoz2', 'arinaswing', 'dotoa', 'cookhyun', 'ckj']
-baekUser = ['yunsik']
+baekUser = ['yunsik', 'yongjae', 'hojun', 'sanghoon']
 
 # User who is running spg
 currentUser = subprocess.check_output('whoami', text=True, shell=True).strip()
@@ -14,7 +14,6 @@ defaultPath = os.getcwd()
 
 # Define SPG directory according to current user
 spgDir = os.path.join('/root', 'spg')
-spgDir = '.'
 if currentUser in administrator:
     spgDir = os.path.join(spgDir, 'administrator')
 elif currentUser in kahngUser:

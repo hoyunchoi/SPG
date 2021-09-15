@@ -1,17 +1,16 @@
 #! /usr/bin/python
 import sys
+import logging
 import argparse
-import colorama
 import subprocess
-from typing import Callable
 from threading import Thread
-from termcolor import colored
 from collections import deque, Counter
 
-from Common import groupFileDict, defaultPath
-from Arguments import Arguments
 from Machine import Machine
+from Arguments import Arguments
 from MachineGroup import MachineGroup
+from Common import groupFileDict, defaultPath
+from Handler import ErrorHandler, SuccessHandler, WarningHandler, getRunKillLogger
 
 
 class SPG:
@@ -20,14 +19,18 @@ class SPG:
             cls._instance = super().__new__(cls)
         return cls._instance
 
-    def __init__(self) -> None:
-        global groupFileDict, defaultPath
+    def __init__(self,
+                 runKillLogger: logging.Logger,
+                 successHandler: SuccessHandler,
+                 warnHandler: WarningHandler,
+                 errHandler: ErrorHandler) -> None:
         self.defaultPath = defaultPath                      # Path of current location where spg is executed
         self.groupDict: dict[str, MachineGroup] = {}        # Dictionary of machine group with key of group name
 
-        # Error lists
-        self.scanErrList: list[str] = []                    # List of errors during scanning
-        self.killErrList: list[str] = []                    # List of errors during killing job
+        # Message handlers
+        self.successHandler = successHandler                        # Standard output handler
+        self.warnHandler = warnHandler                      # Warning handler
+        self.errHandler = errHandler                        # Error handler
 
         # Print option
         self.silent: bool = None                            # Whether to print progressbar or not. Will be determined by arguments
@@ -36,7 +39,11 @@ class SPG:
 
         # Initialization
         for groupName, groupFile in groupFileDict.items():
-            self.groupDict[groupName] = MachineGroup(groupName, groupFile)
+            self.groupDict[groupName] = MachineGroup(groupName,
+                                                     groupFile,
+                                                     runKillLogger,
+                                                     self.successHandler,
+                                                     self.errHandler)
         try:
             self.terminalWidth = int(subprocess.check_output(['stty', 'size']).split()[-1])
         except subprocess.CalledProcessError:
@@ -75,54 +82,33 @@ class SPG:
     def getStrLine(width: int) -> str:
         return '+' + '=' * (width - 1)
 
-    def errReport(func: Callable) -> Callable:
+    def findGroupFromName(self, groupName: str) -> MachineGroup:
         """
-            Report the error after the functions
+            Find group instance in groupList
         """
+        group = self.groupDict.get(groupName)
+        if group is None:
+            self.errHandler.append(f'ERROR: No such machine group: {groupName}')
+            exit()
 
-        def decorator(self, *args, **kwargs) -> None:
-            # main function
-            func(self, *args, **kwargs)
-
-            # Report error
-            colorama.init()
-            for err in self.scanErrList + self.killErrList:
-                print(colored(err, 'red'), file=sys.stderr)
-            return None
-        return decorator
+        return group
 
     def findMachineFromName(self, machineName: str) -> Machine:
         """
             Find Machine instance in groupList
         """
-        colorama.init()
         groupName = Machine.getGroupName(machineName)
 
         # Find group
-        group = self.groupDict.get(groupName)
-        if group is None:
-            print(colored(f"ERROR: No such machine group: {groupName}", 'red'), file=sys.stderr)
-            exit()
+        group = self.findGroupFromName(groupName)
 
         # Find machine
         machine = group.machineDict.get(machineName)
         if machine is None:
-            print(colored(f"ERROR: No such machine: {machineName}", 'red'), file=sys.stderr)
+            self.errHandler.append(f'ERROR: No such machine: {machineName}')
             exit()
 
         return machine
-
-    def findGroupFromName(self, groupName: str) -> MachineGroup:
-        """
-            Find group instance in groupList
-        """
-        colorama.init()
-        group = self.groupDict.get(groupName)
-        if group is None:
-            print(colored(f"ERROR: No such machine group: {groupName}", 'red'), file=sys.stderr)
-            exit()
-
-        return group
 
     ############################## Scan Job Information and Save ##############################
     def scanJob(self, groupList: list[MachineGroup],
@@ -147,8 +133,6 @@ class SPG:
             thread.start()
         for thread in threadList:
             thread.join()
-        for group in groupList:
-            self.scanErrList += group.scanErrList
         return None
 
     def scanJob_machine(self, machineNameList: list[str],
@@ -202,7 +186,6 @@ class SPG:
         print(self.superShortStrLine)
         return None
 
-    @errReport
     def free(self, args: argparse.Namespace) -> None:
         """
             Print list of machine free information
@@ -214,7 +197,6 @@ class SPG:
             for machine in machineList:
                 if machine.nFreeCore:
                     print(f'{machine:free}')
-                self.scanErrList += machine.scanErrList
             print(self.shortStrLine)
             return None
 
@@ -245,7 +227,6 @@ class SPG:
         print(self.shortStrLine)
         return None
 
-    @errReport
     def job(self, args: argparse.Namespace) -> None:
         """
             Print current state of jobs
@@ -257,9 +238,7 @@ class SPG:
             for machine in machineList:
                 if machine.nJob:
                     print(f'{machine:job}')
-                    # print(machine.getJobLine(), end='')
                     print(self.longStrLine)
-                self.scanErrList += machine.scanErrList
             return None
 
         # When machine list is not specified
@@ -289,7 +268,6 @@ class SPG:
         print(self.longStrLine)
         return None
 
-    @errReport
     def user(self, args: argparse.Namespace) -> None:
         """
             Print job count of users per machine group
@@ -334,7 +312,6 @@ class SPG:
 
         return None
 
-    @errReport
     def run(self, args: argparse.Namespace) -> None:
         """
             Run a job
@@ -345,14 +322,12 @@ class SPG:
 
         # When no free core is detected, doule check the run command
         if machine.nFreeCore == 0:
-            colorama.init()
-            print(colored(f'WARNING: {args.machineName} has no free core!', 'red'), file=sys.stderr)
+            self.warnHandler.append(f'WARNING: {args.machineName} has no free core!')
 
         # Run a job
         machine.run(self.defaultPath, args.command)
         return None
 
-    @errReport
     def runs(self, args: argparse.Namespace, maxCalls: int = 50) -> None:
         """
             Run several jobs
@@ -380,10 +355,10 @@ class SPG:
         subprocess.run(f'rm {args.cmdFile}', shell=True)
         with open(args.cmdFile, 'w') as f:
             f.write('\n'.join(str(cmd) for cmd in cmdQueue))
-        print(f"Run {cmdNumBefore - cmdNumAfter} jobs")
+
+        self.successHandler.append(f'\nRun {cmdNumBefore - cmdNumAfter} jobs')
         return None
 
-    @errReport
     def KILL(self, args: argparse.Namespace) -> None:
         """
             kill job
@@ -393,9 +368,9 @@ class SPG:
             nKill = 0
             machineList = self.scanJob_machine(args.machineNameList, userName=args.userName, scanLevel=1)
             for machine in machineList:
-                nKill += machine.KILL(args)
-                self.killErrList += machine.killErrList
-            print(f'\nKilled {nKill} jobs')
+                machine.KILL(args)
+                nKill += machine.nKill
+            self.successHandler.append(f'\nKilled {nKill} jobs')
             return None
 
         # When machine list is not specified
@@ -421,21 +396,27 @@ class SPG:
 
         # Summarize the kill result
         nKill = 0
-        self.killErrList = []
         for group in groupList:
             nKill += group.nKill
-            self.killErrList += group.killErrList
-        print(f'\nKilled {nKill} jobs')
+        self.successHandler.append(f'\nKilled {nKill} jobs')
         return None
 
 
 def main():
+    # Create message handlers: sequence of creation matters
+    errHandler = ErrorHandler()
+    warnHandler = WarningHandler()
+    successHandler = SuccessHandler()
+
+    # Define run, kill logger
+    runKillLogger = getRunKillLogger()
+
     # Get arguments
-    arguments = Arguments()
+    arguments = Arguments(warnHandler, errHandler)
     args = arguments.getArgs()
 
     # Run SPG according to arguments
-    spg = SPG()
+    spg = SPG(runKillLogger, successHandler, warnHandler, errHandler)
     spg(args)
 
 

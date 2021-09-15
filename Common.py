@@ -13,14 +13,15 @@ currentUser = subprocess.check_output('whoami', text=True, shell=True).strip()
 defaultPath = os.getcwd()
 
 # Define SPG directory according to current user
-spgDir = os.path.join('/root', 'spg')
+rootDir = os.path.join('/root', 'spg')
+rootDir = '.'
 if currentUser in administrator:
-    spgDir = os.path.join(spgDir, 'administrator')
+    spgDir = os.path.join(rootDir, 'administrator')
 elif currentUser in kahngUser:
-    spgDir = os.path.join(spgDir, 'kahng')
+    spgDir = os.path.join(rootDir, 'kahng')
 
 elif currentUser in baekUser:
-    spgDir = os.path.join(spgDir, 'baek')
+    spgDir = os.path.join(rootDir, 'baek')
 else:
     raise SystemExit(f'ERROR: User \"{currentUser}\" is not registerd in SPG.\nPlease contact to administrator')
 

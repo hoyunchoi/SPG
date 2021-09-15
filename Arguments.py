@@ -1,14 +1,15 @@
-import colorama
 import argparse
 import textwrap
-from termcolor import colored
 
 from Common import groupFileDict, currentUser
-
+from Handler import InputHandler, ErrorHandler, WarningHandler
 
 class Arguments:
-    def __init__(self) -> None:
-        global groupFileDict, currentUser
+    def __init__(self, warnHandler:WarningHandler, errHandler:ErrorHandler) -> None:
+        # Message handlers
+        self.warnHandler = warnHandler      # Warning handler
+        self.errHandler = errHandler        # Error handler
+
         self.groupNameList = list(groupFileDict.keys())
         self.currentUser = currentUser
         self.parser = argparse.ArgumentParser(prog='spg',
@@ -45,6 +46,9 @@ class Arguments:
         self.optionKillThis()       # Will be deprecated
         self.optionKillBefore()     # Will be deprecated
 
+
+
+
     ###################################### Basic Utility ######################################
     def getKillQuestion(self, args: argparse.Namespace) -> str:
         """
@@ -58,40 +62,33 @@ class Arguments:
             question += "your jobs"
 
         # Kill by PID
-        if args.pidList:
+        if args.pidList is not None:
             question += f" with pid {args.pidList} of machine '{args.machineNameList[0]}'?"
             return question
 
         # Kill by machine
-        if args.machineNameList:
+        if args.machineNameList is not None:
             question += f" at machine {args.machineNameList}"
         # Kill by group
-        elif args.groupNameList:
+        elif args.groupNameList is not None:
             question += f" at group {args.groupNameList}"
         # Kill without restriction
         else:
             question += f" at all machines"
 
         # Kill condition of command
-        if args.command:
+        if args.command is not None:
             question += f" with command including '{args.command}'"
 
         # Kill condition of time
-        if args.time:
-            question += f" with time interval of '{' '.join(args.time)}'"
+        if args.time is not None:
+            question += f" with running less than '{' '.join(args.time)}'"
+
+        # Kill condition of start
+        if args.start is not None:
+            question += f" starts at time '{args.start}'"
 
         return question + '?'
-
-    @staticmethod
-    def YesNo() -> None:
-        while True:
-            reply = str(input('(y/n): ')).strip().lower()
-            if reply[0] == 'y':
-                return None
-            elif reply[0] == 'n':
-                exit()
-            else:
-                print("You should provied either 'y' or 'n'", end=' ')
 
     def killYesNo(self, question: str) -> None:
         """
@@ -100,65 +97,64 @@ class Arguments:
             If 'no', 'n', 'No', ... are given, exit the command
         """
         print(question)
-        self.YesNo()
+        InputHandler.YesNo()
 
     def redirectDeprecated(self, args: argparse.Namespace) -> argparse.Namespace:
         # Redirect to list
         if args.option == 'machine':
             args.option = 'list'
-            pass
+            self.warnHandler.append("This method will be deprecated. Use 'spg list' instead")
         # Redirect to job
         elif args.option == 'me':
             args.option = 'job'
             args.all = False
             args.userName = self.currentUser
-            print(colored("This method will be deprecated. Use 'spg job' instead", 'red'))
+            self.warnHandler.append("This method will be deprecated. Use 'spg job' instead")
         elif args.option == 'all':
             args.option = 'job'
             args.all = True
             args.userName = None
-            print(colored("This method will be deprecated. Use 'spg job -a' instead", 'red'))
+            self.warnHandler.append("This method will be deprecated. Use 'spg job -a' instead")
         # Redirect to KILL
         elif args.option == 'kill':
             args.option = 'KILL'
             args.machineNameList = [args.machineName]
             args.pidList = args.pidList
-            print(colored("This method will be deprecated. Use 'spg KILL -m [machine name] -p [pid list]' instead", 'red'))
+            self.warnHandler.append("This method will be deprecated. Use 'spg KILL -m [machine name] -p [pid list]' instead")
         elif args.option == 'killall':
             args.option = 'KILL'
             args.pidList = None
             args.command = None
             args.time = None
-            print(colored("This method will be deprecated. Use 'spg KILL' instead", 'red'))
+            self.warnHandler.append("This method will be deprecated. Use 'spg KILL' instead")
         elif args.option == 'killmachine':
             args.option = 'KILL'
             args.pidList = None
             args.command = None
             args.time = None
             args.machineNameList = [args.machineName]
-            print(colored("This method will be deprecated. Use 'spg KILL -m [machine list]' instead", 'red'))
+            self.warnHandler.append("This method will be deprecated. Use 'spg KILL -m [machine list]' instead")
         elif args.option == 'killthis':
             args.option = 'KILL'
             args.pidList = None
             args.command = args.pattern
             args.time = None
-            print(colored("This method will be deprecated. Use 'spg KILL -c [command]' instead", 'red'))
+            self.warnHandler.append("This method will be deprecated. Use 'spg KILL -c [command]' instead")
         elif args.option == 'killbefore':
             args.option = 'KILL'
             args.pidList = None
             args.command = None
-            print(colored("This method will be deprecated. Use 'spg KILL -t [time]' instead", 'red'))
+            self.warnHandler.append("This method will be deprecated. Use 'spg KILL -t [time]' instead")
         return args
 
-    @staticmethod
-    def toSeconds(timeWindow: list[str]) -> int:
+    def toSeconds(self, timeWindow: list[str]) -> int:
         """ Convert time window (str) to time window (seconds) """
         toSecond = {"s": 1, "m": 60, "h": 3600, "d": 86400, "w": 604800}
         try:
             return sum(int(time[:-1]) * toSecond[time[-1]] for time in timeWindow)
         except (KeyError, ValueError):
-            print(colored('Invalid time window: ' + '  '.join(timeWindow), 'red'))
-            print(colored('Run \'spg KILL -h\' for more help', 'red'))
+            self.errHandler.append('Invalid time window: ' + '  '.join(timeWindow))
+            self.errHandler.append('Run \'spg KILL -h\' for more help')
             exit()
 
     @staticmethod
@@ -194,11 +190,13 @@ class Arguments:
 
         # When specifying user name, you should be root
         if (args.userName != self.currentUser) and (self.currentUser != 'root'):
-            self.parser.error(colored('When specifying user at kill option, you should be root', 'red'))
+            self.errHandler.append('When specifying user at kill option, you should be root')
+            exit()
 
         # When pid list is given, you should specify machine name
         if (args.pidList) and (len(args.machineNameList) != 1):
-            self.parser.error(colored('When killing job with pid list, you should specify machine name', 'red'))
+            self.errHandler.append('When killing job with pid list, you should specify single machine name')
+            exit()
 
         # When time is given, change it to integer
         if args.time:
@@ -228,7 +226,6 @@ class Arguments:
         args = self.parser.parse_args()
 
         # Redirect deprecated options
-        colorama.init()
         args = self.redirectDeprecated(args)
 
         # option command

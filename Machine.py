@@ -1,19 +1,23 @@
 import re
-import sys
-import colorama
-import subprocess
+import logging
 import argparse
+import subprocess
 from typing import Optional
-from termcolor import colored
 from collections import Counter
 
 from Job import Job
+from Common import currentUser
+from Handler import ErrorHandler, SuccessHandler
 
 
 class Machine:
     """ Save the information of each machine """
 
-    def __init__(self, information: str) -> None:
+    def __init__(self,
+                 information: str,
+                 runKillLogger: logging.Logger,
+                 successHandler: SuccessHandler,
+                 errHandler: ErrorHandler) -> None:
         # 0.Use|#1.Name|#2.CPU|#3.nCore|#4.Memory
         information = information.strip().split("|")
 
@@ -31,9 +35,12 @@ class Machine:
         self.nFreeCore: int = 0                 # Number of free cores = nCore-nCurJob
         self.freeMem: str = ''                  # Size of free memory
 
-        # Error lists
-        self.scanErrList: list[str] = []        # List of errors during scanning
-        self.killErrList: list[str] = []        # List of errors during killing job
+        # Message handler
+        self.successHandler = successHandler            # Standard out handler: save all stdout
+        self.errHandler = errHandler            # Error handler: save all errors
+        self.runKillLogger = runKillLogger      # Run, kill logger: save run, kill history
+        self.logDict = {'machine': self.name,
+                        'user': currentUser}   # Extra information for logging
 
         # KILL
         self.nKill: int = 0                     # Number of killed jobs
@@ -59,10 +66,8 @@ class Machine:
         # Job with input pid is not registered
         # Print warning and exit the program
         if job is None:
-            colorama.init()
-            print(colored(f"ERROR: No such process in {self.name}: {pid}", 'red'), file=sys.stderr)
+            self.errHandler.append(f'ERROR: No such process in {self.name}: {pid}')
             exit()
-
         return job.cmd
 
     @staticmethod
@@ -114,7 +119,7 @@ class Machine:
 
         # Check scan error
         if result.stderr:
-            self.scanErrList.append(f'ERROR from {self.name}: {result.stderr.strip()}')
+            self.errHandler.append(f'ERROR from {self.name}: {result.stderr.strip()}')
             return None
         return result.stdout.strip().split('\n')[1:]    # First line is header
 
@@ -148,7 +153,7 @@ class Machine:
     def scanJob(self, userName: str, scanLevel: int) -> None:
         """
             Scan the sub-process of input user.
-            When error occurs during scanning, save the error to scanErrList and return None
+            When error occurs during scanning, save the error to error handler and return None
             nJob, jobDict will be updated
             when userName is None, nFreeCore, freeMem will also be updated
             Args
@@ -186,18 +191,30 @@ class Machine:
         # cd to path and run the command as background process
         cmdRun = self.cmdSSH + f'\"cd {path}; {command}\" &'
         subprocess.run(cmdRun, shell=True)
+
+        # Print the result and save to logger
+        self.successHandler.append(f"SUCCESS {self.name:<10}: run \'{command}\'")
+        self.runKillLogger.info(f'spg run {command}', extra=self.logDict)
         return None
 
     def KILL(self, args: argparse.Namespace) -> None:
         """
             Kill every job satisfying args
         """
+        self.logDict['user'] = args.userName
         self.nKill = 0
         for job in self.jobDict.values():
             if job.checkKill(args):
+                # Find command for print result/logging
+                command = self.findCmdFromPID(job.pid)
+
                 # self.killPID(job.pid)
                 self.killJob(job)
                 self.nKill += 1
+
+                # Print the result and save to logger
+                self.successHandler.append(f"SUCCESS {self.name:<10}: kill \'{command}\'")
+                self.runKillLogger.info(f'spg kill {command}', extra=self.logDict)
         return None
 
     def killJob(self, job: Job) -> None:
@@ -218,12 +235,12 @@ class Machine:
         result = subprocess.run(cmdKill, shell=True, capture_output=True, text=True)
 
         # When error occurs, save it
-        killErrList = result.stderr.strip().split('\n') if result.stderr else []
-        for killErr in killErrList:
-            self.killErrList.append(f'ERROR from {self.name}: {killErr}')
+        if result.stderr:
+            killErrList = result.stderr.strip().split('\n')
+            self.errHandler.append('\n'.join(f'ERROR from {self.name}: {killErr}' for killErr in killErrList))
+        else:
+            killErrList = []
 
-        # Print the result
-        print(f'{self.name}: killed \"{self.findCmdFromPID(job.pid)}\"')
         return None
 
     # def killPID(self, pid: str) -> None:
@@ -238,6 +255,7 @@ class Machine:
 
     #     print(f'{self.name}: killed \"{self.findCmdFromPID(pid)}\"')
     #     return None
+
 
 if __name__ == "__main__":
     print("This is moudle 'Machine' from SPG")

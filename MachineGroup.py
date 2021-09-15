@@ -1,16 +1,23 @@
 import tqdm
+import logging
 import argparse
-from threading import Thread
 from typing import Callable
+from threading import Thread
 from collections import deque, Counter
 
 from Machine import Machine
+from Handler import ErrorHandler, SuccessHandler
 
 
 class MachineGroup:
     """ Save the information of each machine group """
 
-    def __init__(self, groupName: str, groupFile: str) -> None:
+    def __init__(self,
+                 groupName: str,
+                 groupFile: str,
+                 runKillLogger: logging.Logger,
+                 successHandler: SuccessHandler,
+                 errHandler: ErrorHandler) -> None:
         """
             Initialize machine group information from group File
             Args:
@@ -33,10 +40,6 @@ class MachineGroup:
         self.busyMachineList: list[Machine] = []    # List of machines running one or more jobs
         self.nJob: int = 0                          # Number of running jobs
 
-        # Error lists
-        self.scanErrList: list[str] = []            # List of errors during scanning
-        self.killErrList: list[str] = []            # List of errors during killing job
-
         # Print option
         self.bar: tqdm.tqdm = None
         self.barWidth: int = None
@@ -53,7 +56,10 @@ class MachineGroup:
 
         # Initialize list of machines. First 4 lines are comments
         for information in informationList[4:]:
-            machine = Machine(information)
+            machine = Machine(information,
+                              runKillLogger,
+                              successHandler,
+                              errHandler)
             if machine.use:
                 self.machineDict[machine.name] = machine
         self.nCore += sum(machine.nCore for machine in self.machineDict.values())
@@ -171,8 +177,6 @@ class MachineGroup:
             thread.start()
         for thread in threadList:
             thread.join()
-        for machine in self.machineDict.values():
-            self.scanErrList += machine.scanErrList
 
         # Save the scanned information
         self.nJob, self.busyMachineList = self.getJobInfo()
@@ -196,8 +200,6 @@ class MachineGroup:
             thread.start()
         for thread in threadList:
             thread.join()
-        for machine in self.machineDict.values():
-            self.scanErrList += machine.scanErrList
 
         # Save the scanned information
         self.nJob, self.busyMachineList = self.getJobInfo()
@@ -230,7 +232,6 @@ class MachineGroup:
                 if cmdQueue:
                     command = cmdQueue.popleft().strip()
                     threadList.append(Thread(target=machine.run, args=(curPath, command)))
-                    print(f'spg run {machine.name} {command}')
         for thread in threadList:
             thread.start()
         for thread in threadList:
@@ -248,10 +249,8 @@ class MachineGroup:
 
         # Summarize the kill result
         self.nKill = 0
-        self.killErrList = []
         for machine in self.busyMachineList:
             self.nKill += machine.nKill
-            self.killErrList += machine.killErrList
         return None
 
 

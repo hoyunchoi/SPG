@@ -1,33 +1,34 @@
 import argparse
-import textwrap
+import textwrap # Import for documentation
 
-from Common import groupFileDict, currentUser
-from Handler import InputHandler, ErrorHandler, WarningHandler
+from Default import Default
+from Handler import MessageHandler, InputHandler
+
 
 class Arguments:
-    def __init__(self, warnHandler:WarningHandler, errHandler:ErrorHandler) -> None:
-        # Message handlers
-        self.warnHandler = warnHandler      # Warning handler
-        self.errHandler = errHandler        # Error handler
+    def __init__(self, default: Default, messageHandler: MessageHandler) -> None:
+        self.default = default                  # Default variables for SPG class
+        self.messageHandler = messageHandler    # Message handler for warning and error
 
-        self.groupNameList = list(groupFileDict.keys())
-        self.currentUser = currentUser
-        self.parser = argparse.ArgumentParser(prog='spg',
-                                              formatter_class=argparse.RawTextHelpFormatter,
-                                              description='Statistical Physics Group',
-                                              usage='spg (-h) (-s) {option} (args)')
-        self.parser.add_argument('-s', '--silent',
-                                 action='store_true',
-                                 help='when given, run spg without progress bar')
+        # Generate base SPG parser
+        self.SPGParser = argparse.ArgumentParser(prog='spg',
+                                                 formatter_class=argparse.RawTextHelpFormatter,
+                                                 description='Statistical Physics Group',
+                                                 usage='spg (-h) (-s) {option} (args)')
+        self.SPGParser.add_argument('-s', '--silent',
+                                    action='store_true',
+                                    help='when given, run spg without progress bar')
+
+        # Generate sub parser
         description = textwrap.dedent('''\
                                     For more information of each {option},
                                     type \'spg {option} -h\' or \'spg {option} --help\'
                                     ''')
-        self.optionParser = self.parser.add_subparsers(dest='option',
-                                                       title='SPG options',
-                                                       required=True,
-                                                       metavar='Available options',
-                                                       description=description)
+        self.optionParser = self.SPGParser.add_subparsers(dest='option',
+                                                          title='SPG options',
+                                                          required=True,
+                                                          metavar='Available options',
+                                                          description=description)
 
         # Generate options
         self.optionList()
@@ -47,8 +48,6 @@ class Arguments:
         self.optionKillBefore()     # Will be deprecated
 
 
-
-
     ###################################### Basic Utility ######################################
     def getKillQuestion(self, args: argparse.Namespace) -> str:
         """
@@ -56,7 +55,7 @@ class Arguments:
         """
         question = 'Do you want to kill '
         # When user is specified
-        if args.userName != self.currentUser:
+        if args.userName != self.default.user:
             question += f"jobs of user {args.userName}"
         else:
             question += "your jobs"
@@ -90,61 +89,52 @@ class Arguments:
 
         return question + '?'
 
-    def killYesNo(self, question: str) -> None:
-        """
-            Double check if user really wants to kill their jobs
-            If 'yes', 'y', 'Y', 'Ye', ... are given, kill the job
-            If 'no', 'n', 'No', ... are given, exit the command
-        """
-        print(question)
-        InputHandler.YesNo()
-
     def redirectDeprecated(self, args: argparse.Namespace) -> argparse.Namespace:
         # Redirect to list
         if args.option == 'machine':
             args.option = 'list'
-            self.warnHandler.append("This method will be deprecated. Use 'spg list' instead")
+            self.messageHandler.warning("This method will be deprecated. Use 'spg list' instead")
         # Redirect to job
         elif args.option == 'me':
             args.option = 'job'
             args.all = False
-            args.userName = self.currentUser
-            self.warnHandler.append("This method will be deprecated. Use 'spg job' instead")
+            args.userName = self.default.user
+            self.messageHandler.warning("This method will be deprecated. Use 'spg job' instead")
         elif args.option == 'all':
             args.option = 'job'
             args.all = True
             args.userName = None
-            self.warnHandler.append("This method will be deprecated. Use 'spg job -a' instead")
+            self.messageHandler.warning("This method will be deprecated. Use 'spg job -a' instead")
         # Redirect to KILL
         elif args.option == 'kill':
             args.option = 'KILL'
             args.machineNameList = [args.machineName]
             args.pidList = args.pidList
-            self.warnHandler.append("This method will be deprecated. Use 'spg KILL -m [machine name] -p [pid list]' instead")
+            self.messageHandler.warning("This method will be deprecated. Use 'spg KILL -m [machine name] -p [pid list]' instead")
         elif args.option == 'killall':
             args.option = 'KILL'
             args.pidList = None
             args.command = None
             args.time = None
-            self.warnHandler.append("This method will be deprecated. Use 'spg KILL' instead")
+            self.messageHandler.warning("This method will be deprecated. Use 'spg KILL' instead")
         elif args.option == 'killmachine':
             args.option = 'KILL'
             args.pidList = None
             args.command = None
             args.time = None
             args.machineNameList = [args.machineName]
-            self.warnHandler.append("This method will be deprecated. Use 'spg KILL -m [machine list]' instead")
+            self.messageHandler.warning("This method will be deprecated. Use 'spg KILL -m [machine list]' instead")
         elif args.option == 'killthis':
             args.option = 'KILL'
             args.pidList = None
             args.command = args.pattern
             args.time = None
-            self.warnHandler.append("This method will be deprecated. Use 'spg KILL -c [command]' instead")
+            self.messageHandler.warning("This method will be deprecated. Use 'spg KILL -c [command]' instead")
         elif args.option == 'killbefore':
             args.option = 'KILL'
             args.pidList = None
             args.command = None
-            self.warnHandler.append("This method will be deprecated. Use 'spg KILL -t [time]' instead")
+            self.messageHandler.warning("This method will be deprecated. Use 'spg KILL -t [time]' instead")
         return args
 
     def toSeconds(self, timeWindow: list[str]) -> int:
@@ -153,8 +143,8 @@ class Arguments:
         try:
             return sum(int(time[:-1]) * toSecond[time[-1]] for time in timeWindow)
         except (KeyError, ValueError):
-            self.errHandler.append('Invalid time window: ' + '  '.join(timeWindow))
-            self.errHandler.append('Run \'spg KILL -h\' for more help')
+            self.messageHandler.error('Invalid time window: ' + '  '.join(timeWindow))
+            self.messageHandler.error('Run \'spg KILL -h\' for more help')
             exit()
 
     @staticmethod
@@ -186,20 +176,21 @@ class Arguments:
         """
         # Double check if you really want to kill job
         question = self.getKillQuestion(args)
-        self.killYesNo(question)
+        if not InputHandler.YesNo(question):
+            exit()
 
         # When specifying user name, you should be root
-        if (args.userName != self.currentUser) and (self.currentUser != 'root'):
-            self.errHandler.append('When specifying user at kill option, you should be root')
+        if (args.userName != self.default.user) and (self.default.user != 'root'):
+            self.messageHandler.error('When specifying user at kill option, you should be root')
             exit()
 
         # When pid list is given, you should specify machine name
-        if (args.pidList) and (len(args.machineNameList) != 1):
-            self.errHandler.append('When killing job with pid list, you should specify single machine name')
+        if (args.pidList is not None) and (len(args.machineNameList) != 1):
+            self.messageHandler.error('When killing job with pid list, you should specify single machine name')
             exit()
 
         # When time is given, change it to integer
-        if args.time:
+        if args.time is not None:
             args.time = self.toSeconds(args.time)
         return args
 
@@ -216,14 +207,15 @@ class Arguments:
             args.startEnd = tuple([int(args.groupName[1]), int(args.groupName[2])])
             args.groupName = args.groupName[0]
         else:
-            self.parser.error('When running several jobs, you should specifiy machine group and optional start/end number')
+            self.messageHandler.error('When running several jobs, you should specifiy machine group and optional start/end number')
+            exit()
         return args
 
     def getArgs(self) -> argparse.Namespace:
         """
             Return arguments as namespace
         """
-        args = self.parser.parse_args()
+        args = self.SPGParser.parse_args()
 
         # Redirect deprecated options
         args = self.redirectDeprecated(args)
@@ -250,11 +242,11 @@ class Arguments:
         """
         document = textwrap.dedent(f'''\
                                     List of target machine group name, seperated by space
-                                    Currently available: {self.groupNameList}
+                                    Currently available: {Default.MACHINEGROUP}
                                     ''')
         parser.add_argument('-g', '--groupList',
                             nargs='+',
-                            choices=self.groupNameList,
+                            choices=Default.MACHINEGROUP,
                             metavar='',
                             dest='groupNameList',
                             help=document)
@@ -285,7 +277,7 @@ class Arguments:
                                    ''')
         parser.add_argument('-u', '--userName',
                             metavar='',
-                            default=self.currentUser,
+                            default=self.default.user,
                             dest='userName',
                             help=document)
 
@@ -351,7 +343,7 @@ class Arguments:
                                 help='When given, print jobs of all users')
         parser_job.add_argument('-u', '--userName',
                                 metavar='',
-                                default=self.currentUser,
+                                default=self.default.user,
                                 dest='userName',
                                 help='Target user name. Default: me')
         return None
@@ -557,7 +549,7 @@ class Arguments:
                                                  usage=document)
         parser_me.add_argument('-u', '--userName',
                                metavar='',
-                               default=self.currentUser,
+                               default=self.default.user,
                                dest='userName',
                                help='Target user name')
         self.addOptionalGroupArgument(parser_me)

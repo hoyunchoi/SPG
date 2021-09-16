@@ -5,22 +5,24 @@ from typing import Callable
 from threading import Thread
 from collections import deque, Counter
 
+from Default import Default
+from Handler import MessageHandler
 from Machine import Machine
-from Handler import ErrorHandler, SuccessHandler
 
 
-class MachineGroup:
+class Group:
     """ Save the information of each machine group """
 
     def __init__(self,
                  groupName: str,
                  groupFile: str,
-                 runKillLogger: logging.Logger,
-                 successHandler: SuccessHandler,
-                 errHandler: ErrorHandler) -> None:
+                 default: Default,
+                 messageHandler: MessageHandler,
+                 runKillLogger: logging.Logger) -> None:
         """
             Initialize machine group information from group File
             Args:
+                groupName: name of machine group
                 groupFile: Full path of machine file. ex) /root/admin/spg/tenet.machine
                 First line should be comment
         """
@@ -57,9 +59,9 @@ class MachineGroup:
         # Initialize list of machines. First 4 lines are comments
         for information in informationList[4:]:
             machine = Machine(information,
-                              runKillLogger,
-                              successHandler,
-                              errHandler)
+                              default,
+                              messageHandler,
+                              runKillLogger)
             if machine.use:
                 self.machineDict[machine.name] = machine
         self.nCore += sum(machine.nCore for machine in self.machineDict.values())
@@ -255,4 +257,4 @@ class MachineGroup:
 
 
 if __name__ == "__main__":
-    print("This is moudel MachineGroup from SPG")
+    print("This is module 'Group' from SPG")

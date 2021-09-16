@@ -1,87 +1,70 @@
 import os
-import sys
 import atexit
 import colorama
-import logging
 from termcolor import cprint
-from abc import ABC, abstractmethod
+import logging
 from logging.handlers import RotatingFileHandler
 
-from Common import rootDir
+from Default import Default
 
 class InputHandler:
     @staticmethod
-    def YesNo() -> None:
+    def YesNo(msg:str = None) -> bool:
         """
             Get input yes or no
             If other input is given, ask again for 5 times
+            'yes', 'y', 'Y', 'Ye', ... : pass
+            'no', 'n', 'No', ... : fail
         """
+        if msg is not None:
+            print(msg)
+
         for _ in range(5):
             reply = str(input('(y/n): ')).strip().lower()
             if reply[0] == 'y':
-                return None
+                return True
             elif reply[0] == 'n':
-                exit()
+                return False
             else:
                 print("You should provied either 'y' or 'n'", end=' ')
+        return False
 
-
-class messageHandler(ABC):
+class MessageHandler:
     """
-        Store messages from spg and print before exit the program
+        Store message from spg and print before exit
     """
-
     def __init__(self) -> None:
-        self.messageList: list[str] = []
+        self.successList: list[str] = []    # List of success messages
+        self.warningList: list[str] = []    # List of warning messages
+        self.errorList: list[str] = []      # List of error messages
+
+        # Register to atexit so that report method will be called before any exit state
         atexit.register(self.report)
 
-    def append(self, message: str) -> None:
-        """
-            Append new error to error list
-        """
-        self.messageList += [message]
-
-    @abstractmethod
     def report(self) -> None:
-        """
-            Report the message
-        """
-        pass
-
-class SuccessHandler(messageHandler):
-    """ Message : standard output """
-
-    def report(self) -> None:
-        # When there is no message to print, do nothing
-        if not self.messageList:
-            return None
-
+        # Initialize colorama for compatibility of Windows
         colorama.init()
-        cprint('\n'.join(self.messageList), 'green')
 
+        # Print success messages
+        if self.successList:
+            cprint('\n'.join(self.successList), 'green')
+        # Print warning messages
+        if self.warningList:
+            cprint('\n'.join(self.warningList), 'yellow')
+        # Print error messages
+        if self.errorList:
+            cprint('\n'.join(self.errorList), 'red')
 
-class ErrorHandler(messageHandler):
-    """ Message: Error """
+    def success(self, msg: str) -> None:
+        self.successList.append(msg)
+        return None
 
-    def report(self) -> None:
-        # When there is no message to print, do nothing
-        if not self.messageList:
-            return None
+    def warning(self, msg: str) -> None:
+        self.warningList.append(msg)
+        return None
 
-        colorama.init()
-        cprint('\n'.join(self.messageList), 'red', file=sys.stderr)
-
-
-class WarningHandler(messageHandler):
-    """ Message: Warning """
-
-    def report(self) -> None:
-        # When there is no message to print, do nothing
-        if not self.messageList:
-            return None
-
-        colorama.init()
-        cprint('\n'.join(self.messageList), 'yellow', file=sys.stderr)
+    def error(self, msg: str) -> None:
+        self.errorList.append(msg)
 
 
 def getRunKillLogger() -> logging.Logger:
@@ -97,7 +80,7 @@ def getRunKillLogger() -> logging.Logger:
                                   datefmt='%Y-%m-%d %H:%M')
 
     # Define handler of logger: Limit maximum log file size as 1GB
-    handler = RotatingFileHandler(os.path.join(rootDir, 'RunKill.log'),
+    handler = RotatingFileHandler(os.path.join(Default.ROOTDIR, 'RunKill.log'),
                                   delay=True,
                                   maxBytes=1024 * 1024 * 100,
                                   backupCount=1)
@@ -110,6 +93,4 @@ def getRunKillLogger() -> logging.Logger:
 
 
 if __name__ == "__main__":
-    logger = getRunKillLogger()
-    d = {'machine': 'tenet1', 'option': 'run', 'cmd': './test.sh'}
-    logger.info('spg run ./test.sh', extra=d)
+    print("This is module 'Handler' from SPG")

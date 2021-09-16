@@ -6,8 +6,8 @@ from typing import Optional
 from collections import Counter
 
 from Job import Job
-from Common import currentUser
-from Handler import ErrorHandler, SuccessHandler
+from Default import Default
+from Handler import MessageHandler
 
 
 class Machine:
@@ -15,9 +15,9 @@ class Machine:
 
     def __init__(self,
                  information: str,
-                 runKillLogger: logging.Logger,
-                 successHandler: SuccessHandler,
-                 errHandler: ErrorHandler) -> None:
+                 default: Default,
+                 messageHandler: MessageHandler,
+                 runKillLogger: logging.Logger) -> None:
         # 0.Use|#1.Name|#2.CPU|#3.nCore|#4.Memory
         information = information.strip().split("|")
 
@@ -35,15 +35,13 @@ class Machine:
         self.nFreeCore: int = 0                 # Number of free cores = nCore-nCurJob
         self.freeMem: str = ''                  # Size of free memory
 
-        # Message handler
-        self.successHandler = successHandler            # Standard out handler: save all stdout
-        self.errHandler = errHandler            # Error handler: save all errors
-        self.runKillLogger = runKillLogger      # Run, kill logger: save run, kill history
-        self.logDict = {'machine': self.name,
-                        'user': currentUser}   # Extra information for logging
-
         # KILL
         self.nKill: int = 0                     # Number of killed jobs
+
+        # Extra default informations for logging
+        self.messageHandler = messageHandler    # Handler for non-plain messages
+        self.runKillLogger = runKillLogger      # Logger for run, kill method
+        self.logDict = {'machine': self.name, 'user': default.user}
 
         # Default variables
         self.cmdSSH = f'ssh -o StrictHostKeyChecking=no -o ConnectTimeout=4 -o UpdateHostKeys=no {self.name} '
@@ -66,7 +64,7 @@ class Machine:
         # Job with input pid is not registered
         # Print warning and exit the program
         if job is None:
-            self.errHandler.append(f'ERROR: No such process in {self.name}: {pid}')
+            self.messageHandler.error(f'ERROR: No such process in {self.name}: {pid}')
             exit()
         return job.cmd
 
@@ -119,7 +117,7 @@ class Machine:
 
         # Check scan error
         if result.stderr:
-            self.errHandler.append(f'ERROR from {self.name}: {result.stderr.strip()}')
+            self.messageHandler.error(f'ERROR from {self.name}: {result.stderr.strip()}')
             return None
         return result.stdout.strip().split('\n')[1:]    # First line is header
 
@@ -193,7 +191,7 @@ class Machine:
         subprocess.run(cmdRun, shell=True)
 
         # Print the result and save to logger
-        self.successHandler.append(f"SUCCESS {self.name:<10}: run \'{command}\'")
+        self.messageHandler.success(f"SUCCESS {self.name:<10}: run \'{command}\'")
         self.runKillLogger.info(f'spg run {command}', extra=self.logDict)
         return None
 
@@ -213,7 +211,7 @@ class Machine:
                 self.nKill += 1
 
                 # Print the result and save to logger
-                self.successHandler.append(f"SUCCESS {self.name:<10}: kill \'{command}\'")
+                self.messageHandler.success(f"SUCCESS {self.name:<10}: kill \'{command}\'")
                 self.runKillLogger.info(f'spg kill {command}', extra=self.logDict)
         return None
 
@@ -237,7 +235,7 @@ class Machine:
         # When error occurs, save it
         if result.stderr:
             killErrList = result.stderr.strip().split('\n')
-            self.errHandler.append('\n'.join(f'ERROR from {self.name}: {killErr}' for killErr in killErrList))
+            self.messageHandler.error('\n'.join(f'ERROR from {self.name}: {killErr}' for killErr in killErrList))
         else:
             killErrList = []
 

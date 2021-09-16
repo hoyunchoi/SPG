@@ -6,54 +6,50 @@ import subprocess
 from threading import Thread
 from collections import deque, Counter
 
+from Default import Default
 from Machine import Machine
+from Group import Group
 from Arguments import Arguments
-from MachineGroup import MachineGroup
-from Common import groupFileDict, defaultPath
-from Handler import ErrorHandler, SuccessHandler, WarningHandler, getRunKillLogger
+from Handler import MessageHandler, getRunKillLogger
 
 
 class SPG:
-    def __new__(cls, *args, **kwargs):
-        if not hasattr(cls, "_instance"):
-            cls._instance = super().__new__(cls)
-        return cls._instance
-
     def __init__(self,
-                 runKillLogger: logging.Logger,
-                 successHandler: SuccessHandler,
-                 warnHandler: WarningHandler,
-                 errHandler: ErrorHandler) -> None:
-        self.defaultPath = defaultPath                      # Path of current location where spg is executed
-        self.groupDict: dict[str, MachineGroup] = {}        # Dictionary of machine group with key of group name
+                 default: Default,
+                 messageHandler: MessageHandler,
+                 runKillLogger: logging.Logger) -> None:
+        self.default = default                                  # Default variables for SPG class
+        self.messageHandler: MessageHandler = messageHandler    # Handler for non-plain messages
+        self.runKillLogger: logging.Logger = runKillLogger      # Logger for run, kill options
 
-        # Message handlers
-        self.successHandler = successHandler                        # Standard output handler
-        self.warnHandler = warnHandler                      # Warning handler
-        self.errHandler = errHandler                        # Error handler
+        self.groupDict: dict[str, Group] = {}                   # Dictionary of machine group with key of group name
 
-        # Print option
-        self.silent: bool = None                            # Whether to print progressbar or not. Will be determined by arguments
-        self.terminalWidth: int = None                      # Width of current terminal
-        self.barWidth: int = None                           # Progressbar width.
+        self.silent: bool = None                                # Whether to print progressbar or not, determined by arguments
+        self.terminalWidth: int = None                          # Width of current terminal
+        self.barWidth: int = None                               # Progressbar width, determined by option and current terminal width
 
-        # Initialization
-        for groupName, groupFile in groupFileDict.items():
-            self.groupDict[groupName] = MachineGroup(groupName,
-                                                     groupFile,
-                                                     runKillLogger,
-                                                     self.successHandler,
-                                                     self.errHandler)
+        # Initialize group dictionary
+        for groupName, groupFile in default.getGroupFileDict().items():
+            self.groupDict[groupName] = Group(groupName,
+                                              groupFile,
+                                              default,
+                                              self.messageHandler,
+                                              self.runKillLogger)
+
+        # Initialize terminal width
         try:
+            # Get current terminal width
             self.terminalWidth = int(subprocess.check_output(['stty', 'size']).split()[-1])
         except subprocess.CalledProcessError:
-            self.terminalWidth = sys.maxsize    # Not running at normal terminal: maximum terminal width
+            # Not running at normal terminal: choose maximum as terminal width
+            self.terminalWidth = sys.maxsize
 
-        # Super Short for list, kill
+        # Print options
+        # Super Short for list, KILL
         self.superShortPrintWidth = 46
         self.superShortStrLine = self.getStrLine(self.superShortPrintWidth)
 
-        # Short for free
+        # Short for free, runs
         self.shortPrintWidth = 51
         self.shortStrLine = self.getStrLine(self.shortPrintWidth)
 
@@ -82,13 +78,13 @@ class SPG:
     def getStrLine(width: int) -> str:
         return '+' + '=' * (width - 1)
 
-    def findGroupFromName(self, groupName: str) -> MachineGroup:
+    def findGroupFromName(self, groupName: str) -> Group:
         """
             Find group instance in groupList
         """
         group = self.groupDict.get(groupName)
         if group is None:
-            self.errHandler.append(f'ERROR: No such machine group: {groupName}')
+            self.messageHandler.error(f'ERROR: No such machine group: {groupName}')
             exit()
 
         return group
@@ -105,13 +101,14 @@ class SPG:
         # Find machine
         machine = group.machineDict.get(machineName)
         if machine is None:
-            self.errHandler.append(f'ERROR: No such machine: {machineName}')
+            self.messageHandler.error(f'ERROR: No such machine: {machineName}')
             exit()
 
         return machine
 
     ############################## Scan Job Information and Save ##############################
-    def scanJob(self, groupList: list[MachineGroup],
+    def scanJob(self,
+                groupList: list[Group],
                 userName: str,
                 scanLevel: int) -> None:
         """
@@ -135,7 +132,8 @@ class SPG:
             thread.join()
         return None
 
-    def scanJob_machine(self, machineNameList: list[str],
+    def scanJob_machine(self,
+                        machineNameList: list[str],
                         userName: str,
                         scanLevel: int) -> list[Machine]:
         """
@@ -322,10 +320,10 @@ class SPG:
 
         # When no free core is detected, doule check the run command
         if machine.nFreeCore == 0:
-            self.warnHandler.append(f'WARNING: {args.machineName} has no free core!')
+            self.messageHandler.warning(f'WARNING: {args.machineName} has no free core!')
 
         # Run a job
-        machine.run(self.defaultPath, args.command)
+        machine.run(self.default.path, args.command)
         return None
 
     def runs(self, args: argparse.Namespace, maxCalls: int = 50) -> None:
@@ -348,7 +346,7 @@ class SPG:
             print(self.shortStrLine)
 
         # Run jobs
-        cmdQueue = group.runs(self.defaultPath, cmdQueue, maxCalls, args.startEnd)
+        cmdQueue = group.runs(self.default.path, cmdQueue, maxCalls, args.startEnd)
         cmdNumAfter = len(cmdQueue)
 
         # Remove the input file and re-write with remaining command queue
@@ -356,7 +354,7 @@ class SPG:
         with open(args.cmdFile, 'w') as f:
             f.write('\n'.join(str(cmd) for cmd in cmdQueue))
 
-        self.successHandler.append(f'\nRun {cmdNumBefore - cmdNumAfter} jobs')
+        self.messageHandler.success(f'\nRun {cmdNumBefore - cmdNumAfter} jobs')
         return None
 
     def KILL(self, args: argparse.Namespace) -> None:
@@ -370,7 +368,7 @@ class SPG:
             for machine in machineList:
                 machine.KILL(args)
                 nKill += machine.nKill
-            self.successHandler.append(f'\nKilled {nKill} jobs')
+            self.messageHandler.success(f'\nKilled {nKill} jobs')
             return None
 
         # When machine list is not specified
@@ -398,25 +396,25 @@ class SPG:
         nKill = 0
         for group in groupList:
             nKill += group.nKill
-        self.successHandler.append(f'\nKilled {nKill} jobs')
+        self.messageHandler.success(f'\nKilled {nKill} jobs')
         return None
 
 
 def main():
-    # Create message handlers: sequence of creation matters
-    errHandler = ErrorHandler()
-    warnHandler = WarningHandler()
-    successHandler = SuccessHandler()
+    # Class instance for default variables
+    default = Default()
 
-    # Define run, kill logger
+    # Create message handlers responsible for non-plain output
+    messageHandler = MessageHandler()
+    # Create logger responsible for logging run/kill commands
     runKillLogger = getRunKillLogger()
 
     # Get arguments
-    arguments = Arguments(warnHandler, errHandler)
+    arguments = Arguments(default, messageHandler)
     args = arguments.getArgs()
 
     # Run SPG according to arguments
-    spg = SPG(runKillLogger, successHandler, warnHandler, errHandler)
+    spg = SPG(default, messageHandler, runKillLogger)
     spg(args)
 
 

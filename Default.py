@@ -1,4 +1,5 @@
 import os
+import sys
 import subprocess
 
 
@@ -25,6 +26,7 @@ class Default:
         self.userGroup = self.__checkUser()                   # Group where default user is in
 
         self.path = os.getcwd()                                      # Path where the spg is called
+        self.terminalWidth = self.__checkTerminalWidth()             # Width of current terminal
 
     def __checkUser(self) -> str:
         """
@@ -39,6 +41,18 @@ class Default:
         # Didn't find user name
         raise SystemExit(f"ERROR: User \'{self.user}\' is not registerd in SPG.\nPlease contact to server administrator")
 
+    def __checkTerminalWidth(self) -> str:
+        """
+            Chck current terminal width
+            If using non-conventional terminal, return infinite
+        """
+        # Get current terminal width
+        try:
+            return int(subprocess.check_output(['stty', 'size']).split()[-1])
+        # Not running at normal terminal: choose maximum as terminal width
+        except subprocess.CalledProcessError:
+            return sys.maxsize
+
     def getGroupFileDict(self) -> dict[str, str]:
         """
             Return dictionary of machine group files
@@ -47,6 +61,8 @@ class Default:
         return {group: os.path.join(self.ROOTDIR, self.userGroup, group + '.machine')
                 for group in self.MACHINEGROUP}
 
+##################################### Define instance #####################################
+default = Default()
 
 if __name__ == "__main__":
     print("This is module 'Default' from SPG")

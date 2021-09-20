@@ -1,29 +1,21 @@
 import tqdm
-import logging
 import argparse
 from typing import Callable
 from threading import Thread
 from collections import deque, Counter
 
-from Default import Default
-from Handler import MessageHandler
 from Machine import Machine
 
 
 class Group:
     """ Save the information of each machine group """
 
-    def __init__(self,
-                 groupName: str,
-                 groupFile: str,
-                 default: Default,
-                 messageHandler: MessageHandler,
-                 runKillLogger: logging.Logger) -> None:
+    def __init__(self, groupName: str, groupFile: str) -> None:
         """
             Initialize machine group information from group File
             Args:
                 groupName: name of machine group
-                groupFile: Full path of machine file. ex) /root/admin/spg/tenet.machine
+                groupFile: Full path of machine file.
                 First line should be comment
         """
 
@@ -44,7 +36,7 @@ class Group:
 
         # Print option
         self.bar: tqdm.tqdm = None
-        self.barWidth: int = None
+        self.barWidth: int = None                   # Width of bar. If none, don't user bar
         self.scanningMachineSet: set[str] = set()   # Set of machine names who are still scanning
         self.strLine: str = None                    # String line to be printed
 
@@ -58,10 +50,7 @@ class Group:
 
         # Initialize list of machines. First 4 lines are comments
         for information in informationList[4:]:
-            machine = Machine(information,
-                              default,
-                              messageHandler,
-                              runKillLogger)
+            machine = Machine(information)
             if machine.use:
                 self.machineDict[machine.name] = machine
         self.nCore += sum(machine.nCore for machine in self.machineDict.values())
@@ -86,22 +75,25 @@ class Group:
         """
             Define progressbar with tqdm before function
             Finish and close progressbar with tqdm after function
+            If self.barWidth is not defined, skip the bar
         """
 
         def decorator(self, *args, **kwargs) -> None:
-            # Define progressbar and related variables
-            self.scanningMachineSet = set(machineName for machineName in self.machineDict)
-            self.bar = tqdm.tqdm(total=self.nMachine,
-                                 bar_format='{desc}{bar}|{percentage:3.1f}%|',
-                                 ascii=True,
-                                 ncols=self.barWidth,
-                                 miniters=1)
+            if self.barWidth is not None:
+                # Define progressbar and related variables
+                self.scanningMachineSet = set(machineName for machineName in self.machineDict)
+                self.bar = tqdm.tqdm(total=self.nMachine,
+                                    bar_format='{desc}{bar}|{percentage:3.1f}%|',
+                                    ascii=True,
+                                    ncols=self.barWidth,
+                                    miniters=1)
 
             # Main function
             func(self, *args, **kwargs)
 
             # Close progressbar
-            self.bar.close()
+            if self.barWidth is not None:
+                self.bar.close()
         return decorator
 
     ############################ Get Information of Group Instance ############################
@@ -169,35 +161,18 @@ class Group:
 
         def scanJob_updateBar(machine: Machine):
             """ Scan job and update bar """
-            self.updateBar(machine.name)
             machine.scanJob(userName, scanLevel)
+            self.updateBar(machine.name)
 
-        # Scan job
-        threadList = [Thread(target=scanJob_updateBar, args=(machine,))
-                      for machine in self.machineDict.values()]
-        for thread in threadList:
-            thread.start()
-        for thread in threadList:
-            thread.join()
+        # Scan job without updating bar
+        if self.barWidth is None:
+            threadList = [Thread(target=machine.scanJob, args=(userName, scanLevel))
+                          for machine in self.machineDict.values()]
+        # Scan job with updating bar
+        else:
+            threadList = [Thread(target=scanJob_updateBar, args=(machine,))
+                          for machine in self.machineDict.values()]
 
-        # Save the scanned information
-        self.nJob, self.busyMachineList = self.getJobInfo()
-        if userName is None:
-            self.nFreeCore, self.freeMachineList = self.getFreeInfo()
-            self.nFreeMachine = len(self.freeMachineList)
-
-    def scanJob_silent(self, userName: str, scanLevel: int) -> None:
-        """
-            Scan job of every machines in machineList without progressbar
-            nJob, busyMachineList will be updated
-            If user Name is not given, nFreeCore, freeMachineList, nFreeMachine will be updated
-            Args
-                userName: refer Machine.getJobList
-                scanLevel: refer Job.isImportant
-        """
-        # Scan job
-        threadList = [Thread(target=machine.scanJob, args=(userName, scanLevel))
-                      for machine in self.machineDict.values()]
         for thread in threadList:
             thread.start()
         for thread in threadList:

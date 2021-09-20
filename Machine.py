@@ -1,23 +1,20 @@
 import re
-import logging
 import argparse
 import subprocess
 from typing import Optional
 from collections import Counter
 
 from Job import Job
-from Default import Default
-from Handler import MessageHandler
+from Default import default
+from Handler import messageHandler, runKillLogger
 
 
 class Machine:
     """ Save the information of each machine """
+    infoFormat: str = '| {:<10} | {:<11} | {:>10} | {:>5}'
+    freeInfoFormat: str = '| {:<10} | {:<11} | {:>10} | {:>10}'
 
-    def __init__(self,
-                 information: str,
-                 default: Default,
-                 messageHandler: MessageHandler,
-                 runKillLogger: logging.Logger) -> None:
+    def __init__(self, information: str) -> None:
         # 0.Use|#1.Name|#2.CPU|#3.nCore|#4.Memory
         information = information.strip().split("|")
 
@@ -39,8 +36,6 @@ class Machine:
         self.nKill: int = 0                     # Number of killed jobs
 
         # Extra default informations for logging
-        self.messageHandler = messageHandler    # Handler for non-plain messages
-        self.runKillLogger = runKillLogger      # Logger for run, kill method
         self.logDict = {'machine': self.name, 'user': default.user}
 
         # Default variables
@@ -64,7 +59,7 @@ class Machine:
         # Job with input pid is not registered
         # Print warning and exit the program
         if job is None:
-            self.messageHandler.error(f'ERROR: No such process in {self.name}: {pid}')
+            messageHandler.error(f'ERROR: No such process in {self.name}: {pid}')
             exit()
         return job.cmd
 
@@ -117,7 +112,7 @@ class Machine:
 
         # Check scan error
         if result.stderr:
-            self.messageHandler.error(f'ERROR from {self.name}: {result.stderr.strip()}')
+            messageHandler.error(f'ERROR from {self.name}: {result.stderr.strip()}')
             return None
         return result.stdout.strip().split('\n')[1:]    # First line is header
 
@@ -143,9 +138,9 @@ class Machine:
         if format_spec.lower() == 'job':
             return '\n'.join(f'{job}' for job in self.jobDict.values())
         elif format_spec.lower() == 'free':
-            return f'| {self.name:<10} | {self.cpu:<11} | {self.nFreeCore:3d} cores | {self.freeMem:>5} free'
+            return Machine.freeInfoFormat.format(self.name, self.cpu, str(self.nFreeCore) + ' cores', self.freeMem + ' free')
         else:
-            return f'| {self.name:<10} | {self.cpu:<11} | {self.nCore:3d} cores | {self.memory:>5}'
+            return Machine.infoFormat.format(self.name, self.cpu, str(self.nCore) + ' cores', self.memory)
 
     ############################## Scan Job Information and Save ##############################
     def scanJob(self, userName: str, scanLevel: int) -> None:
@@ -191,8 +186,8 @@ class Machine:
         subprocess.run(cmdRun, shell=True)
 
         # Print the result and save to logger
-        self.messageHandler.success(f"SUCCESS {self.name:<10}: run \'{command}\'")
-        self.runKillLogger.info(f'spg run {command}', extra=self.logDict)
+        messageHandler.success(f"SUCCESS {self.name:<10}: run \'{command}\'")
+        runKillLogger.info(f'spg run {command}', extra=self.logDict)
         return None
 
     def KILL(self, args: argparse.Namespace) -> None:
@@ -211,8 +206,8 @@ class Machine:
                 self.nKill += 1
 
                 # Print the result and save to logger
-                self.messageHandler.success(f"SUCCESS {self.name:<10}: kill \'{command}\'")
-                self.runKillLogger.info(f'spg kill {command}', extra=self.logDict)
+                messageHandler.success(f"SUCCESS {self.name:<10}: kill \'{command}\'")
+                runKillLogger.info(f'spg kill {command}', extra=self.logDict)
         return None
 
     def killJob(self, job: Job) -> None:
@@ -235,7 +230,7 @@ class Machine:
         # When error occurs, save it
         if result.stderr:
             killErrList = result.stderr.strip().split('\n')
-            self.messageHandler.error('\n'.join(f'ERROR from {self.name}: {killErr}' for killErr in killErrList))
+            messageHandler.error('\n'.join(f'ERROR from {self.name}: {killErr}' for killErr in killErrList))
         else:
             killErrList = []
 

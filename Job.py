@@ -3,6 +3,7 @@ import argparse
 
 class Job:
     """ Job informations """
+    infoFormat: str = '| {:<10} | {:<15} | {:<2} | {:>7} | {:>6} | {:>6} | {:>7} | {:>11} | {:>5} | {}'
 
     def __init__(self, machineName: str, jobInfo: str) -> None:
         """
@@ -14,22 +15,24 @@ class Job:
                         Viable command to optaion such information: use ps
                         ex) 'ps -format ruser:15,stat,pid,pcpu,pmem,rss:10,time:15,start_time,args'
         """
-        self.machineName = machineName                          # Name of machine where this job is running
         jobInfo = jobInfo.strip().split()
-        self.userName = jobInfo[0]                              # Name of user who is reponsible for the job
-        self.state = jobInfo[1]                                 # Current state of job. Ex) R, S, D, ...
-        self.pid = jobInfo[2]                                   # Process ID of job
-        self.sid = jobInfo[3]                                   # Process ID of session leader
-        self.cpuPercent = jobInfo[4]                            # Single core utilization percentage
-        self.memPercent = jobInfo[5]                            # Memory utilization percentage
-        self.mem = str(round(int(jobInfo[6]) / 1024)) + 'MB'    # Absolute value of memory utilization in 'MB'
-        self.time = jobInfo[7]                                  # Time since the job started
-        self.start = jobInfo[8]                                 # Time when the job started
-        self.cmd = ' '.join(jobInfo[9:])                        # Command of the job
+
+        self.machineName = machineName             # Name of machine where this job is running
+        self.userName = jobInfo[0]                 # Name of user who is reponsible for the job
+        self.state = jobInfo[1]                    # Current state of job. Ex) R, S, D, ...
+        self.pid = jobInfo[2]                      # Process ID of job
+        self.sid = jobInfo[3]                      # Process ID of session leader
+        self.cpuPercent = jobInfo[4]               # Single core utilization percentage
+        self.memPercent = jobInfo[5]               # Memory utilization percentage
+        self.mem = self.getMem(jobInfo[6])         # Absolute value of memory utilization in 'MB'
+        self.time = jobInfo[7]                     # Time since the job started
+        self.start = jobInfo[8]                    # Time when the job started
+        self.cmd = ' '.join(jobInfo[9:])           # Command of the job
 
     ########################## Get Line Format Information for Print ##########################
     def __format__(self, format_spec: str) -> str:
-        return f'| {self.machineName:<10} | {self.userName:<15} | {self.state:<2} | {self.pid:>7} | {self.cpuPercent:>6} | {self.memPercent:>6} | {self.mem:>6} | {self.time:>11} | {self.start:>5} | {self.cmd}'
+        return Job.infoFormat.format(self.machineName, self.userName, self.state, self.pid, self.cpuPercent,
+                                     self.memPercent, self.mem, self.time, self.start, self.cmd)
 
     ###################################### Basic Utility ######################################
     def getTimeWindow(self) -> int:
@@ -44,6 +47,18 @@ class Job:
         toSecondList = [1, 60, 3600, 62400] # second, minute, hour, day
         second = sum(int(time) * toSecond for time, toSecond in zip(reversed(timeList), toSecondList))
         return second
+
+    @staticmethod
+    def getMem(mem:str) -> str:
+        """
+            Change memory in KB unit to MB or GB
+        """
+        mem = float(mem) / 1024     # Change to MB unit
+        if mem < 1024:
+            return f'{mem:.1f}MB'
+        else:
+            mem /= 1024
+            return f'{mem:.1f}GB'
 
     ################################## Check job information ##################################
     def isImportant(self, scanLevel: int) -> bool:

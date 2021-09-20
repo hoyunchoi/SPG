@@ -1,4 +1,5 @@
 import os
+import sys
 import atexit
 import colorama
 from termcolor import cprint
@@ -47,7 +48,7 @@ class MessageHandler:
 
         # Print success messages
         if self.successList:
-            cprint('\n'.join(self.successList), 'green')
+            cprint('\n'.join(self.successList), 'green', file=sys.stderr)
         # Print warning messages
         if self.warningList:
             cprint('\n'.join(self.warningList), 'yellow')
@@ -65,7 +66,6 @@ class MessageHandler:
 
     def error(self, msg: str) -> None:
         self.errorList.append(msg)
-
 
 def getRunKillLogger() -> logging.Logger:
     """
@@ -91,6 +91,9 @@ def getRunKillLogger() -> logging.Logger:
     runKillLogger.setLevel(logging.INFO)    # log over INFO level
     return runKillLogger
 
+# Define instances
+messageHandler = MessageHandler()
+runKillLogger = getRunKillLogger()
 
 if __name__ == "__main__":
     print("This is module 'Handler' from SPG")

@@ -2,21 +2,26 @@ import re
 import argparse
 import subprocess
 from typing import Optional
+from threading import Thread
 from collections import Counter
 
-from Job import Job
+from Job import Job, GPUJob
 from Default import default
 from Handler import messageHandler, runKillLogger
+from Commands import Commands
 
 
 class Machine:
+    # I know global variable is not optimal...
+    global default, messageHandler, runKillLogger
+
     """ Save the information of each machine """
     infoFormat: str = '| {:<10} | {:<11} | {:>10} | {:>5}'
     freeInfoFormat: str = '| {:<10} | {:<11} | {:>10} | {:>10}'
 
     def __init__(self, information: str) -> None:
         # 0.Use|#1.Name|#2.CPU|#3.nCore|#4.Memory
-        information = information.strip().split("|")
+        information = information.strip().split('|')
 
         self.use = bool(int(information[0]))    # Whether to be used or not: 1 for use, 0 for not use
         self.name = information[1]              # Name of machine. ex) tenet1
@@ -29,7 +34,7 @@ class Machine:
         self.nJob: int = 0                      # Number of running jobs = len(jobList)
 
         # Current free information
-        self.nFreeCore: int = 0                 # Number of free cores = nCore-nCurJob
+        self.nFreeCore: int = 0                 # Number of free cores = nCore-nJob
         self.freeMem: str = ''                  # Size of free memory
 
         # KILL
@@ -39,7 +44,7 @@ class Machine:
         self.logDict = {'machine': self.name, 'user': default.user}
 
         # Default variables
-        self.cmdSSH = f'ssh -o StrictHostKeyChecking=no -o ConnectTimeout=4 -o UpdateHostKeys=no {self.name} '
+        self.cmdSSH = Commands.getSSHCmd(self.name)
 
     ###################################### Basic Utility ######################################
     def __lt__(self, other) -> bool:
@@ -83,9 +88,9 @@ class Machine:
     def getFreeMem(self) -> str:
         """
             Return absolute value of free memory
+            Not going to catch error
         """
-        cmdGetFreeMem = self.cmdSSH + '\"free -h --si | awk \'(NR==2){print \$7}\'\"'
-        result = subprocess.run(cmdGetFreeMem,
+        result = subprocess.run(f'{self.cmdSSH} \"{Commands.getFreeMemCmd()}\"',
                                 stdout=subprocess.PIPE,
                                 text=True,
                                 shell=True)
@@ -96,25 +101,19 @@ class Machine:
             Get raw output of 'ps' command
             When error occurs, scanErrList is updated
             Args
-                userName: user name to find processes. If None, take every users registered in group 'user'
+                userName: user name to find processes. If None, refer Commands.getPSCmd.
         """
-        # Scan every user registered in group 'user'
-        if userName is None:
-            cmdGetProcess = self.cmdSSH + '\"ps H --user $(getent group users | cut -d: -f4)\
-                                            --format ruser:15,stat,pid,sid,pcpu,pmem,rss:10,time:15,start_time,args\"'
-        # Scan specifically input user
-        else:
-            cmdGetProcess = self.cmdSSH + f'\"ps H --user {userName}\
-                                            --format ruser:15,stat,pid,sid,pcpu,pmem,rss:10,time:15,start_time,args\"'
-
         # get result of ps command
-        result = subprocess.run(cmdGetProcess, capture_output=True, text=True, shell=True)
+        result = subprocess.run(f'{self.cmdSSH} \"{Commands.getPSCmd(userName)}\"',
+                                capture_output=True,
+                                text=True,
+                                shell=True)
 
         # Check scan error
         if result.stderr:
             messageHandler.error(f'ERROR from {self.name}: {result.stderr.strip()}')
             return None
-        return result.stdout.strip().split('\n')[1:]    # First line is header
+        return result.stdout.strip().split('\n')
 
     def getUserCount(self) -> Counter[str, int]:
         """
@@ -138,9 +137,9 @@ class Machine:
         if format_spec.lower() == 'job':
             return '\n'.join(f'{job}' for job in self.jobDict.values())
         elif format_spec.lower() == 'free':
-            return Machine.freeInfoFormat.format(self.name, self.cpu, str(self.nFreeCore) + ' cores', self.freeMem + ' free')
+            return Machine.freeInfoFormat.format(self.name, self.cpu, f'{self.nFreeCore} cores', f'{self.freeMem} free')
         else:
-            return Machine.infoFormat.format(self.name, self.cpu, str(self.nCore) + ' cores', self.memory)
+            return Machine.infoFormat.format(self.name, self.cpu, f'{self.nCore} cores', self.memory)
 
     ############################## Scan Job Information and Save ##############################
     def scanJob(self, userName: str, scanLevel: int) -> None:
@@ -182,7 +181,7 @@ class Machine:
                 cmds: list of commands including program/arguments
         """
         # cd to path and run the command as background process
-        cmdRun = self.cmdSSH + f'\"cd {path}; {command}\" &'
+        cmdRun = f'{self.cmdSSH} \"{Commands.getRunCmd(path, command)}\" &'
         subprocess.run(cmdRun, shell=True)
 
         # Print the result and save to logger
@@ -215,13 +214,13 @@ class Machine:
             Kill job and all the process until it's session leader
         """
         # Command to kill very processes until reaching session leader
-        cmdKill = self.cmdSSH + f'\" kill -9 {job.pid}; '
+        cmdKill = f'{self.cmds} \"{Commands.getKillCmd(job.pid)}; '
         pid = job.pid
         while pid != job.sid:
             # Update pid to it's ppid
-            pid = subprocess.check_output(self.cmdSSH + f'\"ps -q {pid} --format ppid\"',
+            pid = subprocess.check_output(f'{self.cmdSSH} \"{Commands.getPPIDCmd(pid)}\"',
                                           text=True, shell=True).split('\n')[1].strip()
-            cmdKill += f'kill -9 {pid}; '
+            cmdKill += f'{Commands.getKillCmd(job.pid)}; '
         cmdKill += '\"'
 
         # Run kill command
@@ -250,5 +249,99 @@ class Machine:
     #     return None
 
 
+class GPUMachine(Machine):
+    def __init__(self, information: str) -> None:
+        super().__init__(information)           # Initialize like Machine
+
+        self.gpu = self.cpu                     # Name of GPU inside machine
+        self.nGPU = self.nCore                  # Number of GPUs inside machine
+        self.gpuMemory = self.memory            # Size of memory inside each GPU
+
+        # Current job information
+        self.gpuJobDict: dict[str, GPUJob] = {} # Dictionary of running GPU jobs with key of PID
+
+    ########################## Get Line Format Information for Print ##########################
+    def __format__(self, format_spec: str) -> str:
+        """
+            Return machine information in line format
+            Args
+                format_spec: which information to return
+                    - job: return formatted job information
+                    - free: return formatted free information
+                    - None: return formatted machine information
+            When 'free' is given, return free information of machine
+        """
+        if format_spec.lower() == 'job':
+            return '\n'.join(f'{gpuJob}' for gpuJob in self.gpuJobDict.values())
+        elif format_spec.lower() == 'free':
+            return GPUMachine.freeInfoFormat.format(self.name, self.gpu, f'{self.nFreeCore} GPUs', f'{self.gpuMemory} free')
+        else:
+            return GPUMachine.infoFormat.format(self.name, self.gpu, f'{self.nCore} GPUs', self.memory)
+
+    ############################## Scan Job Information and Save ##############################
+    def matchGPUProcess(self, gpuIdx: int) -> None:
+
+        result = subprocess.run(f'{self.cmdSSH} \"{Commands.getNSProcessCmd(gpuIdx)}\"',
+                        stdout=subprocess.PIPE,
+                        text=True,
+                        shell=True)
+        processList = result.stdout.strip().split('\n')
+
+        # Something running at gpu
+        for process in processList:
+            pid, gpuPercent, gpuMem = tuple(process.split())
+
+            # No process at gpu
+            if pid == '-':
+                self.nFreeCore += 1
+                continue
+
+            job = self.jobDict.get(pid)
+            # process in gpu is there, but it does not belongs to current user
+            if job is None:
+                continue
+
+            # Register cpu job to gpu job dict
+            gpuJob = GPUJob(f'{self.name}-gpu{gpuIdx}', job.info)
+            gpuJob.setGPUPercent(gpuPercent)
+            gpuJob.setMemory(gpuMem, self.gpuMemory)
+            self.gpuJobDict[gpuJob.pid] = gpuJob
+
+
+    def scanJob(self, userName: str, scanLevel: int) -> None:
+        """
+            Scan the sub-process of input user.
+            When error occurs during scanning, save the error to error handler and return None
+            nJob, jobDict will be updated
+            when userName is None, nFreeCore, freeMem will also be updated
+            Args
+                userName: Refer getRawProcess for more description
+                scanLevel: Refer 'Job.isImportant' for more description
+        """
+        # Get list of raw process
+        rawProcess = self.getRawProcess(userName)
+
+        # When error occurs, rawProcess is None. Do nothing and return
+        if rawProcess is None:
+            return None
+
+        # Get list of cpu job
+        for process in rawProcess:
+            job = Job(self.name, process)
+            if job.isImportant(scanLevel):
+                self.jobDict[job.pid] = job
+
+        # match cpu job with gpu id
+        threadList = [Thread(target=self.matchGPUProcess, args=(gpuIdx, )) for gpuIdx in range(self.nGPU)]
+        for thread in threadList:
+            thread.start()
+        for thread in threadList:
+            thread.join()
+
+
 if __name__ == "__main__":
-    print("This is moudle 'Machine' from SPG")
+    # print("This is moudle 'Machine' from SPG")
+    info = '1|kuda4|RTX-2080Ti|4|11G|'
+    gpuMachine = GPUMachine(info)
+
+    gpuMachine.scanJob('hoyun', 2)

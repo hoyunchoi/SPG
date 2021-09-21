@@ -4,7 +4,7 @@ from typing import Callable
 from threading import Thread
 from collections import deque, Counter
 
-from Machine import Machine
+from Machine import Machine, GPUMachine
 
 
 class Group:
@@ -50,7 +50,7 @@ class Group:
 
         # Initialize list of machines. First 4 lines are comments
         for information in informationList[4:]:
-            machine = Machine(information)
+            machine = GPUMachine(information) if self.name == 'kuda' else Machine(information)
             if machine.use:
                 self.machineDict[machine.name] = machine
         self.nCore += sum(machine.nCore for machine in self.machineDict.values())
@@ -172,7 +172,6 @@ class Group:
         else:
             threadList = [Thread(target=scanJob_updateBar, args=(machine,))
                           for machine in self.machineDict.values()]
-
         for thread in threadList:
             thread.start()
         for thread in threadList:

@@ -1,7 +1,6 @@
 #! /usr/bin/python
 from typing import Optional
 from Job import Job
-import sys
 import argparse
 import subprocess
 from threading import Thread
@@ -16,6 +15,10 @@ from Handler import messageHandler
 
 
 class SPG:
+    # I know global variable is not optimal...
+    global default, messageHandler
+
+    """ SPG """
     groupInfoFormat: str = '| {:<10} | total {:>4} machines & {:>4} cores'
     groupJobInfoFormat: str='| {:<10} | total {:>4} jobs'
 
@@ -162,10 +165,12 @@ class SPG:
         """
         firstLine = Machine.freeInfoFormat.format('Machine', 'CPU', 'Free cores', 'Free mem')
         strLine = self.getStrLine(len(firstLine))
+        print(strLine)
 
 
         # When machine list is specified
         if args.machineNameList:
+            print(firstLine)
             print(strLine)
             machineList = self.scanJob_machine(args.machineNameList, userName=None, scanLevel=2)
             for machine in machineList:
@@ -181,7 +186,6 @@ class SPG:
             groupList = list(self.groupDict.values())
 
         # First section
-        print(strLine)
         barWidth = None if args.silent else min(len(firstLine), default.terminalWidth)
         self.scanJob(groupList, userName=None, scanLevel=2, barWidth=barWidth)
         if not args.silent:
@@ -207,9 +211,11 @@ class SPG:
         """
         firstLine = Job.infoFormat.format('Machine', 'User', 'ST', 'PID', 'CPU(%)', 'MEM(%)', 'Memory', 'Time', 'Start', 'Command')
         strLine = self.getStrLine(len(firstLine))
+        print(strLine)
 
         # When machine list is specified
         if args.machineNameList:
+            print(firstLine)
             print(strLine)
             machineList = self.scanJob_machine(args.machineNameList, userName=args.userName, scanLevel=2)
             for machine in machineList:
@@ -225,7 +231,6 @@ class SPG:
             groupList = list(self.groupDict.values())
 
         # Start print
-        print(strLine)
         barWidth = None if args.silent else min(len(firstLine), default.terminalWidth)
         self.scanJob(groupList, userName=args.userName, scanLevel=2, barWidth=barWidth)
         if not args.silent:

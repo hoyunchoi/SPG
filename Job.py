@@ -1,9 +1,10 @@
+import re
 import argparse
 
 
 class Job:
     """ Job informations """
-    infoFormat: str = '| {:<10} | {:<15} | {:<2} | {:>7} | {:>6} | {:>6} | {:>7} | {:>11} | {:>5} | {}'
+    infoFormat: str = '| {:<10} | {:<15} | {:<3} | {:>7} | {:>6} | {:>6} | {:>7} | {:>11} | {:>5} | {}'
 
     def __init__(self, machineName: str, jobInfo: str) -> None:
         """
@@ -15,6 +16,7 @@ class Job:
                         Viable command to optaion such information: use ps
                         ex) 'ps -format ruser:15,stat,pid,pcpu,pmem,rss:10,time:15,start_time,args'
         """
+        self.info = jobInfo
         jobInfo = jobInfo.strip().split()
 
         self.machineName = machineName             # Name of machine where this job is running
@@ -49,15 +51,15 @@ class Job:
         return second
 
     @staticmethod
-    def getMem(mem:str) -> str:
+    def getMem(mem: str) -> str:
         """
             Change memory in KB unit to MB or GB
         """
-        mem = float(mem) / 1024     # Change to MB unit
-        if mem < 1024:
+        mem = float(mem) / 1000     # Change to MB unit
+        if mem < 1000:
             return f'{mem:.1f}MB'
         else:
-            mem /= 1024
+            mem /= 1000
             return f'{mem:.1f}GB'
 
     ################################## Check job information ##################################
@@ -122,6 +124,43 @@ class Job:
 
         # Every options are considered. When passed, the job should be killed
         return True
+
+
+class GPUJob(Job):
+    def __init__(self, machineName: str, jobInfo: str) -> None:
+        super().__init__(machineName, jobInfo)
+        self.gpuPercent: str = ''                # GPU utilization of job
+        self.gpuMemPercent = self.memPercent    # GPU memory utilization of job
+        self.gpuMem = self.mem                  # absolute GPU memory usage of job
+
+    def setGPUPercent(self, gpuPercent: str) -> None:
+        """
+            Set gpu percent
+            when '-' is given, the value is set to 0
+        """
+
+        self.gpuPercent = '0' if gpuPercent == '-' else gpuPercent
+
+    def setMemory(self, gpuMem: str, totGPUMem: str) -> None:
+        """
+            set members related to gpu memory
+            Args
+                mem: absolute value of gpu memory utilization in MB unit
+                totGPUMem: total memory of gpu in GB unit
+        """
+        gpuMem = 0 if gpuMem == '-' else float(gpuMem)                   # GPU memory utilization in MB unit
+        totGPUMem = float(re.sub('[^0-9]', '', totGPUMem)) * 1000     # GPU memory in MB unit
+        self.gpuMemPercent = f'{gpuMem / totGPUMem * 100:.1f}'           # Memory utilization in percent unit
+
+        if gpuMem < 1000:
+            self.gpuMem = f'{gpuMem}MB'
+        else:
+            gpuMem /= 1000                 # Change to GB unit
+            self.gpuMem = f'{gpuMem:.1f}GB'
+
+    def __format__(self, format_spec: str) -> str:
+        return GPUJob.infoFormat.format(self.machineName, self.userName, self.state, self.pid, self.gpuPercent,
+                                        self.gpuMemPercent, self.gpuMem, self.time, self.start, self.cmd)
 
 
 if __name__ == "__main__":

@@ -4,7 +4,7 @@ from typing import Callable
 from threading import Thread
 from collections import deque, Counter
 
-from Machine import Machine, GPUMachine
+from Machine import Machine, CPUMachine, GPUMachine
 
 
 class Group:
@@ -23,12 +23,12 @@ class Group:
         self.name: str = groupName                  # Name of machine group. Ex) tenet
         self.machineDict: dict[str, Machine] = {}   # Dictionary of machines with key of machine name
         self.nMachine: int = 0                      # Number of machines in the group = len(machineList)
-        self.nCore: int = 0                         # Number of cores in the group
+        self.nUnit: int = 0                         # Number of compute units(CPU/GPU) in the group
 
         # Free informations
         self.freeMachineList: list[Machine] = []    # List of machines with at least one free core
         self.nFreeMachine: int = 0                  # Number of machines with at least one free core = len(freeMachineList)
-        self.nFreeCore: int = 0                     # Number of free cores
+        self.nFreeUnit: int = 0                     # Number of free compute units
 
         # Current informations
         self.busyMachineList: list[Machine] = []    # List of machines running one or more jobs
@@ -50,10 +50,10 @@ class Group:
 
         # Initialize list of machines. First 4 lines are comments
         for information in informationList[4:]:
-            machine = GPUMachine(information) if self.name == 'kuda' else Machine(information)
+            machine = GPUMachine(information) if self.name == 'kuda' else CPUMachine(information)
             if machine.use:
                 self.machineDict[machine.name] = machine
-        self.nCore += sum(machine.nCore for machine in self.machineDict.values())
+        self.nUnit += sum(machine.nUnit for machine in self.machineDict.values())
         self.nMachine = len(self.machineDict)
 
     ###################################### Basic Utility ######################################
@@ -113,12 +113,12 @@ class Group:
         """
             Get free information
             Return
-                nFreeCore: number of free cores
+                nFreeUnit: number of free cores
                 freeMachineList: list of machine who has one or more free cores
         """
-        freeMachineList = [machine for machine in self.machineDict.values() if machine.nFreeCore]
-        nFreeCore = sum(machine.nFreeCore for machine in freeMachineList)
-        return nFreeCore, freeMachineList
+        freeMachineList = [machine for machine in self.machineDict.values() if machine.nFreeUnit]
+        nFreeUnit = sum(machine.nFreeUnit for machine in freeMachineList)
+        return nFreeUnit, freeMachineList
 
     def getUserCount(self) -> Counter[str, int]:
         """
@@ -153,7 +153,7 @@ class Group:
         """
             Scan job of every machines in machineList
             nJob, busyMachineList will be updated
-            If user Name is not given, nFreeCore, freeMachineList, nFreeMachine will be updated
+            If user Name is not given, nFreeUnit, freeMachineList, nFreeMachine will be updated
             Args
                 userName: refer Machine.getJobList
                 scanLevel: refer Job.isImportant
@@ -180,7 +180,7 @@ class Group:
         # Save the scanned information
         self.nJob, self.busyMachineList = self.getJobInfo()
         if userName is None:
-            self.nFreeCore, self.freeMachineList = self.getFreeInfo()
+            self.nFreeUnit, self.freeMachineList = self.getFreeInfo()
             self.nFreeMachine = len(self.freeMachineList)
 
     ##################################### Run or Kill Job #####################################
@@ -204,7 +204,7 @@ class Group:
         # Run commands
         threadList = []
         for _, machine in zip(range(min(len(cmdQueue), maxCalls)), freeMachineList):
-            for _ in range(machine.nFreeCore):
+            for _ in range(machine.nFreeUnit):
                 if cmdQueue:
                     command = cmdQueue.popleft().strip()
                     threadList.append(Thread(target=machine.run, args=(curPath, command)))

@@ -1,12 +1,8 @@
-#0.Use|#1.Name|#2.CPU|#3.nCore|#4.Memory| # Status-Comment
+#0.Use|#1.Name|#2.GPU|#3.nGPUs|#4.VRAM per GPU| # Status-Comment
 #========================================
 #      kuda machine information
 #========================================
-0|kuda1|E5-2680v4x2|28|128G|
 1|kuda1|GTX-1080|4|8G|
-0|kuda2|E5-2683v4x2|32|256G|	# -32GB Memory(2021.08.19)
-1|kuda2|RTX-2080Ti|4|11G|
-0|kuda3|i9-10920X|12|128G|
-1|kuda3|RTX-2080Ti|4|11G|
-0|kuda4|i9-10920X|12|128G|
-1|kuda4|RTX-2080Ti|4|11G|
+1|kuda2|RTX-2080ti|4|11G|   # -32GB RAM(2021.08.19)
+1|kuda3|RTX-2080ti|4|11G|
+1|kuda4|RTX-2080ti|4|11G|

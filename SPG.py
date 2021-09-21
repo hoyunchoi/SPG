@@ -19,7 +19,7 @@ class SPG:
     global default, messageHandler
 
     """ SPG """
-    groupInfoFormat: str = '| {:<10} | total {:>4} machines & {:>4} cores'
+    groupInfoFormat: str = '| {:<10} | total {:>4} machines & {:>4} units'
     groupJobInfoFormat: str='| {:<10} | total {:>4} jobs'
 
     def __init__(self) -> None:
@@ -128,7 +128,7 @@ class SPG:
         """
             Print information of machines registered in SPG
         """
-        firstLine = Machine.infoFormat.format('Machine', 'CPU', 'TOT cores', 'MEM')
+        firstLine = Machine.infoFormat.format('Machine', 'ComputeUnit', 'tot units', 'mem')
         strLine = self.getStrLine(len(firstLine))
 
         # First section
@@ -155,7 +155,7 @@ class SPG:
 
         # Print total summary
         for group in groupList:
-            print(SPG.groupInfoFormat.format(group.name, str(group.nMachine), str(group.nCore)))
+            print(SPG.groupInfoFormat.format(group.name, str(group.nMachine), str(group.nUnit)))
         print(strLine)
         return None
 
@@ -163,7 +163,7 @@ class SPG:
         """
             Print list of machine free information
         """
-        firstLine = Machine.freeInfoFormat.format('Machine', 'CPU', 'Free cores', 'Free mem')
+        firstLine = Machine.freeInfoFormat.format('Machine', 'ComputeUnit', 'free units', 'free mem')
         strLine = self.getStrLine(len(firstLine))
         print(strLine)
 
@@ -174,7 +174,7 @@ class SPG:
             print(strLine)
             machineList = self.scanJob_machine(args.machineNameList, userName=None, scanLevel=2)
             for machine in machineList:
-                if machine.nFreeCore:
+                if machine.nFreeUnit:
                     print(f'{machine:free}')
             print(strLine)
             return None
@@ -201,7 +201,7 @@ class SPG:
 
         # Print summary
         for group in groupList:
-            print(SPG.groupInfoFormat.format(group.name, str(group.nFreeMachine), str(group.nFreeCore)))
+            print(SPG.groupInfoFormat.format(group.name, str(group.nFreeMachine), str(group.nFreeUnit)))
         print(strLine)
         return None
 
@@ -302,7 +302,7 @@ class SPG:
         machine.scanJob(userName=None, scanLevel=2)
 
         # When no free core is detected, doule check the run command
-        if machine.nFreeCore == 0:
+        if not machine.nFreeUnit:
             messageHandler.warning(f'WARNING: {args.machineName} has no free core!')
 
         # Run a job

@@ -1,66 +1,88 @@
-import re
 import argparse
+from typing import Union
+from abc import ABC, abstractmethod
 
+from Handler import messageHandler
 
-class Job:
-    """ Job informations """
+class Job(ABC):
+    # I know global variable is not optimal...
+    global messageHandler
+    """
+        Abstract class for storing job informations
+        CPUJob/GPUJob will be inherited from this class
+    """
     infoFormat: str = '| {:<10} | {:<15} | {:<3} | {:>7} | {:>6} | {:>6} | {:>7} | {:>11} | {:>5} | {}'
 
-    def __init__(self, machineName: str, jobInfo: str) -> None:
+    def __init__(self, machineName: str, info:str, *args) -> None:
         """
-            Change string of job information to job object
             Args
                 machineName: Name of machine where this job is running
-                jobInfo: Contain information with order of following, space seperated string
-                        'user', 'state', 'pid', 'cpu%', 'mem%', 'mem', 'time', 'start time', 'cmd'
-                        Viable command to optaion such information: use ps
-                        ex) 'ps -format ruser:15,stat,pid,pcpu,pmem,rss:10,time:15,start_time,args'
+                info: Contain information of job, as the result of 'ps'
+                      Refer Commands.getPSCmd for detailed format
+                args: Used for GPU machine that should be initialized using other information than info
         """
-        self.info = jobInfo
-        jobInfo = jobInfo.strip().split()
+        self.machineName = machineName  # Name of machine where this job is running
+        self.info = info.strip().split()
 
-        self.machineName = machineName             # Name of machine where this job is running
-        self.userName = jobInfo[0]                 # Name of user who is reponsible for the job
-        self.state = jobInfo[1]                    # Current state of job. Ex) R, S, D, ...
-        self.pid = jobInfo[2]                      # Process ID of job
-        self.sid = jobInfo[3]                      # Process ID of session leader
-        self.cpuPercent = jobInfo[4]               # Single core utilization percentage
-        self.memPercent = jobInfo[5]               # Memory utilization percentage
-        self.mem = self.getMem(jobInfo[6])         # Absolute value of memory utilization in 'MB'
-        self.time = jobInfo[7]                     # Time since the job started
-        self.start = jobInfo[8]                    # Time when the job started
-        self.cmd = ' '.join(jobInfo[9:])           # Command of the job
+        self.userName = self.info[0]            # Name of user who is reponsible for the job
+        self.state = self.info[1]               # Current state of job. Ex) R, S, D, ...
+        self.pid = self.info[2]                 # Process ID of job
+        self.sid = self.info[3]                 # Process ID of session leader
+        self.time = self.info[7]                # Cumulative CPU time
+        self.start = self.info[8]               # Starting time or date
+        self.cmd = ' '.join(self.info[9:])      # Command of the job
+
+        self.initialize(*args)
+
+    @abstractmethod
+    def initialize(self, *args) -> None:
+        """
+            Initialize CPU/GPU specific informations from info
+            - CPU/GPU core utilization in percentage
+            - CPU/GPU memory utilization in percentage
+            - CPU/GPU absolute memory utilization
+        """
+        pass
 
     ########################## Get Line Format Information for Print ##########################
+    @abstractmethod
     def __format__(self, format_spec: str) -> str:
-        return Job.infoFormat.format(self.machineName, self.userName, self.state, self.pid, self.cpuPercent,
-                                     self.memPercent, self.mem, self.time, self.start, self.cmd)
+        """
+            Format of job using Job.format
+        """
+        pass
 
     ###################################### Basic Utility ######################################
-    def getTimeWindow(self) -> int:
+    @staticmethod
+    def getTimeWindow(time: str) -> int:
         """
-            Return self.time as second
-            self.time has format follwing
-            day-hour:minute:second  when it is over 24 hours
-            hour:minute:second      when is is less 24 hours
+            time as second
+            time has format [DD-]HH:MM:SS
         """
-        timeList = self.time.replace('-', ':').split(':')
-
         toSecondList = [1, 60, 3600, 62400] # second, minute, hour, day
+
+        timeList = time.replace('-', ':').split(':')    # [DD-]HH:MM:SS -> [DD:]HH:MM:SS
         second = sum(int(time) * toSecond for time, toSecond in zip(reversed(timeList), toSecondList))
         return second
 
     @staticmethod
-    def getMem(mem: str) -> str:
+    def getMemWithUnit(mem: Union[str, float], unit: str) -> str:
         """
             Change memory in KB unit to MB or GB
+            Args
+                mem: memory utilization in KB unit
+            Return
+                memory utilization in MB or GB unit
         """
-        mem = float(mem) / 1000     # Change to MB unit
-        if mem < 1000:
-            return f'{mem:.1f}MB'
-        else:
-            mem /= 1000
-            return f'{mem:.1f}GB'
+        unitList = ['KB', 'MB', 'GB', 'TB']
+        currentUnitIdx = unitList.index(unit)
+        mem = float(mem)
+
+        while mem >= 1000.0:
+            mem /= 1000.0
+            currentUnitIdx += 1
+
+        return f'{mem:.1f}{unitList[currentUnitIdx]}'
 
     ################################## Check job information ##################################
     def isImportant(self, scanLevel: int) -> bool:
@@ -91,13 +113,17 @@ class Job:
         # State is 'R'
         if 'R' in self.state:
             # Filter job by cpu usage and running time
-            if (float(self.cpuPercent) < 5.0) and (self.getTimeWindow() < 1):
+            if (float(self.cpuPercent) < 5.0) and (self.getTimeWindow(self.time) < 1):
                 return False
             else:
                 return True
         # State is 'D'
         elif 'D' in self.state:
             return True
+        # State is 'Z'. Warning message
+        elif 'Z' in self.state:
+            messageHandler.warning(f'WARNING: {self.machineName} has Zombie process {self.pid}')
+            return False
         # State is not either R and D
         else:
             return False
@@ -115,7 +141,7 @@ class Job:
             return False
 
         # When time is given, job's time should be less than the time
-        if (args.time is not None) and (self.getTimeWindow() >= args.time):
+        if (args.time is not None) and (self.getTimeWindow(self.time) >= args.time):
             return False
 
         # When start is given, job's start should be same as the argument
@@ -125,43 +151,31 @@ class Job:
         # Every options are considered. When passed, the job should be killed
         return True
 
+class CPUJob(Job):
+    def initialize(self, *args) -> None:
+        self.cpuPercent = self.info[4]                              # Single core utilization percentage
+        self.ramPercent = self.info[5]                              # Memory utilization percentage
+        self.ramUse = self.getMemWithUnit(self.info[6], 'KB')       # Absolute value of memory utilization
+
+    def __format__(self, format_spec: str) -> str:
+        return Job.infoFormat.format(self.machineName, self.userName, self.state, self.pid, self.cpuPercent,
+                                     self.ramPercent, self.ramUse, self.time, self.start, self.cmd)
+
 
 class GPUJob(Job):
-    def __init__(self, machineName: str, jobInfo: str) -> None:
-        super().__init__(machineName, jobInfo)
-        self.gpuPercent: str = ''                # GPU utilization of job
-        self.gpuMemPercent = self.memPercent    # GPU memory utilization of job
-        self.gpuMem = self.mem                  # absolute GPU memory usage of job
-
-    def setGPUPercent(self, gpuPercent: str) -> None:
+    def initialize(self, *args) -> None:
         """
-            Set gpu percent
-            when '-' is given, the value is set to 0
-        """
-
-        self.gpuPercent = '0' if gpuPercent == '-' else gpuPercent
-
-    def setMemory(self, gpuMem: str, totGPUMem: str) -> None:
-        """
-            set members related to gpu memory
             Args
-                mem: absolute value of gpu memory utilization in MB unit
-                totGPUMem: total memory of gpu in GB unit
+                args: tuple of gpuPercent, vramPercent, vramUse(MB)
         """
-        gpuMem = 0 if gpuMem == '-' else float(gpuMem)                   # GPU memory utilization in MB unit
-        totGPUMem = float(re.sub('[^0-9]', '', totGPUMem)) * 1000     # GPU memory in MB unit
-        self.gpuMemPercent = f'{gpuMem / totGPUMem * 100:.1f}'           # Memory utilization in percent unit
-
-        if gpuMem < 1000:
-            self.gpuMem = f'{gpuMem}MB'
-        else:
-            gpuMem /= 1000                 # Change to GB unit
-            self.gpuMem = f'{gpuMem:.1f}GB'
+        self.gpuPercent, self.vramPercent, vramUse = args
+        self.vramUse = self.getMemWithUnit(vramUse, 'MB')
 
     def __format__(self, format_spec: str) -> str:
         return GPUJob.infoFormat.format(self.machineName, self.userName, self.state, self.pid, self.gpuPercent,
-                                        self.gpuMemPercent, self.gpuMem, self.time, self.start, self.cmd)
+                                        self.vramPercent, self.vramUse, self.time, self.start, self.cmd)
 
 
 if __name__ == "__main__":
     print("This is moudel 'Job' from SPG")
+

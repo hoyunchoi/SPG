@@ -34,8 +34,16 @@ class Commands():
         # When user name is none, get every process belongs to user registered in group 'users'
         if userName is None:
             userName = '$(getent group users | cut -d: -f4)'
-        return  f'ps H --no-headers --user {userName} \
+        return  f'ps H --user {userName} --no-headers \
                    --format ruser:15,stat,pid,sid,pcpu,pmem,rss:10,time:15,start_time,args'
+
+    @staticmethod
+    def getPSFromPIDCmd(pid: str) -> str:
+        """
+            Same as getPSCmd but specified by pid
+        """
+        return  f'ps H -q {pid} --no-headers \
+                 --format ruser:15,stat,pid,sid,pcpu,pmem,rss:10,time:15,start_time,args'
 
     @staticmethod
     def getPPIDCmd(pid: str) -> str:
@@ -44,16 +52,28 @@ class Commands():
             -q: search by pid
             --format ppid: parent pid
         """
-        return f'ps -q {pid} --format ppid'
+        return f'ps -q {pid} --no-headers --format ppid'
 
     @staticmethod
-    def getFreeMemCmd() -> str:
+    def getFreeRAMCmd() -> str:
         """
             -h: Show output fieds in human-readable unit
             --si: Use unit of kilo, mega, giga byte instead of kibi, mebi, gibi byte
             awk: Only print available memory
         """
         return 'free -h --si | awk \'(NR==2){print \$7}\''
+
+    @staticmethod
+    def getFreeVRAMCmd() -> str:
+        """
+            --query-gpu: Show information related to gpu
+                        memory.free - free vram in MiB unit
+            --format: Format of print
+                        csv - csv format
+                        noheader - don't print header
+                        nounits - don't print unit(MiB)
+        """
+        return 'nvidia-smi --query-gpu=memory.free --format=csv,noheader,nounits'
 
     @staticmethod
     def getRunCmd(path:str, command:str) -> str:
@@ -70,17 +90,16 @@ class Commands():
         return f'kill -9 {pid}'
 
     @staticmethod
-    def getNSProcessCmd(gpuIdx: int):
+    def getNSProcessCmd() -> str:
         """
             pmon: process monitor mode
-            -i: index of gpu
             -c: sampling count
             -s: which information to monitor
                 u - utilization
                 m - memory
-            tail/awk: Only return pid/gpu utilization(percent)/gpu memory(in MB)
+            Return format: gpuIdx pid gpuPercent vramPercent varmUse
         """
-        return f'nvidia-smi pmon -i {gpuIdx} -c 1 -s um ' + '| tail -n +3 | awk \'{print \$2,\$4,\$8}\''
+        return f'nvidia-smi pmon -c 1 -s um ' + '| tail -n +3 | awk \'{print \$1,\$2,\$4,\$5,\$8}\''
 
 if __name__ == "__main__":
     print(Commands.getNSProcessCmd(1))

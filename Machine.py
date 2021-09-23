@@ -237,9 +237,10 @@ class CPUMachine(Machine):
 
         # Save scanned job informations
         for process in processList:
-            job = CPUJob(self.name, process)
-            if job.isImportant(scanLevel):
-                self.jobDict[job.pid] = job
+            if process:
+                job = CPUJob(self.name, process)
+                if job.isImportant(scanLevel):
+                    self.jobDict[job.pid] = job
         self.nJob = len(self.jobDict)
 
         # If user name is None, update free informations too

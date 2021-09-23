@@ -1,13 +1,14 @@
 #! /usr/bin/python
-from typing import Optional
-from Job import Job
+import tqdm
 import argparse
 import subprocess
+from typing import Callable, Optional
 from threading import Thread
 from collections import deque, Counter
 
-from Machine import Machine
+from Job import Job
 from Group import Group
+from Machine import Machine
 from Arguments import Arguments
 
 from Default import default
@@ -20,7 +21,7 @@ class SPG:
 
     """ SPG """
     groupInfoFormat: str = '| {:<10} | total {:>4} machines & {:>4} units'
-    groupJobInfoFormat: str='| {:<10} | total {:>4} jobs'
+    groupJobInfoFormat: str = '| {:<10} | total {:>4} jobs'
 
     def __init__(self) -> None:
         self.groupDict: dict[str, Group] = {}    # Dictionary of machine group with key of group name
@@ -28,10 +29,6 @@ class SPG:
         # Initialize group dictionary
         for groupName, groupFile in default.getGroupFileDict().items():
             self.groupDict[groupName] = Group(groupName, groupFile)
-
-        # Print options
-        self.defaultWidth = 40
-        self.defaultStrLine = self.getStrLine(self.defaultWidth)
 
         # Options
         self.option = {'list': self.list,
@@ -41,6 +38,12 @@ class SPG:
                        'run': self.run,
                        'runs': self.runs,
                        'KILL': self.KILL}
+
+        # Print variables
+        # self.printer = PrintHandler()
+        self.barWidth = 40
+        self.strLine = self.getStrLine(self.barWidth)
+        self.firstLine: str = ''
 
     ###################################### Basic Utility ######################################
     def __call__(self, args: argparse.Namespace) -> None:
@@ -64,6 +67,15 @@ class SPG:
 
         return group
 
+    def findGroupListFromName(self, groupNameList: Optional[list[str]]) -> list[Group]:
+        """
+            Find list of group instance from group name list
+        """
+        if groupNameList is None:
+            return list(self.groupDict.values())
+        else:
+            return [self.findGroupFromName(groupName) for groupName in groupNameList]
+
     def findMachineFromName(self, machineName: str) -> Machine:
         """
             Find Machine instance in groupList
@@ -81,12 +93,34 @@ class SPG:
 
         return machine
 
+    def findMachineListFromName(self, machineNameList: list[str]) -> list[Machine]:
+        """
+            Find list of machine instance from machine name list
+        """
+        return [self.findMachineFromName(machineName) for machineName in machineNameList]
+
+    def decorateBar(func: Callable) -> Callable:
+        """
+            Decorate tqdm bar with proper length of strLine
+            If self.barWidth is none, tqdm bar is not printed.
+            Therefore, do not print decoration line
+        """
+
+        def decorator(self, *args, **kwargs) -> None:
+            if self.barWidth is not None:
+                tqdm.tqdm.write(self.strLine)
+
+            # Main function
+            func(self, *args, **kwargs)
+
+        return decorator
+
     ############################## Scan Job Information and Save ##############################
+    @decorateBar
     def scanJob(self,
                 groupList: list[Group],
                 userName: str,
-                scanLevel: int,
-                barWidth: Optional[int]) -> None:
+                scanLevel: int) -> None:
         """
             Scan running jobs
             Args
@@ -94,10 +128,12 @@ class SPG:
                 userName: whose job to scan
                 scanLevel: refer Job.isImportant
         """
-        # Scan job for every groups in group list
         for group in groupList:
-            group.barWidth = barWidth
-            threadList = [Thread(target=group.scanJob, args=(userName, scanLevel)) for group in groupList]
+            group.barWidth = self.barWidth
+
+        # Scan job for every groups in group list
+        threadList = [Thread(target=group.scanJob, args=(userName, scanLevel))
+                      for group in groupList]
         for thread in threadList:
             thread.start()
         for thread in threadList:
@@ -115,8 +151,10 @@ class SPG:
                 userName: Refer Machine.scanJob
                 scanLevel: refer Job.isImportant
         """
-        machineList = [self.findMachineFromName(machineName) for machineName in machineNameList]
-        threadList = [Thread(target=machine.scanJob, args=(userName, scanLevel)) for machine in machineList]
+        machineList = [self.findMachineFromName(machineName)
+                       for machineName in machineNameList]
+        threadList = [Thread(target=machine.scanJob, args=(userName, scanLevel))
+                      for machine in machineList]
         for thread in threadList:
             thread.start()
         for thread in threadList:
@@ -128,147 +166,157 @@ class SPG:
         """
             Print information of machines registered in SPG
         """
-        firstLine = Machine.infoFormat.format('Machine', 'ComputeUnit', 'tot units', 'mem')
-        strLine = self.getStrLine(len(firstLine))
+        # self.printer.columnLine = Machine.infoFormat.format('Machine', 'ComputeUnit', 'tot units', 'mem')
+        self.firstLine = Machine.infoFormat.format('Machine', 'ComputeUnit', 'tot units', 'mem')
+        self.strLine = self.getStrLine(len(self.firstLine))
 
         # First section
-        print(strLine)
-        print(firstLine)
-        print(strLine)
+        # self.printer.printFirstSection()
+        tqdm.tqdm.write(self.strLine)
+        tqdm.tqdm.write(self.firstLine)
+        tqdm.tqdm.write(self.strLine)
 
         # When machine list is specified
         if args.machineNameList:
-            for machineName in args.machineNameList:
-                machine = self.findMachineFromName(machineName)
-                print(f'{machine}')
-            print(strLine)
+            machineList = self.findMachineListFromName(args.machineNameList)
+            # self.printer.list_machine(machineList)
+            tqdm.tqdm.write('\n'.join(f'{machine}' for machine in machineList))
+            tqdm.tqdm.write(self.strLine)
             return None
 
         # When machine list is not specified
-        if args.groupNameList:
-            groupList = [self.findGroupFromName(groupName) for groupName in args.groupNameList]
-        else:
-            groupList = list(self.groupDict.values())
-        for group in groupList:
-            print(f'{group}')
-            print(strLine)
+        groupList = self.findGroupListFromName(args.groupNameList)
+        # self.printer.list_group(groupList)
+        tqdm.tqdm.write(f'\n{self.strLine}\n'.join(f'{group}'
+                                                   for group in groupList))
 
         # Print total summary
-        for group in groupList:
-            print(SPG.groupInfoFormat.format(group.name, str(group.nMachine), str(group.nUnit)))
-        print(strLine)
+        tqdm.tqdm.write(self.strLine)
+        tqdm.tqdm.write('\n'.join(SPG.groupInfoFormat.format(group.name,
+                                                             str(group.nMachine),
+                                                             str(group.nUnit))
+                                  for group in groupList))
+        tqdm.tqdm.write(self.strLine)
         return None
 
     def free(self, args: argparse.Namespace) -> None:
         """
             Print list of machine free information
         """
-        firstLine = Machine.freeInfoFormat.format('Machine', 'ComputeUnit', 'free units', 'free mem')
-        strLine = self.getStrLine(len(firstLine))
-        print(strLine)
-
+        self.firstLine = Machine.freeInfoFormat.format('Machine', 'ComputeUnit', 'free units', 'free mem')
+        self.strLine = self.getStrLine(len(self.firstLine))
 
         # When machine list is specified
         if args.machineNameList:
-            print(firstLine)
-            print(strLine)
+            # First section
+            tqdm.tqdm.write(self.strLine)
+            tqdm.tqdm.write(self.firstLine)
+            tqdm.tqdm.write(self.strLine)
+
+            # Scan machines
             machineList = self.scanJob_machine(args.machineNameList, userName=None, scanLevel=2)
-            for machine in machineList:
-                if machine.nFreeUnit:
-                    print(f'{machine:free}')
-            print(strLine)
+
+            # Print result
+            tqdm.tqdm.write('\n'.join(f'{machine:free}'
+                                      for machine in machineList
+                                      if machine.nFreeUnit))
+            tqdm.tqdm.write(self.strLine)
             return None
 
         # When machine list is not specified
-        if args.groupNameList:
-            groupList = [self.findGroupFromName(groupName) for groupName in args.groupNameList]
-        else:
-            groupList = list(self.groupDict.values())
+        groupList = (list(self.groupDict.values())
+                     if args.groupNameList is None
+                     else [self.findGroupFromName(groupName) for groupName in args.groupNameList])
+        # Scan
+        self.barWidth = None if args.silent else min(len(self.firstLine), default.terminalWidth)
+        self.scanJob(groupList, userName=None, scanLevel=2)
 
         # First section
-        barWidth = None if args.silent else min(len(firstLine), default.terminalWidth)
-        self.scanJob(groupList, userName=None, scanLevel=2, barWidth=barWidth)
-        if not args.silent:
-            print(strLine)
-        print(firstLine)
-        print(strLine)
+        tqdm.tqdm.write(self.strLine)
+        tqdm.tqdm.write(self.firstLine)
+        tqdm.tqdm.write(self.strLine)
 
         # Print result
-        for group in groupList:
-            if group.nFreeMachine:
-                print(f'{group:free}')
-                print(strLine)
+        tqdm.tqdm.write(f'\n{self.strLine}\n'.join(f'{group:free}'
+                                                   for group in groupList
+                                                   if group.nFreeMachine))
+        tqdm.tqdm.write(self.strLine)
 
         # Print summary
-        for group in groupList:
-            print(SPG.groupInfoFormat.format(group.name, str(group.nFreeMachine), str(group.nFreeUnit)))
-        print(strLine)
+        tqdm.tqdm.write('\n'.join(SPG.groupInfoFormat.format(group.name,
+                                                             str(group.nFreeMachine),
+                                                             str(group.nFreeUnit))
+                                  for group in groupList))
+        tqdm.tqdm.write(self.strLine)
         return None
 
     def job(self, args: argparse.Namespace) -> None:
         """
             Print current state of jobs
         """
-        firstLine = Job.infoFormat.format('Machine', 'User', 'ST', 'PID', 'CPU(%)', 'MEM(%)', 'Memory', 'Time', 'Start', 'Command')
-        strLine = self.getStrLine(len(firstLine))
-        print(strLine)
+        self.firstLine = Job.infoFormat.format('Machine', 'User', 'ST', 'PID', 'CPU(%)', 'MEM(%)', 'Memory', 'Time', 'Start', 'Command')
+        self.strLine = self.getStrLine(len(self.firstLine))
 
         # When machine list is specified
         if args.machineNameList:
-            print(firstLine)
-            print(strLine)
+            # First section
+            tqdm.tqdm.write(self.strLine)
+            tqdm.tqdm.write(self.firstLine)
+            tqdm.tqdm.write(self.strLine)
+
+            # Scan machine list
             machineList = self.scanJob_machine(args.machineNameList, userName=args.userName, scanLevel=2)
-            for machine in machineList:
-                if machine.nJob:
-                    print(f'{machine:job}')
-                    print(strLine)
+
+            # Print result
+            tqdm.tqdm.write(f'\n{self.strLine}\n'.join(f'{machine:job}'
+                            for machine in machineList
+                            if machine.nJob))
+            tqdm.tqdm.write(self.strLine)
             return None
 
         # When machine list is not specified
-        if args.groupNameList:
-            groupList = [self.findGroupFromName(groupName) for groupName in args.groupNameList]
-        else:
-            groupList = list(self.groupDict.values())
+        groupList = (list(self.groupDict.values())
+                     if args.groupNameList is None
+                     else [self.findGroupFromName(groupName) for groupName in args.groupNameList])
+        for group in groupList:
+            group.strLine = self.strLine
 
-        # Start print
-        barWidth = None if args.silent else min(len(firstLine), default.terminalWidth)
-        self.scanJob(groupList, userName=args.userName, scanLevel=2, barWidth=barWidth)
-        if not args.silent:
-            print(strLine)
-        print(firstLine)
-        print(strLine)
+        # scan
+        self.barWidth = None if args.silent else min(len(self.firstLine), default.terminalWidth)
+        self.scanJob(groupList, userName=args.userName, scanLevel=2)
+
+        # First section
+        tqdm.tqdm.write(self.strLine)
+        tqdm.tqdm.write(self.firstLine)
+        tqdm.tqdm.write(self.strLine)
 
         # Print result
-        for group in groupList:
-            if group.nJob:
-                group.strLine = strLine
-                print(f'{group:job}')
+        tqdm.tqdm.write('\n'.join(f'{group:job}'
+                                  for group in groupList
+                                  if group.nJob))
 
         # Print summary
-        for group in groupList:
-            print(SPG.groupJobInfoFormat.format(group.name, str(group.nJob)))
-        print(strLine)
+        tqdm.tqdm.write('\n'.join(SPG.groupJobInfoFormat.format(group.name, str(group.nJob))
+                                  for group in groupList))
+        tqdm.tqdm.write(self.strLine)
         return None
 
     def user(self, args: argparse.Namespace) -> None:
         """
             Print job count of users per machine group
         """
-        if args.groupNameList:
-            groupList = [self.findGroupFromName(groupName) for groupName in args.groupNameList]
-        else:
-            groupList = list(self.groupDict.values())
+        # List of machine group
+        groupList = (list(self.groupDict.values())
+                     if args.groupNameList is None
+                     else [self.findGroupFromName(groupName) for groupName in args.groupNameList])
 
         lineformat = '| {:<15} | {:>8} |' + '{:>8} |' * len(groupList)
-        firstLine = lineformat.format('User', 'total', *tuple(group.name for group in groupList))
-        strLine = self.getStrLine(len(firstLine))
+        self.firstLine = lineformat.format('User', 'total', *tuple(group.name for group in groupList))
+        self.strLine = self.getStrLine(len(self.firstLine))
 
         # Scanning
-        print(strLine)
-        barWidth = None if args.silent else min(len(firstLine), default.terminalWidth)
-        self.scanJob(groupList, userName=None, scanLevel=2, barWidth=barWidth)
-        if not args.silent:
-            print(strLine)
+        self.barWidth = None if args.silent else min(len(self.firstLine), default.terminalWidth)
+        self.scanJob(groupList, userName=None, scanLevel=2)
 
         # Get user count
         totalUserCount = Counter()      # Total number of jobs per user
@@ -278,18 +326,22 @@ class SPG:
             groupUserCountDict[group.name] = groupUserCount
             totalUserCount.update(groupUserCount)
 
+        # First section
+        tqdm.tqdm.write(self.strLine)
+        tqdm.tqdm.write(self.firstLine)
+        tqdm.tqdm.write(self.strLine)
+
         # Print result per user
-        print(firstLine)
-        print(strLine)
         for user, totCount in totalUserCount.items():
-            print(lineformat.format(user, totCount,
-                                    *tuple(groupUserCountDict[group.name].get(user, 0) for group in groupList)))
-        print(strLine)
+            tqdm.tqdm.write(lineformat.format(user, totCount,
+                                              *tuple(groupUserCountDict[group.name].get(user, 0)
+                                                     for group in groupList)))
+        tqdm.tqdm.write(self.strLine)
 
         # Print summary
-        print(lineformat.format('total', sum(totalUserCount.values()),
-                                *tuple(group.nJob for group in groupList)))
-        print(strLine)
+        tqdm.tqdm.write(lineformat.format('total', sum(totalUserCount.values()),
+                                          *tuple(group.nJob for group in groupList)))
+        tqdm.tqdm.write(self.strLine)
 
         return None
 
@@ -320,14 +372,11 @@ class SPG:
         cmdQueue = deque(cmdQueue)
         cmdNumBefore = len(cmdQueue)
 
-
         # Scanning
+        self.barWidth = None if args.silent else min(self.barWidth, default.terminalWidth)
+        self.scanJob([group], userName=None, scanLevel=2)
         if not args.silent:
-            print(self.defaultStrLine)
-        barWidth = None if args.silent else min(self.defaultWidth, default.terminalWidth)
-        self.scanJob([group], userName=None, scanLevel=2, barWidth=barWidth)
-        if not args.silent:
-            print(self.defaultStrLine)
+            tqdm.tqdm.write(self.strLine)
 
         # Run jobs
         cmdQueue = group.runs(default.path, cmdQueue, maxCalls, args.startEnd)
@@ -362,12 +411,10 @@ class SPG:
             groupList = list(self.groupDict.values())
 
         # Scanning
+        self.barWidth = None if args.silent else min(self.barWidth, default.terminalWidth)
+        self.scanJob(groupList, args.userName, scanLevel=1)
         if not args.silent:
-            print(self.defaultStrLine)
-        barWidth = None if args.silent else min(self.defaultWidth, default.terminalWidth)
-        self.scanJob(groupList, args.userName, scanLevel=1, barWidth=barWidth)
-        if not args.silent:
-            print(self.defaultStrLine)
+            tqdm.tqdm.write(self.strLine)
 
         # Kill jobs
         threadList = [Thread(target=group.KILL, args=(args,)) for group in groupList]
@@ -382,6 +429,62 @@ class SPG:
             nKill += group.nKill
         messageHandler.success(f'\nKilled {nKill} jobs')
         return None
+
+
+# class PrintHandler:
+#     """
+#         Main printer of SPG
+#     """
+
+#     def __init__(self) -> None:
+#         self.print = tqdm.write                         # Function to print
+
+#         self.barWidth = 40,                             # Default width of tqdm bar
+#         self.strLine = self.getStrLine(self.barWidth)   # Default string line decorator
+#         self.columnLine = ''                            # Default line with column name
+
+#     @staticmethod
+#     def getStrLine(width: int) -> str:
+#         return '+' + '=' * (width - 1)
+
+#     def __setattr__(self, name: str, value: Any) -> None:
+#         super().__setattr__(name, value)
+
+#         # When column line is given, automatically update string line decorator
+#         if name == 'columnLine':
+#             self.strLine = self.getStrLine(len(value))
+
+#     def printFirstSection(self) -> None:
+#         """
+#             Print first section of SPG
+#             +===========
+#             column name
+#             +===========
+#         """
+#         self.print('\n'.join([self.strLine, self.columnLine, self.strLine]))
+#         return None
+
+#     def list_machine(self, machineList: list[Machine]) -> None:
+#         """
+#             Print for spg list, specifying machine
+#         """
+#         self.print('\n'.join(f'{machine}' for machine in machineList))
+#         self.print(self.strLine)
+
+#     def list_group(self, groupList: list[Group]) -> None:
+#         """
+#             Print for spg list, specifying group
+#         """
+#         # Print main part
+#         self.print(f'\n{self.strLine}\n'.join(f'{group}' for group in groupList))
+
+#         # Summary
+#         self.print(self.strLine)
+#         self.print('\n'.join(SPG.groupInfoFormat.format(group.name,
+#                                                         str(group.nMachine),
+#                                                         str(group.nUnit))
+#                              for group in groupList))
+#         self.print(self.strLine)
 
 
 def main():

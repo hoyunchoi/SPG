@@ -34,16 +34,16 @@ class Commands():
         # When user name is none, get every process belongs to user registered in group 'users'
         if userName is None:
             userName = '$(getent group users | cut -d: -f4)'
-        return  f'ps H --user {userName} --no-headers \
-                   --format ruser:15,stat,pid,sid,pcpu,pmem,rss:10,time:15,start_time,args'
+        return (f'ps H --user {userName} --no-headers '
+                '--format ruser:15,stat,pid,sid,pcpu,pmem,rss:10,time:15,start_time,args')
 
     @staticmethod
     def getPSFromPIDCmd(pid: str) -> str:
         """
             Same as getPSCmd but specified by pid
         """
-        return  f'ps H -q {pid} --no-headers \
-                 --format ruser:15,stat,pid,sid,pcpu,pmem,rss:10,time:15,start_time,args'
+        return (f'ps H - q {pid} - -no - headers '
+                '--format ruser: 15, stat, pid, sid, pcpu, pmem, rss: 10, time: 15, start_time, args')
 
     @staticmethod
     def getPPIDCmd(pid: str) -> str:
@@ -76,7 +76,7 @@ class Commands():
         return 'nvidia-smi --query-gpu=memory.free --format=csv,noheader,nounits'
 
     @staticmethod
-    def getRunCmd(path:str, command:str) -> str:
+    def getRunCmd(path: str, command: str) -> str:
         """
             Return run command at input path
         """
@@ -99,7 +99,9 @@ class Commands():
                 m - memory
             Return format: gpuIdx pid gpuPercent vramPercent varmUse
         """
-        return f'nvidia-smi pmon -c 1 -s um ' + '| tail -n +3 | awk \'{print \$1,\$2,\$4,\$5,\$8}\''
+        return (f'nvidia-smi pmon -c 1 -s um '
+                '| tail -n +3 | awk \'{print \$1,\$2,\$4,\$5,\$8}\'')
+
 
 if __name__ == "__main__":
     print(Commands.getNSProcessCmd(1))

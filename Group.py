@@ -1,3 +1,4 @@
+import sys
 import tqdm
 import argparse
 from typing import Callable
@@ -83,10 +84,11 @@ class Group:
                 # Define progressbar and related variables
                 self.scanningMachineSet = set(machineName for machineName in self.machineDict)
                 self.bar = tqdm.tqdm(total=self.nMachine,
-                                    bar_format='{desc}{bar}|{percentage:3.1f}%|',
-                                    ascii=True,
-                                    ncols=self.barWidth,
-                                    miniters=1)
+                                     bar_format='{desc}{bar}|{percentage:3.1f}%|',
+                                     ascii=True,
+                                     ncols=self.barWidth,
+                                     file=sys.stdout,
+                                     miniters=1)
 
             # Main function
             func(self, *args, **kwargs)

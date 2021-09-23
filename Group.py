@@ -1,8 +1,8 @@
 import sys
 import tqdm
 import argparse
-from typing import Callable
 from threading import Thread
+from typing import Callable, Any
 from collections import deque, Counter
 
 from Machine import Machine, CPUMachine, GPUMachine
@@ -44,20 +44,42 @@ class Group:
         # KILL
         self.nKill: int = 0                         # Number of killed jobs
 
-        # Read group file
-        file = open(groupFile, "r")
-        informationList = file.readlines()
-        file.close()
+        self.readGroupFile(groupFile)
+        self.updateSummary()
+
+    def readGroupFile(self, groupFile:str) -> None:
+        """
+            Read group file and store machine information to machineDict
+        """
+        with open(groupFile, 'r') as file:
+            informationList = file.readlines()
 
         # Initialize list of machines. First 4 lines are comments
         for information in informationList[4:]:
             machine = GPUMachine(information) if self.name == 'kuda' else CPUMachine(information)
             if machine.use:
                 self.machineDict[machine.name] = machine
-        self.nUnit += sum(machine.nUnit for machine in self.machineDict.values())
+        return None
+
+    def updateSummary(self) -> None:
+        """
+            Update summary information of group
+            number of computing unit
+            number of machines
+        """
         self.nMachine = len(self.machineDict)
+        self.nUnit = sum(machine.nUnit for machine in self.machineDict.values())
 
     ###################################### Basic Utility ######################################
+    def __setattr__(self, name: str, value: Any) -> None:
+        """
+            Set attribute of group member
+            when machine dictionary is updated, automatically update summary information too
+        """
+        super().__setattr__(name, value)
+        if name == "machineDict":
+            self.updateSummary()
+
     def updateBar(self, machineName: str) -> None:
         """
             update the state of bar
@@ -143,7 +165,7 @@ class Group:
             When 'free' is given, return free information of machine
         """
         if format_spec == 'job':
-            return '\n'.join(f'{machine:job}' + '\n' + self.strLine for machine in self.busyMachineList)
+            return '\n'.join(f'{machine:job}\n{self.strLine}' for machine in self.busyMachineList)
         elif format_spec == 'free':
             return '\n'.join(f'{machine:free}' for machine in self.freeMachineList)
         else:

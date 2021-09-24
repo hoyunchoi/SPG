@@ -2,7 +2,8 @@ import argparse
 from typing import Union
 from abc import ABC, abstractmethod
 
-from Handler import messageHandler
+from IO import Printer, messageHandler
+
 
 class Job(ABC):
     # I know global variable is not optimal...
@@ -11,9 +12,8 @@ class Job(ABC):
         Abstract class for storing job informations
         CPUJob/GPUJob will be inherited from this class
     """
-    infoFormat: str = '| {:<10} | {:<15} | {:<3} | {:>7} | {:>6} | {:>6} | {:>7} | {:>11} | {:>5} | {}'
 
-    def __init__(self, machineName: str, info:str, *args) -> None:
+    def __init__(self, machineName: str, info: str, *args) -> None:
         """
             Args
                 machineName: Name of machine where this job is running
@@ -151,6 +151,7 @@ class Job(ABC):
         # Every options are considered. When passed, the job should be killed
         return True
 
+
 class CPUJob(Job):
     def initialize(self, *args) -> None:
         self.cpuPercent = self.info[4]                              # Single core utilization percentage
@@ -158,8 +159,8 @@ class CPUJob(Job):
         self.ramUse = self.getMemWithUnit(self.info[6], 'KB')       # Absolute value of memory utilization
 
     def __format__(self, format_spec: str) -> str:
-        return Job.infoFormat.format(self.machineName, self.userName, self.state, self.pid, self.cpuPercent,
-                                     self.ramPercent, self.ramUse, self.time, self.start, self.cmd)
+        return Printer.jobInfoFormat.format(self.machineName, self.userName, self.state, self.pid, self.cpuPercent,
+                                            self.ramPercent, self.ramUse, self.time, self.start, self.cmd)
 
 
 class GPUJob(Job):
@@ -172,10 +173,9 @@ class GPUJob(Job):
         self.vramUse = self.getMemWithUnit(vramUse, 'MB')
 
     def __format__(self, format_spec: str) -> str:
-        return GPUJob.infoFormat.format(self.machineName, self.userName, self.state, self.pid, self.gpuPercent,
-                                        self.vramPercent, self.vramUse, self.time, self.start, self.cmd)
+        return Printer.jobInfoFormat.format(self.machineName, self.userName, self.state, self.pid, self.gpuPercent,
+                                            self.vramPercent, self.vramUse, self.time, self.start, self.cmd)
 
 
 if __name__ == "__main__":
     print("This is moudel 'Job' from SPG")
-

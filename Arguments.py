@@ -2,7 +2,7 @@ import argparse
 import textwrap # Import for documentation
 
 from Default import default, Default
-from Handler import messageHandler, InputHandler
+from IO import messageHandler, InputHandler
 
 
 class Arguments:
@@ -291,7 +291,6 @@ class Arguments:
         document = textwrap.dedent('''\
                                    spg machine (-g group list) (-m machine list)
                                    When group/machine are both given, group is ignored
-                                   When machine is specified, there is no group summary
                                    ''')
         parser_list = self.optionParser.add_parser('list',
                                                    help='Print information of machines registered in SPG',
@@ -310,7 +309,6 @@ class Arguments:
         document = textwrap.dedent('''\
                                    spg free (-g group list) (-m machine list)
                                    When group/machine are both given, group is ignored
-                                   When machine is specified, there is no group summary
                                    ''')
         parser_free = self.optionParser.add_parser('free',
                                                    help='Print free informations of available machines',
@@ -330,7 +328,7 @@ class Arguments:
         document = textwrap.dedent('''\
                                    spg job (-a) (-g group list) (-m machine list) (-u user name)
                                    When group/machine are both given, group is ignored
-                                   When all flag is set, user if ignored
+                                   When --all flag is set, --user option is ignored
                                    ''')
         parser_job = self.optionParser.add_parser('job',
                                                   help='print current status of jobs',

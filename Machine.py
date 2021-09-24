@@ -6,10 +6,9 @@ from typing import Optional
 from abc import ABC, abstractmethod
 
 from Default import default
-from Handler import messageHandler, runKillLogger
+from IO import Printer, messageHandler, runKillLogger
 from Commands import Commands
 from Job import CPUJob, GPUJob, Job
-
 
 class Machine(ABC):
     # I know global variable is not optimal...
@@ -19,9 +18,6 @@ class Machine(ABC):
         Abstract class for storing machine informations
         CPUMachine/GPUMachine will be inherited from this class
     """
-    infoFormat: str = '| {:<10} | {:<11} | {:>10} | {:>5}'
-    freeInfoFormat: str = '| {:<10} | {:<11} | {:>10} | {:>10}'
-
     def __init__(self, info: str) -> None:
         """
             Args
@@ -216,9 +212,9 @@ class CPUMachine(Machine):
         if format_spec.lower() == 'job':
             return '\n'.join(f'{job}' for job in self.jobDict.values())
         elif format_spec.lower() == 'free':
-            return Machine.freeInfoFormat.format(self.name, self.computeUnit, f'{self.nFreeUnit} cores', f'{self.freeMem} free')
+            return Printer.machineFreeInfoFormat.format(self.name, self.computeUnit, f'{self.nFreeUnit} cores', f'{self.freeMem} free')
         else:
-            return Machine.infoFormat.format(self.name, self.computeUnit, f'{self.nUnit} cores', self.mem)
+            return Printer.machineInfoFormat.format(self.name, self.computeUnit, f'{self.nUnit} cores', self.mem)
 
     def _getFreeMem(self) -> str:
         result = subprocess.run(f'{self.cmdSSH} \"{Commands.getFreeRAMCmd()}\"',
@@ -255,9 +251,9 @@ class GPUMachine(Machine):
         if format_spec.lower() == 'job':
             return '\n'.join(f'{job}' for job in self.jobDict.values())
         elif format_spec.lower() == 'free':
-            return Machine.freeInfoFormat.format(self.name, self.computeUnit, f'{self.nFreeUnit} GPUs ', f'{self.freeMem} free')
+            return Printer.machineFreeInfoFormat.format(self.name, self.computeUnit, f'{self.nFreeUnit} GPUs ', f'{self.freeMem} free')
         else:
-            return Machine.infoFormat.format(self.name, self.computeUnit, f'{self.nUnit} GPUs ', self.mem)
+            return Printer.machineInfoFormat.format(self.name, self.computeUnit, f'{self.nUnit} GPUs ', self.mem)
 
     def _getFreeMem(self) -> str:
         # When one or more gpu is free, print it's memory

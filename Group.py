@@ -1,15 +1,20 @@
-import sys
-import tqdm
 import argparse
 from threading import Thread
 from typing import Callable, Any
 from collections import deque, Counter
 
 from Machine import Machine, CPUMachine, GPUMachine
+from IO import printer
 
 
 class Group:
-    """ Save the information of each machine group """
+    # I know global variable is not optimal...
+    global printer
+    """
+        Save the information of group of machines
+        By default, machine group is defined by group file
+        When SPG got specific machine list, machines will be changed
+    """
 
     def __init__(self, groupName: str, groupFile: str) -> None:
         """
@@ -35,19 +40,23 @@ class Group:
         self.busyMachineList: list[Machine] = []    # List of machines running one or more jobs
         self.nJob: int = 0                          # Number of running jobs
 
-        # Print option
-        self.bar: tqdm.tqdm = None
-        self.barWidth: int = None                   # Width of bar. If none, don't user bar
-        self.scanningMachineSet: set[str] = set()   # Set of machine names who are still scanning
-        self.strLine: str = None                    # String line to be printed
-
         # KILL
         self.nKill: int = 0                         # Number of killed jobs
 
+        # Initialize group and corresponding machines
         self.readGroupFile(groupFile)
         self.updateSummary()
 
-    def readGroupFile(self, groupFile:str) -> None:
+    def __setattr__(self, name: str, value: Any) -> None:
+        """
+            Set attribute of group member
+            when machine dictionary is updated, automatically update summary information too
+        """
+        super().__setattr__(name, value)
+        if name == "machineDict":
+            self.updateSummary()
+
+    def readGroupFile(self, groupFile: str) -> None:
         """
             Read group file and store machine information to machineDict
         """
@@ -70,61 +79,28 @@ class Group:
         self.nMachine = len(self.machineDict)
         self.nUnit = sum(machine.nUnit for machine in self.machineDict.values())
 
-    ###################################### Basic Utility ######################################
-    def __setattr__(self, name: str, value: Any) -> None:
+    ########################## Get Line Format Information for Print ##########################
+    def __format__(self, format_spec: str) -> str:
         """
-            Set attribute of group member
-            when machine dictionary is updated, automatically update summary information too
+            Return machine information in line format
+            Args
+                format_spec: which information to return
+                    - job: return formatted job information
+                    - free: return formatted free information
+                    - None: return formatted group information
+            When 'free' is given, return free information of machine
         """
-        super().__setattr__(name, value)
-        if name == "machineDict":
-            self.updateSummary()
-
-    def updateBar(self, machineName: str) -> None:
-        """
-            update the state of bar
-        """
-        self.scanningMachineSet.remove(machineName)
-        self.bar.update(1)
-
-        # Print any remaining machine name in scanningMachineSet
-        try:
-            self.bar.set_description_str(desc=f'|Scanning {next(iter(self.scanningMachineSet))}|')
-        # When nothing remains at scanningMachineSet, scanning is finished
-        except StopIteration:
-            self.bar.set_description_str(desc='|Scanning finished|')
-
-    def progressBar(func: Callable) -> Callable:
-        """
-            Define progressbar with tqdm before function
-            Finish and close progressbar with tqdm after function
-            If self.barWidth is not defined, skip the bar
-        """
-
-        def decorator(self, *args, **kwargs) -> None:
-            if self.barWidth is not None:
-                # Define progressbar and related variables
-                self.scanningMachineSet = set(machineName for machineName in self.machineDict)
-                self.bar = tqdm.tqdm(total=self.nMachine,
-                                     bar_format='{desc}{bar}|{percentage:3.1f}%|',
-                                     ascii=True,
-                                     ncols=self.barWidth,
-                                     file=sys.stdout,
-                                     miniters=1)
-
-            # Main function
-            func(self, *args, **kwargs)
-
-            # Close progressbar
-            if self.barWidth is not None:
-                self.bar.close()
-        return decorator
+        if format_spec == 'job':
+            return '\n'.join(f'{machine:job}\n{printer.strLine}' for machine in self.busyMachineList)
+        elif format_spec == 'free':
+            return '\n'.join(f'{machine:free}' for machine in self.freeMachineList)
+        else:
+            return '\n'.join(f'{machine}' for machine in self.machineDict.values())
 
     ############################ Get Information of Group Instance ############################
     def getJobInfo(self) -> tuple[int, list[Machine]]:
         """
             Get running job informations
-            CAUTION! You should scan first
             Return
                 nJob: number of running jobs
                 busyMachineList: list of machines who is running one or more jobs
@@ -153,25 +129,25 @@ class Group:
             userCount.update(machine.getUserCount())
         return userCount
 
-    ########################## Get Line Format Information for Print ##########################
-    def __format__(self, format_spec: str) -> str:
-        """
-            Return machine information in line format
-            Args
-                format_spec: which information to return
-                    - job: return formatted job information
-                    - free: return formatted free information
-                    - None: return formatted group information
-            When 'free' is given, return free information of machine
-        """
-        if format_spec == 'job':
-            return '\n'.join(f'{machine:job}\n{self.strLine}' for machine in self.busyMachineList)
-        elif format_spec == 'free':
-            return '\n'.join(f'{machine:free}' for machine in self.freeMachineList)
-        else:
-            return '\n'.join(f'{machine}' for machine in self.machineDict.values())
 
     ############################## Scan Job Information and Save ##############################
+    def progressBar(func: Callable) -> Callable:
+        """
+            Define progressbar before function
+            Finish and close progressbar with tqdm after function
+            If self.barWidth is not defined, skip the bar
+        """
+
+        def decorator(self, *args, **kwargs) -> None:
+            printer.addTQDM(self.name, set(self.machineDict))
+
+            # Main function
+            func(self, *args, **kwargs)
+
+            # Close progressbar
+            printer.closeTQDM(self.name)
+        return decorator
+
     @progressBar
     def scanJob(self, userName: str, scanLevel: int) -> None:
         """
@@ -186,10 +162,10 @@ class Group:
         def scanJob_updateBar(machine: Machine):
             """ Scan job and update bar """
             machine.scanJob(userName, scanLevel)
-            self.updateBar(machine.name)
+            printer.updateTQDM(self.name, machine.name)
 
         # Scan job without updating bar
-        if self.barWidth is None:
+        if printer.barWidth is None:
             threadList = [Thread(target=machine.scanJob, args=(userName, scanLevel))
                           for machine in self.machineDict.values()]
         # Scan job with updating bar
@@ -214,7 +190,6 @@ class Group:
              startEnd: tuple[int] = None) -> deque[str]:
         """
             Run jobs in cmdQueue
-            CAUTION! You should scan first
             Return
                 cmdQueue: Remaining commands after run
         """
@@ -248,9 +223,7 @@ class Group:
             thread.join()
 
         # Summarize the kill result
-        self.nKill = 0
-        for machine in self.busyMachineList:
-            self.nKill += machine.nKill
+        self.nKill = sum(machine.nKill for machine in self.busyMachineList)
         return None
 
 

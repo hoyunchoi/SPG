@@ -3,7 +3,7 @@
         "use": "True",
         "name": "xenet9",
         "cpu": "6258Rx2",
-        "nCpu": "56",
+        "num_cpu": "56",
         "ram": "256G",
         "comment": ""
     }

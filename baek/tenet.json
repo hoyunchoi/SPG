@@ -3,7 +3,7 @@
         "use": "True",
         "name": "tenet1",
         "cpu": "Q9550",
-        "nCpu": "4",
+        "num_cpu": "4",
         "ram": "8G",
         "comment": ""
     },
@@ -11,7 +11,7 @@
         "use": "True",
         "name": "tenet2",
         "cpu": "Q9550",
-        "nCpu": "4",
+        "num_cpu": "4",
         "ram": "8G",
         "comment": ""
     },
@@ -19,7 +19,7 @@
         "use": "True",
         "name": "tenet3",
         "cpu": "Q9550",
-        "nCpu": "4",
+        "num_cpu": "4",
         "ram": "8G",
         "comment": ""
     },
@@ -27,7 +27,7 @@
         "use": "True",
         "name": "tenet4",
         "cpu": "Q9550",
-        "nCpu": "4",
+        "num_cpu": "4",
         "ram": "8G",
         "comment": ""
     },
@@ -35,7 +35,7 @@
         "use": "False",
         "name": "tenet5",
         "cpu": "Q9550",
-        "nCpu": "4",
+        "num_cpu": "4",
         "ram": "8G",
         "comment": ""
     },
@@ -43,7 +43,7 @@
         "use": "False",
         "name": "tenet6",
         "cpu": "Q9550",
-        "nCpu": "4",
+        "num_cpu": "4",
         "ram": "8G",
         "comment": ""
     },
@@ -51,7 +51,7 @@
         "use": "False",
         "name": "tenet7",
         "cpu": "Q9550",
-        "nCpu": "4",
+        "num_cpu": "4",
         "ram": "8G",
         "comment": ""
     },
@@ -59,7 +59,7 @@
         "use": "False",
         "name": "tenet8",
         "cpu": "Q9550",
-        "nCpu": "4",
+        "num_cpu": "4",
         "ram": "8G",
         "comment": ""
     },
@@ -67,7 +67,7 @@
         "use": "True",
         "name": "tenet9",
         "cpu": "Q9550",
-        "nCpu": "4",
+        "num_cpu": "4",
         "ram": "8G",
         "comment": ""
     },
@@ -75,7 +75,7 @@
         "use": "False",
         "name": "tenet10",
         "cpu": "Q9550",
-        "nCpu": "4",
+        "num_cpu": "4",
         "ram": "8G",
         "comment": ""
     },
@@ -83,7 +83,7 @@
         "use": "False",
         "name": "tenet11",
         "cpu": "Q9550",
-        "nCpu": "4",
+        "num_cpu": "4",
         "ram": "8G",
         "comment": ""
     },
@@ -91,7 +91,7 @@
         "use": "True",
         "name": "tenet12",
         "cpu": "Q9550",
-        "nCpu": "4",
+        "num_cpu": "4",
         "ram": "8G",
         "comment": ""
     },
@@ -99,7 +99,7 @@
         "use": "True",
         "name": "tenet13",
         "cpu": "Q9550",
-        "nCpu": "4",
+        "num_cpu": "4",
         "ram": "8G",
         "comment": ""
     },
@@ -107,7 +107,7 @@
         "use": "True",
         "name": "tenet14",
         "cpu": "Q9550",
-        "nCpu": "4",
+        "num_cpu": "4",
         "ram": "8G",
         "comment": ""
     },
@@ -115,7 +115,7 @@
         "use": "True",
         "name": "tenet15",
         "cpu": "Q9550",
-        "nCpu": "4",
+        "num_cpu": "4",
         "ram": "8G",
         "comment": ""
     }

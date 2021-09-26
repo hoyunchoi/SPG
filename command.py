@@ -1,11 +1,14 @@
 from typing import Optional
 
-class Commands():
+from default import default
+
+class Command:
     """
         Store commands
+        Every methods are static
     """
     @staticmethod
-    def getSSHCmd(machineName: str) -> str:
+    def get_ssh_cmd(machineName: str) -> str:
         """
             StrictHostKeyChecking: ssh without checking host key(fingerprint) at known_hosts
             ConnectTimeout: Timeout in seconds for connecting ssh
@@ -14,7 +17,7 @@ class Commands():
         return f'ssh -o StrictHostKeyChecking=no -o ConnectTimeout=4 {machineName} -o UpdateHostKeys=no'
 
     @staticmethod
-    def getPSCmd(userName: Optional[str]) -> str:
+    def get_ps_cmd(userName: Optional[str]) -> str:
         """
             H: Show threads as if they were processes
             --no-headers: Do not print header
@@ -38,15 +41,15 @@ class Commands():
                 '--format ruser:15,stat,pid,sid,pcpu,pmem,rss:10,time:15,start_time,args')
 
     @staticmethod
-    def getPSFromPIDCmd(pid: str) -> str:
+    def get_ps_from_pid_cmd(pid: str) -> str:
         """
-            Same as getPSCmd but specified by pid
+            Same as get_ps_cmd but specified by pid
         """
         return (f'ps H - q {pid} - -no - headers '
                 '--format ruser: 15, stat, pid, sid, pcpu, pmem, rss: 10, time: 15, start_time, args')
 
     @staticmethod
-    def getPPIDCmd(pid: str) -> str:
+    def get_ppid_cmd(pid: str) -> str:
         """
             Return ppid of input pid
             -q: search by pid
@@ -55,7 +58,7 @@ class Commands():
         return f'ps -q {pid} --no-headers --format ppid'
 
     @staticmethod
-    def getFreeRAMCmd() -> str:
+    def get_free_ram_cmd() -> str:
         """
             -h: Show output fieds in human-readable unit
             --si: Use unit of kilo, mega, giga byte instead of kibi, mebi, gibi byte
@@ -64,7 +67,7 @@ class Commands():
         return 'free -h --si | awk \'(NR==2){print \$7}\''
 
     @staticmethod
-    def getFreeVRAMCmd() -> str:
+    def get_free_vram_cmd() -> str:
         """
             --query-gpu: Show information related to gpu
                         memory.free - free vram in MiB unit
@@ -76,21 +79,21 @@ class Commands():
         return 'nvidia-smi --query-gpu=memory.free --format=csv,noheader,nounits'
 
     @staticmethod
-    def getRunCmd(path: str, command: str) -> str:
+    def get_run_cmd(command: str) -> str:
         """
             Return run command at input path
         """
-        return f'cd {path}; {command}'
+        return f'cd {default.path}; {command}'
 
     @staticmethod
-    def getKillCmd(pid: str) -> str:
+    def get_kill_cmd(pid: str) -> str:
         """
             Return kill command of input pid
         """
         return f'kill -9 {pid}'
 
     @staticmethod
-    def getNSProcessCmd() -> str:
+    def get_ns_process_cmd() -> str:
         """
             pmon: process monitor mode
             -c: sampling count
@@ -104,4 +107,4 @@ class Commands():
 
 
 if __name__ == "__main__":
-    print(Commands.getNSProcessCmd(1))
+    print('This is module "Commands" from SPG')

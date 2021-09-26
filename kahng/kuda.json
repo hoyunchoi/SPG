@@ -1,0 +1,46 @@
+{
+    "kuda1": {
+        "use": "True",
+        "name": "kuda1",
+        "cpu": "E5-2680v4x2",
+        "nCpu": "28",
+        "ram": "128G",
+        "gpu": "GTX-1080",
+        "nGpu": "4",
+        "vram": "8G",
+        "comment": ""
+    },
+    "kuda2": {
+        "use": "True",
+        "name": "kuda2",
+        "cpu": "E5-2683v4x2",
+        "nCpu": "32",
+        "ram": "256G",
+        "gpu": "RTX-2080Ti",
+        "nGpu": "4",
+        "vram": "11G",
+        "comment": "-32G RAM(2021.08.19)"
+    },
+    "kuda3": {
+        "use": "True",
+        "name": "kuda3",
+        "cpu": "i9-10920X",
+        "nCpu": "12",
+        "ram": "128G",
+        "gpu": "RTX-2080Ti",
+        "nGpu": "4",
+        "vram": "11G",
+        "comment": ""
+    },
+    "kuda4": {
+        "use": "True",
+        "name": "kuda4",
+        "cpu": "i9-10920X",
+        "nCpu": "12",
+        "ram": "128G",
+        "gpu": "RTX-2080Ti",
+        "nGpu": "4",
+        "vram": "11G",
+        "comment": ""
+    }
+}

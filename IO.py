@@ -73,9 +73,10 @@ class tqdmSPG:
 class Printer:
     """ Defaults format """
     jobInfoFormat: str = '| {:<10} | {:<15} | {:<3} | {:>7} | {:>6} | {:>6} | {:>7} | {:>11} | {:>5} | {}'
-    machineInfoFormat: str = '| {:<10} | {:<11} | {:>10} | {:>5}'
-    machineFreeInfoFormat: str = '| {:<10} | {:<11} | {:>10} | {:>10}'
-    groupInfoFormat: str = '| {:<10} | total {:>4} machines & {:>4} units'
+    machineInfoFormat: str = '| {:<10} | {:<11} | {:>4} {:<4} | {:>5}'
+    machineFreeInfoFormat: str = '| {:<10} | {:<11} | {:>4} {:<4} | {:>10}'
+    groupInfoFormat: str = '| {:<10} | total {:>4} machines & {:>4} core'
+    groupGPUInfoFormat: str = '| {:<10} | {:>26} gpus'
     groupJobInfoFormat: str = '| {:<10} | total {:>4} jobs'
 
     """
@@ -101,17 +102,11 @@ class Printer:
             Initialize printer object
         """
         if args.option == 'list':
-            self.lineFormat = Printer.machineInfoFormat
-            self.summaryFormat = Printer.groupInfoFormat
-            self.columnLine = self.lineFormat.format('Machine', 'ComputeUnit', 'tot units', 'mem')
+            self.columnLine = self.machineInfoFormat.format('Machine', 'ComputeUnit', 'tot', 'unit', 'mem')
         elif args.option == 'free':
-            self.lineFormat = Printer.machineFreeInfoFormat
-            self.summaryFormat = Printer.groupInfoFormat
-            self.columnLine = self.lineFormat.format('Machine', 'ComputeUnit', 'free units', 'free mem')
+            self.columnLine = self.machineFreeInfoFormat.format('Machine', 'ComputeUnit', 'free', 'unit', 'free mem')
         elif args.option == 'job':
-            self.lineFormat = Printer.jobInfoFormat
-            self.summaryFormat = Printer.groupJobInfoFormat
-            self.columnLine = self.lineFormat.format('Machine', 'User', 'ST', 'PID', 'CPU(%)', 'MEM(%)', 'Memory', 'Time', 'Start', 'Command')
+            self.columnLine = self.jobInfoFormat.format('Machine', 'User', 'ST', 'PID', 'CPU(%)', 'MEM(%)', 'Memory', 'Time', 'Start', 'Command')
         elif args.option == 'user':
             # Group name list is not specified. Take every groups
             if args.groupNameList is None:
@@ -253,7 +248,7 @@ def getRunKillLogger() -> logging.Logger:
     return runKillLogger
 
 
-# Define instances
+##################################### Define instance #####################################
 printer = Printer()
 messageHandler = MessageHandler()
 runKillLogger = getRunKillLogger()

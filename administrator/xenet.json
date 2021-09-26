@@ -1,0 +1,74 @@
+{
+    "xenet1": {
+        "use": "True",
+        "name": "xenet1",
+        "cpu": "E5504x2",
+        "nCpu": "8",
+        "ram": "72G",
+        "comment": ""
+    },
+    "xenet2": {
+        "use": "True",
+        "name": "xenet2",
+        "cpu": "E7430x2",
+        "nCpu": "28",
+        "ram": "56G",
+        "comment": ""
+    },
+    "xenet3": {
+        "use": "True",
+        "name": "xenet3",
+        "cpu": "E5-2667x2",
+        "nCpu": "12",
+        "ram": "64G",
+        "comment": ""
+    },
+    "xenet4": {
+        "use": "True",
+        "name": "xenet4",
+        "cpu": "E5-2667x2",
+        "nCpu": "12",
+        "ram": "64G",
+        "comment": ""
+    },
+    "xenet5": {
+        "use": "True",
+        "name": "xenet5",
+        "cpu": "E5-2667x2",
+        "nCpu": "12",
+        "ram": "64G",
+        "comment": ""
+    },
+    "xenet6": {
+        "use": "True",
+        "name": "xenet6",
+        "cpu": "E5-2667x2",
+        "nCpu": "12",
+        "ram": "64G",
+        "comment": ""
+    },
+    "xenet7": {
+        "use": "True",
+        "name": "xenet7",
+        "cpu": "E5-2687Wx2",
+        "nCpu": "16",
+        "ram": "64G",
+        "comment": ""
+    },
+    "xenet8": {
+        "use": "True",
+        "name": "xenet8",
+        "cpu": "E7-4860v2x4",
+        "nCpu": "48",
+        "ram": "1.5T",
+        "comment": ""
+    },
+    "xenet9": {
+        "use": "True",
+        "name": "xenet9",
+        "cpu": "6258Rx2",
+        "nCpu": "56",
+        "ram": "256G",
+        "comment": ""
+    }
+}

@@ -6,9 +6,6 @@ from IO import messageHandler, InputHandler
 
 
 class Arguments:
-    # I know global variable is not optimal...
-    global default, messageHandler
-
     def __init__(self) -> None:
         # Generate base SPG parser
         self.SPGParser = argparse.ArgumentParser(prog='spg',

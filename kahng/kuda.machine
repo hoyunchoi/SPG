@@ -1,8 +1,0 @@
-#0.Use|#1.Name|#2.GPU|#3.nGPUs|#4.VRAM per GPU| # Status-Comment
-#========================================
-#      kuda machine information
-#========================================
-1|kuda1|GTX-1080|4|8G|
-1|kuda2|RTX-2080ti|4|11G|   # -32GB RAM(2021.08.19)
-1|kuda3|RTX-2080ti|4|11G|
-1|kuda4|RTX-2080ti|4|11G|

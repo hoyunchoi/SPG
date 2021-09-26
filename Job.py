@@ -6,8 +6,6 @@ from IO import Printer, messageHandler
 
 
 class Job(ABC):
-    # I know global variable is not optimal...
-    global messageHandler
     """
         Abstract class for storing job informations
         CPUJob/GPUJob will be inherited from this class
@@ -49,6 +47,10 @@ class Job(ABC):
     def __format__(self, format_spec: str) -> str:
         """
             Format of job using Job.format
+            Args
+                format_spec: which information to return
+                    - info: full information of job
+                    - otherwise: job pid
         """
         pass
 
@@ -159,8 +161,11 @@ class CPUJob(Job):
         self.ramUse = self.getMemWithUnit(self.info[6], 'KB')       # Absolute value of memory utilization
 
     def __format__(self, format_spec: str) -> str:
-        return Printer.jobInfoFormat.format(self.machineName, self.userName, self.state, self.pid, self.cpuPercent,
-                                            self.ramPercent, self.ramUse, self.time, self.start, self.cmd)
+        if format_spec == 'info':
+            return Printer.jobInfoFormat.format(self.machineName, self.userName, self.state, self.pid,
+                                                self.cpuPercent, self.ramPercent, self.ramUse, self.time,
+                                                self.start, self.cmd)
+        return self.pid
 
 
 class GPUJob(Job):
@@ -173,8 +178,12 @@ class GPUJob(Job):
         self.vramUse = self.getMemWithUnit(vramUse, 'MB')
 
     def __format__(self, format_spec: str) -> str:
-        return Printer.jobInfoFormat.format(self.machineName, self.userName, self.state, self.pid, self.gpuPercent,
-                                            self.vramPercent, self.vramUse, self.time, self.start, self.cmd)
+        if format_spec == 'info':
+
+            return Printer.jobInfoFormat.format(self.machineName, self.userName, self.state, self.pid,
+                                                self.gpuPercent, self.vramPercent, self.vramUse, self.time,
+                                                self.start, self.cmd)
+        return self.pid
 
 
 if __name__ == "__main__":

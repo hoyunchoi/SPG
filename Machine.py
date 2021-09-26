@@ -3,41 +3,42 @@ import argparse
 import subprocess
 from collections import Counter
 from typing import Optional
-from abc import ABC, abstractmethod
+from dataclasses import dataclass
 
 from Default import default
 from IO import Printer, messageHandler, runKillLogger
 from Commands import Commands
 from Job import CPUJob, GPUJob, Job
 
-class Machine(ABC):
-    # I know global variable is not optimal...
-    global default, messageHandler, runKillLogger
 
+@dataclass
+class Machine:
     """
         Abstract class for storing machine informations
         CPUMachine/GPUMachine will be inherited from this class
     """
-    def __init__(self, info: str) -> None:
-        """
-            Args
-                info: Information of machine. Should be following format
-                0.Use|#1.Name|#2.CPU/GPU|#3.nCore/nGPU|#4.Memory
-                Refer *.machine file in spg directory
-        """
-        self.info = info.strip().split('|')
+    use: bool                       # Whether to be used or not: 1 for use, 0 for not use
+    name: str                       # Name of machine. ex) tenet1
+    cpu: str                        # Name of cpu
+    nCpu: int                       # Number of cpu cores
+    ram: str                        # Size of RAM
+    comment: str                    # comment of machine. Not used
+    gpu: Optional[str] = ''         # Name of gpu (if exists)
+    nGpu: Optional[int] = 0         # Number of gpus (if exists)
+    vram: Optional[str] = ''        # Size of VRAM per each gpu (if exists)
 
-        self.use = bool(int(self.info[0]))      # Whether to be used or not: 1 for use, 0 for not use
-        self.name = self.info[1]                # Name of machine. ex) tenet1
-        self.computeUnit = self.info[2]         # Name of compute unit(CPU/GPU)
-        self.nUnit = int(self.info[3])          # Number of comput units(CPU/GPU)
-        self.mem = self.info[4]                 # Size of memory(RAM per machine, VRAM per GPU)
+    def __post_init__(self) -> None:
+        """
+            Post processing initialize
+        """
+        self.use = self.use.lower() in ['true', '1']
+        self.nCpu = int(self.nCpu)
 
         # Current job/free information
         self.jobDict: dict[str, Job] = {}       # Dictionary of running jobs with key of PID
         self.nJob: int = 0                      # Number of running jobs = len(jobList)
-        self.nFreeUnit: int = 0                 # Number of free units
-        self.freeMem: str = ''                  # Size of free memory
+        self.nFreeCpu: int = 0                  # Number of free cpu cores
+        self.freeRam: str = ''                  # Size of free memory
 
         # KILL
         self.nKill: int = 0                     # Number of killed jobs
@@ -47,18 +48,24 @@ class Machine(ABC):
         self.cmdSSH = Commands.getSSHCmd(self.name)
 
     ########################## Get Line Format Information for Print ##########################
-    @abstractmethod
     def __format__(self, format_spec: str) -> str:
         """
             Return machine information in line format
             Args
                 format_spec: which information to return
-                    - job: return formatted job information
-                    - free: return formatted free information
-                    - None: return formatted machine information
-            When 'free' is given, return free information of machine
+                    - info: machine information
+                    - free: machine free information
+                    - otherwise: machine name
         """
-        pass
+        if format_spec.lower() == 'info':
+            return Printer.machineInfoFormat.format(self.name, self.cpu, self.nCpu,
+                                                    'core', self.ram)
+
+        if format_spec.lower() == 'free':
+            return Printer.machineFreeInfoFormat.format(self.name, self.cpu, str(self.nFreeCpu),
+                                                        'core', f'{self.freeRam} free')
+
+        return self.name
 
     ###################################### Basic Utility ######################################
     def findCmdFromPID(self, pid: str) -> str:
@@ -70,13 +77,12 @@ class Machine(ABC):
                 command: command of the process
         """
         try:
-            job = self.jobDict[pid]
+            return self.jobDict[pid].cmd
+
         # Job with input pid is not registered
         except KeyError:
             messageHandler.error(f'ERROR: No such process in {self.name}: {pid}')
             exit()
-
-        return job.cmd
 
     @staticmethod
     def getGroupName(machineName: str) -> int:
@@ -95,7 +101,7 @@ class Machine(ABC):
         return int(re.sub('[^0-9]', '', machineName))
 
     ########################### Get Information of Machine Instance ###########################
-    def _getProcessList(self, getProcessCmd:str) -> Optional[list[str]]:
+    def _getProcessList(self, getProcessCmd: str) -> Optional[list[str]]:
         """
             Get list of processes
             When error occurs during SSH, return None
@@ -116,20 +122,22 @@ class Machine(ABC):
         # If there is no error return list of stdout
         return result.stdout.strip().split('\n')
 
-
-    @abstractmethod
-    def _getFreeMem(self) -> str:
+    def _getFreeRam(self) -> str:
         """
-            Return absolute value of free memory
+            Return absolute value of free RAM
         """
-        pass
+        result = subprocess.run(f'{self.cmdSSH} \"{Commands.getFreeRAMCmd()}\"',
+                                stdout=subprocess.PIPE,
+                                text=True,
+                                shell=True)
+        return result.stdout.strip()
 
-    @abstractmethod
     def scanJob(self, userName: str, scanLevel: int) -> None:
         """
             Scan the processes of input user.
             jobDict, nJob will be updated
-            when userName is None, nFreeUnit, freeMem will also be updated
+            when userName is None: free informations will also be updated
+            when machine is GPUMachine: nFreeGpu, freeVram will also be updated
             Args
                 userName: Refer getprocessList for more description
                 scanLevel: Refer 'Job.isImportant' for more description
@@ -137,7 +145,27 @@ class Machine(ABC):
             For CPU Machine, select important job from _getProcessList
             For GPU Machine, do thread job __scanGPU over GPUs
         """
-        pass
+        # Get list of raw process: Use ps command
+        processList: Optional[list[str]] = self._getProcessList(Commands.getPSCmd(userName))
+
+        # When error occurs, processList is None. Do nothing and return
+        if processList is None:
+            return None
+
+        # Save scanned job informations
+        for process in processList:
+            if process:
+                job = CPUJob(self.name, process)
+                if job.isImportant(scanLevel):
+                    self.jobDict[job.pid] = job
+        self.nJob = len(self.jobDict)
+
+        # If user name is None, update free informations too
+        if userName is None:
+            self.nFreeCpu = max(0, self.nCpu - self.nJob)
+            self.freeRam = self._getFreeRam()
+
+        return None
 
     def getUserCount(self) -> Counter[str, int]:
         """
@@ -207,60 +235,37 @@ class Machine(ABC):
         return None
 
 
-class CPUMachine(Machine):
-    def __format__(self, format_spec: str) -> str:
-        if format_spec.lower() == 'job':
-            return '\n'.join(f'{job}' for job in self.jobDict.values())
-        elif format_spec.lower() == 'free':
-            return Printer.machineFreeInfoFormat.format(self.name, self.computeUnit, f'{self.nFreeUnit} cores', f'{self.freeMem} free')
-        else:
-            return Printer.machineInfoFormat.format(self.name, self.computeUnit, f'{self.nUnit} cores', self.mem)
-
-    def _getFreeMem(self) -> str:
-        result = subprocess.run(f'{self.cmdSSH} \"{Commands.getFreeRAMCmd()}\"',
-                                stdout=subprocess.PIPE,
-                                text=True,
-                                shell=True)
-        return result.stdout.strip()
-
-    def scanJob(self, userName: str, scanLevel: int) -> None:
-        # Get list of raw process
-        processList: Optional[list[str]] = self._getProcessList(Commands.getPSCmd(userName))
-
-        # When error occurs, processList is None. Do nothing and return
-        if processList is None:
-            return None
-
-        # Save scanned job informations
-        for process in processList:
-            if process:
-                job = CPUJob(self.name, process)
-                if job.isImportant(scanLevel):
-                    self.jobDict[job.pid] = job
-        self.nJob = len(self.jobDict)
-
-        # If user name is None, update free informations too
-        if userName is None:
-            self.nFreeUnit = max(0, self.nUnit - self.nJob)
-            self.freeMem = self._getFreeMem()
-        return None
-
-
 class GPUMachine(Machine):
+    def __post_init__(self) -> None:
+        super().__post_init__()
+        self.nGpu = int(self.nGpu)
+
+        # GPU free information
+        self.nFreeGpu = 0
+        self.freeVram = ''
+
     def __format__(self, format_spec: str) -> str:
+        machineFormat = super().__format__(format_spec) # Format of Machine
+        if format_spec.lower() == 'info':
+            return machineFormat + '\n' + Printer.machineInfoFormat.format('', self.gpu, self.nGpu, 'gpus', self.vram)
         if format_spec.lower() == 'job':
-            return '\n'.join(f'{job}' for job in self.jobDict.values())
-        elif format_spec.lower() == 'free':
-            return Printer.machineFreeInfoFormat.format(self.name, self.computeUnit, f'{self.nFreeUnit} GPUs ', f'{self.freeMem} free')
-        else:
-            return Printer.machineInfoFormat.format(self.name, self.computeUnit, f'{self.nUnit} GPUs ', self.mem)
+            return machineFormat
+        if format_spec.lower() == 'free':
+            return machineFormat + '\n' + Printer.machineFreeInfoFormat.format('', self.gpu, self.nFreeGpu, 'gpus', f'{self.freeVram} free')
 
-    def _getFreeMem(self) -> str:
-        # When one or more gpu is free, print it's memory
-        if self.nFreeUnit:
-            return self.mem
+        return self.name
 
-        # Otherwise, print largest available memory
+    def _getFreeVRAM(self) -> str:
+        """
+            Get free vram information
+            When one or more gpus is free, print it's total vram
+            Otherwise, print largest available memory
+        """
+        # When one or more gpu is free
+        if self.nFreeGpu:
+            return self.vram
+
+        # Otherwise, get list of free vram
         result = subprocess.run(f'{self.cmdSSH} \"{Commands.getFreeVRAMCmd()}\"',
                                 stdout=subprocess.PIPE,
                                 text=True,
@@ -272,20 +277,21 @@ class GPUMachine(Machine):
 
     def scanJob(self, userName: str, scanLevel: int) -> None:
         """
-            update jobDict and nFreeUnit
+            update jobDict and nFreeGpu
             1. For every process in GPUs, check their pid
-                2-1. If there is no process, update nFreeUnit
+                2-1. If there is no process, update nFreeGpu
                 2-2. If there is such process, find ps information by pid
                     3-1. If userName from ps information matches, check the importance of job
                         4-1. If the job is important, save the job to jobDict
         """
-        # Get list of raw process
+        # Get list of raw process: Use nvidia-smi command
         processList: Optional[list[str]] = self._getProcessList(Commands.getNSProcessCmd())
 
         # When error occurs, processList is None. Do nothing and return
         if processList is None:
             return None
 
+        # Save scanned job informations
         for process in processList:
             # Check the process
             nsInfo = process.strip().split()    # gpuIdx, pid, gpuPercent, vramPercent, vramUse
@@ -293,7 +299,7 @@ class GPUMachine(Machine):
 
             # When no information is detected, nvidia-smi returns '-'
             if pid == '-':
-                self.nFreeUnit += 1     # nFreeUnit is updated regardless of userName
+                self.nFreeGpu += 1     # nFreeGpu is updated regardless of userName
                 continue
 
             # Get 'ps' information from PID of nsInfo
@@ -311,7 +317,10 @@ class GPUMachine(Machine):
 
         # Update free information
         if userName is None:
-            self.freeMem = self._getFreeMem()
+            self.nFreeCpu = max(0, self.nCpu - self.nJob)
+            self.freeRam = self._getFreeRam()
+            self.freeVram = self._getFreeVRAM()
+
 
 if __name__ == "__main__":
     print("This is moudle 'Machine' from SPG")

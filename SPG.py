@@ -14,9 +14,6 @@ from IO import printer, messageHandler
 
 
 class SPG:
-    # I know global variable is not optimal...
-    global default, messageHandler, printer
-
     """ SPG """
 
     def __init__(self) -> None:
@@ -35,12 +32,6 @@ class SPG:
                        'runs': self.runs,
                        'KILL': self.KILL}
 
-        # Print variables
-        self.barWidth = 40
-        self.strLine = self.getStrLine(self.barWidth)
-        self.firstLine: str = ''
-
-    ###################################### Basic Utility ######################################
     def __call__(self, args: argparse.Namespace) -> None:
         """
             Run functions according to the input argumetns
@@ -51,20 +42,18 @@ class SPG:
         # Run SPG
         self.option.get(args.option)(args)
 
-    @staticmethod
-    def getStrLine(width: int) -> str:
-        return '+' + '=' * (width - 1)
-
+    ###################################### Basic Utility ######################################
     def findGroupFromName(self, groupName: str) -> Group:
         """
             Find group instance in groupList
         """
-        group = self.groupDict.get(groupName)
-        if group is None:
+        try:
+            return self.groupDict[groupName]
+
+        # Group with input name is not registered
+        except KeyError:
             messageHandler.error(f'ERROR: No such machine group: {groupName}')
             exit()
-
-        return group
 
     def findGroupListFromGroupNameList(self, groupNameList: Optional[list[str]]) -> list[Group]:
         """
@@ -80,17 +69,15 @@ class SPG:
             Find Machine instance in groupList
         """
         groupName = Machine.getGroupName(machineName)
-
-        # Find group
         group = self.findGroupFromName(groupName)
 
-        # Find machine
-        machine = group.machineDict.get(machineName)
-        if machine is None:
+        try:
+            return group.machineDict[machineName]
+
+        # machine with input name is not registered in spg group
+        except KeyError:
             messageHandler.error(f'ERROR: No such machine: {machineName}')
             exit()
-
-        return machine
 
     def findGroupListFromMachineNameList(self, machineNameList: list[str]) -> list[Group]:
         """
@@ -177,12 +164,13 @@ class SPG:
 
         # main section
         for group in groupList:
-            printer.print(f'{group}')
+            for machine in group.machineDict.values():
+                printer.print(f'{machine:info}')
             printer.print()
 
         # summary
         for group in groupList:
-            printer.printSummaryFormat(group.name, str(group.nMachine), str(group.nUnit))
+            printer.print(f'{group:info}')
         printer.print()
 
         return None
@@ -204,14 +192,17 @@ class SPG:
         # ----------------------- Print -----------------------
         # First section
         printer.firstSection()
+
         # main section
         for group in groupList:
+            for machine in group.freeMachineList:
+                printer.print(f'{machine:free}')
             if group.nFreeMachine:
-                printer.print(f'{group:free}')
                 printer.print()
+
         # summary
         for group in groupList:
-            printer.printSummaryFormat(group.name, str(group.nFreeMachine), str(group.nFreeUnit))
+            printer.print(f'{group:free}')
         printer.print()
 
         return None
@@ -233,15 +224,17 @@ class SPG:
         # ----------------------- Print -----------------------
         # First section
         printer.firstSection()
+
         # main section
         for group in groupList:
-            if group.nJob:
-                group.strLine = printer.strLine
-                printer.print(f'{group:job}')
+            for machine in group.busyMachineList:
+                for job in machine.jobDict.values():
+                    printer.print(f'{job:info}')
+                printer.print()
 
         # Print summary
         for group in groupList:
-            printer.printSummaryFormat(group.name, str(group.nJob))
+            printer.print(f'{group:job}')
         printer.print()
         return None
 
@@ -271,7 +264,8 @@ class SPG:
         for user, totCount in totalUserCount.items():
             printer.printLineFormat(user,
                                     totCount,
-                                    *tuple(groupUserCountDict[group.name].get(user, 0) for group in groupList))
+                                    *tuple(groupUserCountDict[group.name].get(user, 0)
+                                           for group in groupList))
         printer.print()
 
         # summary
@@ -290,7 +284,7 @@ class SPG:
         machine.scanJob(userName=None, scanLevel=2)
 
         # When no free core is detected, doule check the run command
-        if not machine.nFreeUnit:
+        if not machine.nFreeCpu:
             messageHandler.warning(f'WARNING: {args.machineName} has no free core!')
 
         # Run a job

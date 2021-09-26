@@ -1,0 +1,1810 @@
+{
+    "tenet1": {
+        "use": "True",
+        "name": "tenet1",
+        "cpu": "Q9550",
+        "nCpu": "4",
+        "ram": "8G",
+        "comment": ""
+    },
+    "tenet2": {
+        "use": "True",
+        "name": "tenet2",
+        "cpu": "Q9550",
+        "nCpu": "4",
+        "ram": "8G",
+        "comment": ""
+    },
+    "tenet3": {
+        "use": "True",
+        "name": "tenet3",
+        "cpu": "Q9550",
+        "nCpu": "4",
+        "ram": "8G",
+        "comment": ""
+    },
+    "tenet4": {
+        "use": "True",
+        "name": "tenet4",
+        "cpu": "Q9550",
+        "nCpu": "4",
+        "ram": "8G",
+        "comment": ""
+    },
+    "tenet5": {
+        "use": "False",
+        "name": "tenet5",
+        "cpu": "Q9550",
+        "nCpu": "4",
+        "ram": "8G",
+        "comment": ""
+    },
+    "tenet6": {
+        "use": "False",
+        "name": "tenet6",
+        "cpu": "Q9550",
+        "nCpu": "4",
+        "ram": "8G",
+        "comment": ""
+    },
+    "tenet7": {
+        "use": "False",
+        "name": "tenet7",
+        "cpu": "Q9550",
+        "nCpu": "4",
+        "ram": "8G",
+        "comment": ""
+    },
+    "tenet8": {
+        "use": "False",
+        "name": "tenet8",
+        "cpu": "Q9550",
+        "nCpu": "4",
+        "ram": "8G",
+        "comment": ""
+    },
+    "tenet9": {
+        "use": "True",
+        "name": "tenet9",
+        "cpu": "Q9550",
+        "nCpu": "4",
+        "ram": "8G",
+        "comment": ""
+    },
+    "tenet10": {
+        "use": "False",
+        "name": "tenet10",
+        "cpu": "Q9550",
+        "nCpu": "4",
+        "ram": "8G",
+        "comment": ""
+    },
+    "tenet11": {
+        "use": "False",
+        "name": "tenet11",
+        "cpu": "Q9550",
+        "nCpu": "4",
+        "ram": "8G",
+        "comment": ""
+    },
+    "tenet12": {
+        "use": "True",
+        "name": "tenet12",
+        "cpu": "Q9550",
+        "nCpu": "4",
+        "ram": "8G",
+        "comment": ""
+    },
+    "tenet13": {
+        "use": "True",
+        "name": "tenet13",
+        "cpu": "Q9550",
+        "nCpu": "4",
+        "ram": "8G",
+        "comment": ""
+    },
+    "tenet14": {
+        "use": "True",
+        "name": "tenet14",
+        "cpu": "Q9550",
+        "nCpu": "4",
+        "ram": "8G",
+        "comment": ""
+    },
+    "tenet15": {
+        "use": "True",
+        "name": "tenet15",
+        "cpu": "Q9550",
+        "nCpu": "4",
+        "ram": "8G",
+        "comment": ""
+    },
+    "tenet16": {
+        "use": "True",
+        "name": "tenet16",
+        "cpu": "i7-860",
+        "nCpu": "4",
+        "ram": "8G",
+        "comment": ""
+    },
+    "tenet17": {
+        "use": "True",
+        "name": "tenet17",
+        "cpu": "i7-860",
+        "nCpu": "4",
+        "ram": "8G",
+        "comment": ""
+    },
+    "tenet18": {
+        "use": "True",
+        "name": "tenet18",
+        "cpu": "i7-6700",
+        "nCpu": "4",
+        "ram": "8G",
+        "comment": ""
+    },
+    "tenet19": {
+        "use": "True",
+        "name": "tenet19",
+        "cpu": "i7-860",
+        "nCpu": "4",
+        "ram": "8G",
+        "comment": ""
+    },
+    "tenet20": {
+        "use": "True",
+        "name": "tenet20",
+        "cpu": "i7-860",
+        "nCpu": "4",
+        "ram": "8G",
+        "comment": ""
+    },
+    "tenet21": {
+        "use": "True",
+        "name": "tenet21",
+        "cpu": "i7-860",
+        "nCpu": "4",
+        "ram": "8G",
+        "comment": ""
+    },
+    "tenet22": {
+        "use": "True",
+        "name": "tenet22",
+        "cpu": "i7-6700",
+        "nCpu": "4",
+        "ram": "8G",
+        "comment": ""
+    },
+    "tenet23": {
+        "use": "True",
+        "name": "tenet23",
+        "cpu": "i7-860",
+        "nCpu": "4",
+        "ram": "8G",
+        "comment": ""
+    },
+    "tenet24": {
+        "use": "True",
+        "name": "tenet24",
+        "cpu": "i7-860",
+        "nCpu": "4",
+        "ram": "8G",
+        "comment": ""
+    },
+    "tenet25": {
+        "use": "False",
+        "name": "tenet25",
+        "cpu": "i7-860",
+        "nCpu": "4",
+        "ram": "8G",
+        "comment": ""
+    },
+    "tenet26": {
+        "use": "True",
+        "name": "tenet26",
+        "cpu": "i7-860",
+        "nCpu": "4",
+        "ram": "8G",
+        "comment": ""
+    },
+    "tenet27": {
+        "use": "True",
+        "name": "tenet27",
+        "cpu": "i7-860",
+        "nCpu": "4",
+        "ram": "8G",
+        "comment": ""
+    },
+    "tenet28": {
+        "use": "True",
+        "name": "tenet28",
+        "cpu": "i7-860",
+        "nCpu": "4",
+        "ram": "8G",
+        "comment": ""
+    },
+    "tenet29": {
+        "use": "True",
+        "name": "tenet29",
+        "cpu": "i7-860",
+        "nCpu": "4",
+        "ram": "8G",
+        "comment": ""
+    },
+    "tenet30": {
+        "use": "True",
+        "name": "tenet30",
+        "cpu": "i7-860",
+        "nCpu": "4",
+        "ram": "8G",
+        "comment": ""
+    },
+    "tenet31": {
+        "use": "True",
+        "name": "tenet31",
+        "cpu": "i7-860",
+        "nCpu": "4",
+        "ram": "8G",
+        "comment": ""
+    },
+    "tenet32": {
+        "use": "True",
+        "name": "tenet32",
+        "cpu": "i7-860",
+        "nCpu": "4",
+        "ram": "8G",
+        "comment": ""
+    },
+    "tenet33": {
+        "use": "True",
+        "name": "tenet33",
+        "cpu": "i7-860",
+        "nCpu": "4",
+        "ram": "8G",
+        "comment": ""
+    },
+    "tenet34": {
+        "use": "True",
+        "name": "tenet34",
+        "cpu": "i7-860",
+        "nCpu": "4",
+        "ram": "8G",
+        "comment": ""
+    },
+    "tenet35": {
+        "use": "True",
+        "name": "tenet35",
+        "cpu": "i7-860",
+        "nCpu": "4",
+        "ram": "8G",
+        "comment": ""
+    },
+    "tenet36": {
+        "use": "True",
+        "name": "tenet36",
+        "cpu": "i7-860",
+        "nCpu": "4",
+        "ram": "8G",
+        "comment": ""
+    },
+    "tenet37": {
+        "use": "True",
+        "name": "tenet37",
+        "cpu": "i7-860",
+        "nCpu": "4",
+        "ram": "8G",
+        "comment": ""
+    },
+    "tenet38": {
+        "use": "True",
+        "name": "tenet38",
+        "cpu": "i7-860",
+        "nCpu": "4",
+        "ram": "8G",
+        "comment": ""
+    },
+    "tenet39": {
+        "use": "True",
+        "name": "tenet39",
+        "cpu": "i7-860",
+        "nCpu": "4",
+        "ram": "8G",
+        "comment": ""
+    },
+    "tenet40": {
+        "use": "True",
+        "name": "tenet40",
+        "cpu": "i7-860",
+        "nCpu": "4",
+        "ram": "8G",
+        "comment": ""
+    },
+    "tenet41": {
+        "use": "True",
+        "name": "tenet41",
+        "cpu": "i7-860",
+        "nCpu": "4",
+        "ram": "8G",
+        "comment": ""
+    },
+    "tenet42": {
+        "use": "True",
+        "name": "tenet42",
+        "cpu": "i7-860",
+        "nCpu": "4",
+        "ram": "8G",
+        "comment": ""
+    },
+    "tenet43": {
+        "use": "True",
+        "name": "tenet43",
+        "cpu": "i7-860",
+        "nCpu": "4",
+        "ram": "8G",
+        "comment": ""
+    },
+    "tenet44": {
+        "use": "True",
+        "name": "tenet44",
+        "cpu": "i7-860",
+        "nCpu": "4",
+        "ram": "8G",
+        "comment": ""
+    },
+    "tenet45": {
+        "use": "True",
+        "name": "tenet45",
+        "cpu": "i7-860",
+        "nCpu": "4",
+        "ram": "8G",
+        "comment": ""
+    },
+    "tenet46": {
+        "use": "True",
+        "name": "tenet46",
+        "cpu": "i7-860",
+        "nCpu": "4",
+        "ram": "8G",
+        "comment": ""
+    },
+    "tenet47": {
+        "use": "True",
+        "name": "tenet47",
+        "cpu": "i7-860",
+        "nCpu": "4",
+        "ram": "8G",
+        "comment": ""
+    },
+    "tenet48": {
+        "use": "True",
+        "name": "tenet48",
+        "cpu": "i7-860",
+        "nCpu": "4",
+        "ram": "8G",
+        "comment": ""
+    },
+    "tenet49": {
+        "use": "True",
+        "name": "tenet49",
+        "cpu": "i7-860",
+        "nCpu": "4",
+        "ram": "8G",
+        "comment": ""
+    },
+    "tenet50": {
+        "use": "True",
+        "name": "tenet50",
+        "cpu": "i7-860",
+        "nCpu": "4",
+        "ram": "8G",
+        "comment": ""
+    },
+    "tenet51": {
+        "use": "True",
+        "name": "tenet51",
+        "cpu": "i7-860",
+        "nCpu": "4",
+        "ram": "8G",
+        "comment": ""
+    },
+    "tenet52": {
+        "use": "True",
+        "name": "tenet52",
+        "cpu": "i7-860",
+        "nCpu": "4",
+        "ram": "8G",
+        "comment": ""
+    },
+    "tenet53": {
+        "use": "True",
+        "name": "tenet53",
+        "cpu": "i7-2600",
+        "nCpu": "4",
+        "ram": "8G",
+        "comment": ""
+    },
+    "tenet54": {
+        "use": "True",
+        "name": "tenet54",
+        "cpu": "i7-2600",
+        "nCpu": "4",
+        "ram": "16G",
+        "comment": ""
+    },
+    "tenet55": {
+        "use": "True",
+        "name": "tenet55",
+        "cpu": "i7-2600",
+        "nCpu": "4",
+        "ram": "16G",
+        "comment": ""
+    },
+    "tenet56": {
+        "use": "True",
+        "name": "tenet56",
+        "cpu": "i7-4770",
+        "nCpu": "4",
+        "ram": "32G",
+        "comment": ""
+    },
+    "tenet57": {
+        "use": "True",
+        "name": "tenet57",
+        "cpu": "i7-2600",
+        "nCpu": "4",
+        "ram": "16G",
+        "comment": ""
+    },
+    "tenet58": {
+        "use": "True",
+        "name": "tenet58",
+        "cpu": "i7-2600",
+        "nCpu": "4",
+        "ram": "16G",
+        "comment": ""
+    },
+    "tenet59": {
+        "use": "True",
+        "name": "tenet59",
+        "cpu": "i7-2600",
+        "nCpu": "4",
+        "ram": "16G",
+        "comment": ""
+    },
+    "tenet60": {
+        "use": "True",
+        "name": "tenet60",
+        "cpu": "i7-2600",
+        "nCpu": "4",
+        "ram": "16G",
+        "comment": ""
+    },
+    "tenet61": {
+        "use": "True",
+        "name": "tenet61",
+        "cpu": "i7-2600",
+        "nCpu": "4",
+        "ram": "16G",
+        "comment": ""
+    },
+    "tenet62": {
+        "use": "True",
+        "name": "tenet62",
+        "cpu": "i7-2600",
+        "nCpu": "4",
+        "ram": "16G",
+        "comment": ""
+    },
+    "tenet63": {
+        "use": "True",
+        "name": "tenet63",
+        "cpu": "i7-2600",
+        "nCpu": "4",
+        "ram": "16G",
+        "comment": ""
+    },
+    "tenet64": {
+        "use": "True",
+        "name": "tenet64",
+        "cpu": "i7-2600",
+        "nCpu": "4",
+        "ram": "16G",
+        "comment": ""
+    },
+    "tenet65": {
+        "use": "True",
+        "name": "tenet65",
+        "cpu": "i7-2600",
+        "nCpu": "4",
+        "ram": "16G",
+        "comment": ""
+    },
+    "tenet66": {
+        "use": "True",
+        "name": "tenet66",
+        "cpu": "i7-2600",
+        "nCpu": "4",
+        "ram": "16G",
+        "comment": ""
+    },
+    "tenet67": {
+        "use": "True",
+        "name": "tenet67",
+        "cpu": "i7-2600",
+        "nCpu": "4",
+        "ram": "32G",
+        "comment": ""
+    },
+    "tenet68": {
+        "use": "True",
+        "name": "tenet68",
+        "cpu": "i7-2600",
+        "nCpu": "4",
+        "ram": "32G",
+        "comment": ""
+    },
+    "tenet69": {
+        "use": "True",
+        "name": "tenet69",
+        "cpu": "i7-2600",
+        "nCpu": "4",
+        "ram": "32G",
+        "comment": ""
+    },
+    "tenet70": {
+        "use": "True",
+        "name": "tenet70",
+        "cpu": "i7-2600",
+        "nCpu": "4",
+        "ram": "32G",
+        "comment": ""
+    },
+    "tenet71": {
+        "use": "True",
+        "name": "tenet71",
+        "cpu": "i7-2600",
+        "nCpu": "4",
+        "ram": "32G",
+        "comment": ""
+    },
+    "tenet72": {
+        "use": "True",
+        "name": "tenet72",
+        "cpu": "i7-2600",
+        "nCpu": "4",
+        "ram": "32G",
+        "comment": ""
+    },
+    "tenet73": {
+        "use": "True",
+        "name": "tenet73",
+        "cpu": "i7-2600",
+        "nCpu": "4",
+        "ram": "32G",
+        "comment": ""
+    },
+    "tenet74": {
+        "use": "True",
+        "name": "tenet74",
+        "cpu": "i7-2600",
+        "nCpu": "4",
+        "ram": "32G",
+        "comment": ""
+    },
+    "tenet75": {
+        "use": "True",
+        "name": "tenet75",
+        "cpu": "i7-2600",
+        "nCpu": "4",
+        "ram": "32G",
+        "comment": ""
+    },
+    "tenet76": {
+        "use": "True",
+        "name": "tenet76",
+        "cpu": "i7-2600",
+        "nCpu": "4",
+        "ram": "32G",
+        "comment": ""
+    },
+    "tenet77": {
+        "use": "True",
+        "name": "tenet77",
+        "cpu": "i7-2600",
+        "nCpu": "4",
+        "ram": "32G",
+        "comment": ""
+    },
+    "tenet78": {
+        "use": "True",
+        "name": "tenet78",
+        "cpu": "i7-2600",
+        "nCpu": "4",
+        "ram": "32G",
+        "comment": ""
+    },
+    "tenet79": {
+        "use": "True",
+        "name": "tenet79",
+        "cpu": "i7-2600",
+        "nCpu": "4",
+        "ram": "32G",
+        "comment": ""
+    },
+    "tenet80": {
+        "use": "True",
+        "name": "tenet80",
+        "cpu": "i7-2600",
+        "nCpu": "4",
+        "ram": "32G",
+        "comment": ""
+    },
+    "tenet81": {
+        "use": "True",
+        "name": "tenet81",
+        "cpu": "i7-2600",
+        "nCpu": "4",
+        "ram": "32G",
+        "comment": ""
+    },
+    "tenet82": {
+        "use": "True",
+        "name": "tenet82",
+        "cpu": "i7-2600",
+        "nCpu": "4",
+        "ram": "32G",
+        "comment": ""
+    },
+    "tenet83": {
+        "use": "True",
+        "name": "tenet83",
+        "cpu": "i7-2600",
+        "nCpu": "4",
+        "ram": "16G",
+        "comment": ""
+    },
+    "tenet84": {
+        "use": "True",
+        "name": "tenet84",
+        "cpu": "i3-3240",
+        "nCpu": "2",
+        "ram": "8G",
+        "comment": ""
+    },
+    "tenet85": {
+        "use": "True",
+        "name": "tenet85",
+        "cpu": "i3-3240",
+        "nCpu": "2",
+        "ram": "8G",
+        "comment": ""
+    },
+    "tenet86": {
+        "use": "True",
+        "name": "tenet86",
+        "cpu": "i7-4770",
+        "nCpu": "4",
+        "ram": "32G",
+        "comment": ""
+    },
+    "tenet87": {
+        "use": "True",
+        "name": "tenet87",
+        "cpu": "i7-4770",
+        "nCpu": "4",
+        "ram": "32G",
+        "comment": ""
+    },
+    "tenet88": {
+        "use": "True",
+        "name": "tenet88",
+        "cpu": "i7-4770",
+        "nCpu": "4",
+        "ram": "32G",
+        "comment": ""
+    },
+    "tenet89": {
+        "use": "True",
+        "name": "tenet89",
+        "cpu": "i7-4770",
+        "nCpu": "4",
+        "ram": "32G",
+        "comment": ""
+    },
+    "tenet90": {
+        "use": "True",
+        "name": "tenet90",
+        "cpu": "i7-4770",
+        "nCpu": "4",
+        "ram": "32G",
+        "comment": ""
+    },
+    "tenet91": {
+        "use": "True",
+        "name": "tenet91",
+        "cpu": "i7-4790",
+        "nCpu": "4",
+        "ram": "32G",
+        "comment": ""
+    },
+    "tenet92": {
+        "use": "True",
+        "name": "tenet92",
+        "cpu": "i7-4790",
+        "nCpu": "4",
+        "ram": "32G",
+        "comment": ""
+    },
+    "tenet93": {
+        "use": "True",
+        "name": "tenet93",
+        "cpu": "i7-4790",
+        "nCpu": "4",
+        "ram": "32G",
+        "comment": ""
+    },
+    "tenet94": {
+        "use": "True",
+        "name": "tenet94",
+        "cpu": "i7-6700",
+        "nCpu": "4",
+        "ram": "64G",
+        "comment": ""
+    },
+    "tenet95": {
+        "use": "True",
+        "name": "tenet95",
+        "cpu": "i7-6700",
+        "nCpu": "4",
+        "ram": "64G",
+        "comment": ""
+    },
+    "tenet96": {
+        "use": "True",
+        "name": "tenet96",
+        "cpu": "i7-6700",
+        "nCpu": "4",
+        "ram": "64G",
+        "comment": ""
+    },
+    "tenet97": {
+        "use": "False",
+        "name": "tenet97",
+        "cpu": "i7-6700",
+        "nCpu": "4",
+        "ram": "64G",
+        "comment": "Occasionally poweroff(2021.09.26)"
+    },
+    "tenet98": {
+        "use": "True",
+        "name": "tenet98",
+        "cpu": "i7-6700",
+        "nCpu": "4",
+        "ram": "64G",
+        "comment": ""
+    },
+    "tenet99": {
+        "use": "True",
+        "name": "tenet99",
+        "cpu": "i7-6700",
+        "nCpu": "4",
+        "ram": "64G",
+        "comment": ""
+    },
+    "tenet100": {
+        "use": "True",
+        "name": "tenet100",
+        "cpu": "i7-6700",
+        "nCpu": "4",
+        "ram": "64G",
+        "comment": ""
+    },
+    "tenet101": {
+        "use": "True",
+        "name": "tenet101",
+        "cpu": "i7-6700",
+        "nCpu": "4",
+        "ram": "64G",
+        "comment": ""
+    },
+    "tenet102": {
+        "use": "True",
+        "name": "tenet102",
+        "cpu": "i7-6700",
+        "nCpu": "4",
+        "ram": "64G",
+        "comment": ""
+    },
+    "tenet103": {
+        "use": "True",
+        "name": "tenet103",
+        "cpu": "i7-6700",
+        "nCpu": "4",
+        "ram": "64G",
+        "comment": ""
+    },
+    "tenet104": {
+        "use": "True",
+        "name": "tenet104",
+        "cpu": "i7-6700",
+        "nCpu": "4",
+        "ram": "64G",
+        "comment": ""
+    },
+    "tenet105": {
+        "use": "True",
+        "name": "tenet105",
+        "cpu": "i7-6700",
+        "nCpu": "4",
+        "ram": "64G",
+        "comment": ""
+    },
+    "tenet106": {
+        "use": "True",
+        "name": "tenet106",
+        "cpu": "i7-6700",
+        "nCpu": "4",
+        "ram": "64G",
+        "comment": ""
+    },
+    "tenet107": {
+        "use": "True",
+        "name": "tenet107",
+        "cpu": "i7-6700",
+        "nCpu": "4",
+        "ram": "64G",
+        "comment": ""
+    },
+    "tenet108": {
+        "use": "True",
+        "name": "tenet108",
+        "cpu": "i7-6700",
+        "nCpu": "4",
+        "ram": "64G",
+        "comment": ""
+    },
+    "tenet109": {
+        "use": "True",
+        "name": "tenet109",
+        "cpu": "i7-6700",
+        "nCpu": "4",
+        "ram": "64G",
+        "comment": ""
+    },
+    "tenet110": {
+        "use": "True",
+        "name": "tenet110",
+        "cpu": "i7-6700",
+        "nCpu": "4",
+        "ram": "64G",
+        "comment": ""
+    },
+    "tenet111": {
+        "use": "True",
+        "name": "tenet111",
+        "cpu": "i7-6700",
+        "nCpu": "4",
+        "ram": "64G",
+        "comment": ""
+    },
+    "tenet112": {
+        "use": "True",
+        "name": "tenet112",
+        "cpu": "i7-6700",
+        "nCpu": "4",
+        "ram": "64G",
+        "comment": ""
+    },
+    "tenet113": {
+        "use": "True",
+        "name": "tenet113",
+        "cpu": "i7-6700",
+        "nCpu": "4",
+        "ram": "64G",
+        "comment": ""
+    },
+    "tenet114": {
+        "use": "True",
+        "name": "tenet114",
+        "cpu": "i7-6700",
+        "nCpu": "4",
+        "ram": "64G",
+        "comment": ""
+    },
+    "tenet115": {
+        "use": "True",
+        "name": "tenet115",
+        "cpu": "i7-6700",
+        "nCpu": "4",
+        "ram": "64G",
+        "comment": ""
+    },
+    "tenet116": {
+        "use": "True",
+        "name": "tenet116",
+        "cpu": "i7-6700",
+        "nCpu": "4",
+        "ram": "64G",
+        "comment": ""
+    },
+    "tenet117": {
+        "use": "True",
+        "name": "tenet117",
+        "cpu": "i7-6700",
+        "nCpu": "4",
+        "ram": "64G",
+        "comment": ""
+    },
+    "tenet118": {
+        "use": "True",
+        "name": "tenet118",
+        "cpu": "i7-6700",
+        "nCpu": "4",
+        "ram": "64G",
+        "comment": ""
+    },
+    "tenet119": {
+        "use": "True",
+        "name": "tenet119",
+        "cpu": "i7-6700",
+        "nCpu": "4",
+        "ram": "64G",
+        "comment": ""
+    },
+    "tenet120": {
+        "use": "True",
+        "name": "tenet120",
+        "cpu": "i7-6700",
+        "nCpu": "4",
+        "ram": "64G",
+        "comment": ""
+    },
+    "tenet121": {
+        "use": "True",
+        "name": "tenet121",
+        "cpu": "i7-6700",
+        "nCpu": "4",
+        "ram": "64G",
+        "comment": ""
+    },
+    "tenet122": {
+        "use": "True",
+        "name": "tenet122",
+        "cpu": "i7-6700",
+        "nCpu": "4",
+        "ram": "64G",
+        "comment": ""
+    },
+    "tenet123": {
+        "use": "True",
+        "name": "tenet123",
+        "cpu": "i7-6700",
+        "nCpu": "4",
+        "ram": "64G",
+        "comment": ""
+    },
+    "tenet124": {
+        "use": "True",
+        "name": "tenet124",
+        "cpu": "i7-6700",
+        "nCpu": "4",
+        "ram": "64G",
+        "comment": ""
+    },
+    "tenet125": {
+        "use": "True",
+        "name": "tenet125",
+        "cpu": "i7-7700",
+        "nCpu": "4",
+        "ram": "64G",
+        "comment": ""
+    },
+    "tenet126": {
+        "use": "True",
+        "name": "tenet126",
+        "cpu": "i7-7700",
+        "nCpu": "4",
+        "ram": "64G",
+        "comment": ""
+    },
+    "tenet127": {
+        "use": "True",
+        "name": "tenet127",
+        "cpu": "i7-7700",
+        "nCpu": "4",
+        "ram": "64G",
+        "comment": ""
+    },
+    "tenet128": {
+        "use": "True",
+        "name": "tenet128",
+        "cpu": "i7-7700",
+        "nCpu": "4",
+        "ram": "64G",
+        "comment": ""
+    },
+    "tenet129": {
+        "use": "True",
+        "name": "tenet129",
+        "cpu": "i7-8700K",
+        "nCpu": "6",
+        "ram": "64G",
+        "comment": ""
+    },
+    "tenet130": {
+        "use": "True",
+        "name": "tenet130",
+        "cpu": "i7-8700K",
+        "nCpu": "6",
+        "ram": "64G",
+        "comment": ""
+    },
+    "tenet131": {
+        "use": "True",
+        "name": "tenet131",
+        "cpu": "i7-8700K",
+        "nCpu": "6",
+        "ram": "64G",
+        "comment": ""
+    },
+    "tenet132": {
+        "use": "True",
+        "name": "tenet132",
+        "cpu": "i7-8700K",
+        "nCpu": "6",
+        "ram": "64G",
+        "comment": ""
+    },
+    "tenet133": {
+        "use": "True",
+        "name": "tenet133",
+        "cpu": "i7-8700K",
+        "nCpu": "6",
+        "ram": "64G",
+        "comment": ""
+    },
+    "tenet134": {
+        "use": "True",
+        "name": "tenet134",
+        "cpu": "i7-8700K",
+        "nCpu": "6",
+        "ram": "64G",
+        "comment": ""
+    },
+    "tenet135": {
+        "use": "True",
+        "name": "tenet135",
+        "cpu": "i7-8700K",
+        "nCpu": "6",
+        "ram": "64G",
+        "comment": ""
+    },
+    "tenet136": {
+        "use": "True",
+        "name": "tenet136",
+        "cpu": "i7-8700K",
+        "nCpu": "6",
+        "ram": "64G",
+        "comment": ""
+    },
+    "tenet137": {
+        "use": "True",
+        "name": "tenet137",
+        "cpu": "i7-8700K",
+        "nCpu": "6",
+        "ram": "64G",
+        "comment": ""
+    },
+    "tenet138": {
+        "use": "True",
+        "name": "tenet138",
+        "cpu": "i7-8700K",
+        "nCpu": "6",
+        "ram": "64G",
+        "comment": ""
+    },
+    "tenet139": {
+        "use": "True",
+        "name": "tenet139",
+        "cpu": "i7-8700K",
+        "nCpu": "6",
+        "ram": "64G",
+        "comment": ""
+    },
+    "tenet140": {
+        "use": "True",
+        "name": "tenet140",
+        "cpu": "i7-8700K",
+        "nCpu": "6",
+        "ram": "64G",
+        "comment": ""
+    },
+    "tenet141": {
+        "use": "True",
+        "name": "tenet141",
+        "cpu": "i7-8700K",
+        "nCpu": "6",
+        "ram": "64G",
+        "comment": ""
+    },
+    "tenet142": {
+        "use": "True",
+        "name": "tenet142",
+        "cpu": "i7-8700K",
+        "nCpu": "6",
+        "ram": "64G",
+        "comment": ""
+    },
+    "tenet143": {
+        "use": "True",
+        "name": "tenet143",
+        "cpu": "i7-8700K",
+        "nCpu": "6",
+        "ram": "64G",
+        "comment": ""
+    },
+    "tenet144": {
+        "use": "True",
+        "name": "tenet144",
+        "cpu": "i7-8700K",
+        "nCpu": "6",
+        "ram": "64G",
+        "comment": ""
+    },
+    "tenet145": {
+        "use": "True",
+        "name": "tenet145",
+        "cpu": "i7-8086K",
+        "nCpu": "6",
+        "ram": "64G",
+        "comment": ""
+    },
+    "tenet146": {
+        "use": "True",
+        "name": "tenet146",
+        "cpu": "i7-8086K",
+        "nCpu": "6",
+        "ram": "64G",
+        "comment": ""
+    },
+    "tenet147": {
+        "use": "True",
+        "name": "tenet147",
+        "cpu": "i7-8086K",
+        "nCpu": "6",
+        "ram": "64G",
+        "comment": ""
+    },
+    "tenet148": {
+        "use": "True",
+        "name": "tenet148",
+        "cpu": "i7-8086K",
+        "nCpu": "6",
+        "ram": "64G",
+        "comment": ""
+    },
+    "tenet149": {
+        "use": "True",
+        "name": "tenet149",
+        "cpu": "i7-8086K",
+        "nCpu": "6",
+        "ram": "64G",
+        "comment": ""
+    },
+    "tenet150": {
+        "use": "True",
+        "name": "tenet150",
+        "cpu": "i7-8086K",
+        "nCpu": "6",
+        "ram": "64G",
+        "comment": ""
+    },
+    "tenet151": {
+        "use": "True",
+        "name": "tenet151",
+        "cpu": "i7-9700",
+        "nCpu": "8",
+        "ram": "64G",
+        "comment": ""
+    },
+    "tenet152": {
+        "use": "True",
+        "name": "tenet152",
+        "cpu": "i7-9700",
+        "nCpu": "8",
+        "ram": "64G",
+        "comment": ""
+    },
+    "tenet153": {
+        "use": "True",
+        "name": "tenet153",
+        "cpu": "i7-9700",
+        "nCpu": "8",
+        "ram": "64G",
+        "comment": ""
+    },
+    "tenet154": {
+        "use": "True",
+        "name": "tenet154",
+        "cpu": "i7-9700",
+        "nCpu": "8",
+        "ram": "64G",
+        "comment": ""
+    },
+    "tenet155": {
+        "use": "True",
+        "name": "tenet155",
+        "cpu": "i7-9700",
+        "nCpu": "8",
+        "ram": "64G",
+        "comment": ""
+    },
+    "tenet156": {
+        "use": "True",
+        "name": "tenet156",
+        "cpu": "i7-9700",
+        "nCpu": "8",
+        "ram": "64G",
+        "comment": ""
+    },
+    "tenet157": {
+        "use": "True",
+        "name": "tenet157",
+        "cpu": "i7-9700",
+        "nCpu": "8",
+        "ram": "64G",
+        "comment": ""
+    },
+    "tenet158": {
+        "use": "True",
+        "name": "tenet158",
+        "cpu": "i7-9700",
+        "nCpu": "8",
+        "ram": "64G",
+        "comment": ""
+    },
+    "tenet159": {
+        "use": "True",
+        "name": "tenet159",
+        "cpu": "i7-9700",
+        "nCpu": "8",
+        "ram": "64G",
+        "comment": ""
+    },
+    "tenet160": {
+        "use": "True",
+        "name": "tenet160",
+        "cpu": "i7-9700",
+        "nCpu": "8",
+        "ram": "64G",
+        "comment": ""
+    },
+    "tenet161": {
+        "use": "True",
+        "name": "tenet161",
+        "cpu": "i7-9700",
+        "nCpu": "8",
+        "ram": "64G",
+        "comment": ""
+    },
+    "tenet162": {
+        "use": "True",
+        "name": "tenet162",
+        "cpu": "i7-9700",
+        "nCpu": "8",
+        "ram": "64G",
+        "comment": ""
+    },
+    "tenet163": {
+        "use": "True",
+        "name": "tenet163",
+        "cpu": "i7-9700",
+        "nCpu": "8",
+        "ram": "64G",
+        "comment": ""
+    },
+    "tenet164": {
+        "use": "True",
+        "name": "tenet164",
+        "cpu": "i7-9700",
+        "nCpu": "8",
+        "ram": "64G",
+        "comment": ""
+    },
+    "tenet165": {
+        "use": "True",
+        "name": "tenet165",
+        "cpu": "i7-9700",
+        "nCpu": "8",
+        "ram": "64G",
+        "comment": ""
+    },
+    "tenet166": {
+        "use": "True",
+        "name": "tenet166",
+        "cpu": "i7-9700",
+        "nCpu": "8",
+        "ram": "64G",
+        "comment": ""
+    },
+    "tenet167": {
+        "use": "True",
+        "name": "tenet167",
+        "cpu": "i7-9700",
+        "nCpu": "8",
+        "ram": "64G",
+        "comment": ""
+    },
+    "tenet168": {
+        "use": "True",
+        "name": "tenet168",
+        "cpu": "i7-9700",
+        "nCpu": "8",
+        "ram": "64G",
+        "comment": ""
+    },
+    "tenet169": {
+        "use": "True",
+        "name": "tenet169",
+        "cpu": "i7-9700",
+        "nCpu": "8",
+        "ram": "64G",
+        "comment": ""
+    },
+    "tenet170": {
+        "use": "True",
+        "name": "tenet170",
+        "cpu": "i7-9700",
+        "nCpu": "8",
+        "ram": "64G",
+        "comment": ""
+    },
+    "tenet171": {
+        "use": "True",
+        "name": "tenet171",
+        "cpu": "i7-9700",
+        "nCpu": "8",
+        "ram": "64G",
+        "comment": ""
+    },
+    "tenet172": {
+        "use": "True",
+        "name": "tenet172",
+        "cpu": "i7-9700",
+        "nCpu": "8",
+        "ram": "64G",
+        "comment": ""
+    },
+    "tenet173": {
+        "use": "True",
+        "name": "tenet173",
+        "cpu": "i7-9700K",
+        "nCpu": "8",
+        "ram": "64G",
+        "comment": ""
+    },
+    "tenet174": {
+        "use": "True",
+        "name": "tenet174",
+        "cpu": "i7-9700K",
+        "nCpu": "8",
+        "ram": "64G",
+        "comment": ""
+    },
+    "tenet175": {
+        "use": "True",
+        "name": "tenet175",
+        "cpu": "i7-9700K",
+        "nCpu": "8",
+        "ram": "64G",
+        "comment": ""
+    },
+    "tenet176": {
+        "use": "True",
+        "name": "tenet176",
+        "cpu": "i7-9700K",
+        "nCpu": "8",
+        "ram": "64G",
+        "comment": ""
+    },
+    "tenet177": {
+        "use": "True",
+        "name": "tenet177",
+        "cpu": "i7-9700K",
+        "nCpu": "8",
+        "ram": "64G",
+        "comment": ""
+    },
+    "tenet178": {
+        "use": "True",
+        "name": "tenet178",
+        "cpu": "i7-9700K",
+        "nCpu": "8",
+        "ram": "64G",
+        "comment": ""
+    },
+    "tenet179": {
+        "use": "True",
+        "name": "tenet179",
+        "cpu": "i7-9700K",
+        "nCpu": "8",
+        "ram": "64G",
+        "comment": ""
+    },
+    "tenet180": {
+        "use": "True",
+        "name": "tenet180",
+        "cpu": "i7-9700K",
+        "nCpu": "8",
+        "ram": "64G",
+        "comment": ""
+    },
+    "tenet181": {
+        "use": "True",
+        "name": "tenet181",
+        "cpu": "i7-9700K",
+        "nCpu": "8",
+        "ram": "64G",
+        "comment": ""
+    },
+    "tenet182": {
+        "use": "True",
+        "name": "tenet182",
+        "cpu": "i7-9700K",
+        "nCpu": "8",
+        "ram": "64G",
+        "comment": ""
+    },
+    "tenet183": {
+        "use": "True",
+        "name": "tenet183",
+        "cpu": "i7-9700K",
+        "nCpu": "8",
+        "ram": "64G",
+        "comment": ""
+    },
+    "tenet184": {
+        "use": "True",
+        "name": "tenet184",
+        "cpu": "i7-9700K",
+        "nCpu": "8",
+        "ram": "64G",
+        "comment": ""
+    },
+    "tenet185": {
+        "use": "True",
+        "name": "tenet185",
+        "cpu": "i7-9700K",
+        "nCpu": "8",
+        "ram": "64G",
+        "comment": ""
+    },
+    "tenet186": {
+        "use": "True",
+        "name": "tenet186",
+        "cpu": "i7-9700K",
+        "nCpu": "8",
+        "ram": "64G",
+        "comment": ""
+    },
+    "tenet187": {
+        "use": "True",
+        "name": "tenet187",
+        "cpu": "i7-9700K",
+        "nCpu": "8",
+        "ram": "64G",
+        "comment": ""
+    },
+    "tenet188": {
+        "use": "True",
+        "name": "tenet188",
+        "cpu": "i7-9700K",
+        "nCpu": "8",
+        "ram": "64G",
+        "comment": ""
+    },
+    "tenet189": {
+        "use": "True",
+        "name": "tenet189",
+        "cpu": "i7-9700K",
+        "nCpu": "8",
+        "ram": "64G",
+        "comment": ""
+    },
+    "tenet190": {
+        "use": "True",
+        "name": "tenet190",
+        "cpu": "i7-9700K",
+        "nCpu": "8",
+        "ram": "64G",
+        "comment": ""
+    },
+    "tenet191": {
+        "use": "True",
+        "name": "tenet191",
+        "cpu": "i7-9700K",
+        "nCpu": "8",
+        "ram": "64G",
+        "comment": ""
+    },
+    "tenet192": {
+        "use": "True",
+        "name": "tenet192",
+        "cpu": "i7-9700K",
+        "nCpu": "8",
+        "ram": "64G",
+        "comment": ""
+    },
+    "tenet193": {
+        "use": "True",
+        "name": "tenet193",
+        "cpu": "i7-9700K",
+        "nCpu": "8",
+        "ram": "64G",
+        "comment": ""
+    },
+    "tenet194": {
+        "use": "True",
+        "name": "tenet194",
+        "cpu": "i7-9700K",
+        "nCpu": "8",
+        "ram": "64G",
+        "comment": ""
+    },
+    "tenet195": {
+        "use": "True",
+        "name": "tenet195",
+        "cpu": "i7-9700K",
+        "nCpu": "8",
+        "ram": "64G",
+        "comment": ""
+    },
+    "tenet196": {
+        "use": "True",
+        "name": "tenet196",
+        "cpu": "i7-9700K",
+        "nCpu": "8",
+        "ram": "64G",
+        "comment": ""
+    },
+    "tenet197": {
+        "use": "True",
+        "name": "tenet197",
+        "cpu": "i7-9700K",
+        "nCpu": "8",
+        "ram": "64G",
+        "comment": ""
+    },
+    "tenet198": {
+        "use": "True",
+        "name": "tenet198",
+        "cpu": "i7-10700",
+        "nCpu": "8",
+        "ram": "64G",
+        "comment": ""
+    },
+    "tenet199": {
+        "use": "True",
+        "name": "tenet199",
+        "cpu": "i7-10700",
+        "nCpu": "8",
+        "ram": "64G",
+        "comment": ""
+    },
+    "tenet200": {
+        "use": "True",
+        "name": "tenet200",
+        "cpu": "i7-10700",
+        "nCpu": "8",
+        "ram": "64G",
+        "comment": ""
+    },
+    "tenet201": {
+        "use": "True",
+        "name": "tenet201",
+        "cpu": "i7-10700",
+        "nCpu": "8",
+        "ram": "64G",
+        "comment": ""
+    },
+    "tenet202": {
+        "use": "True",
+        "name": "tenet202",
+        "cpu": "i7-10700",
+        "nCpu": "8",
+        "ram": "64G",
+        "comment": ""
+    },
+    "tenet203": {
+        "use": "True",
+        "name": "tenet203",
+        "cpu": "i7-10700",
+        "nCpu": "8",
+        "ram": "64G",
+        "comment": ""
+    },
+    "tenet204": {
+        "use": "True",
+        "name": "tenet204",
+        "cpu": "i7-10700",
+        "nCpu": "8",
+        "ram": "64G",
+        "comment": ""
+    },
+    "tenet205": {
+        "use": "True",
+        "name": "tenet205",
+        "cpu": "i7-10700",
+        "nCpu": "8",
+        "ram": "64G",
+        "comment": ""
+    },
+    "tenet206": {
+        "use": "True",
+        "name": "tenet206",
+        "cpu": "i7-10700",
+        "nCpu": "8",
+        "ram": "64G",
+        "comment": ""
+    },
+    "tenet207": {
+        "use": "True",
+        "name": "tenet207",
+        "cpu": "i7-10700",
+        "nCpu": "8",
+        "ram": "64G",
+        "comment": ""
+    },
+    "tenet208": {
+        "use": "True",
+        "name": "tenet208",
+        "cpu": "i7-10700",
+        "nCpu": "8",
+        "ram": "64G",
+        "comment": ""
+    },
+    "tenet209": {
+        "use": "True",
+        "name": "tenet209",
+        "cpu": "i7-10700",
+        "nCpu": "8",
+        "ram": "64G",
+        "comment": ""
+    },
+    "tenet210": {
+        "use": "True",
+        "name": "tenet210",
+        "cpu": "i7-10700",
+        "nCpu": "8",
+        "ram": "64G",
+        "comment": ""
+    },
+    "tenet211": {
+        "use": "True",
+        "name": "tenet211",
+        "cpu": "i7-10700",
+        "nCpu": "8",
+        "ram": "64G",
+        "comment": ""
+    },
+    "tenet212": {
+        "use": "True",
+        "name": "tenet212",
+        "cpu": "i7-10700",
+        "nCpu": "8",
+        "ram": "64G",
+        "comment": ""
+    },
+    "tenet213": {
+        "use": "True",
+        "name": "tenet213",
+        "cpu": "i7-10700",
+        "nCpu": "8",
+        "ram": "64G",
+        "comment": ""
+    },
+    "tenet214": {
+        "use": "True",
+        "name": "tenet214",
+        "cpu": "i7-10700",
+        "nCpu": "8",
+        "ram": "64G",
+        "comment": ""
+    },
+    "tenet215": {
+        "use": "True",
+        "name": "tenet215",
+        "cpu": "i7-10700K",
+        "nCpu": "8",
+        "ram": "64G",
+        "comment": ""
+    },
+    "tenet216": {
+        "use": "True",
+        "name": "tenet216",
+        "cpu": "i7-10700K",
+        "nCpu": "8",
+        "ram": "64G",
+        "comment": ""
+    },
+    "tenet217": {
+        "use": "False",
+        "name": "tenet217",
+        "cpu": "i7-10700K",
+        "nCpu": "8",
+        "ram": "64G",
+        "comment": "Boot problem: unable to request dhcp (2021.09.06)"
+    },
+    "tenet218": {
+        "use": "True",
+        "name": "tenet218",
+        "cpu": "i7-10700K",
+        "nCpu": "8",
+        "ram": "64G",
+        "comment": ""
+    },
+    "tenet219": {
+        "use": "True",
+        "name": "tenet219",
+        "cpu": "i7-10700K",
+        "nCpu": "8",
+        "ram": "64G",
+        "comment": ""
+    },
+    "tenet220": {
+        "use": "True",
+        "name": "tenet220",
+        "cpu": "i7-10700K",
+        "nCpu": "8",
+        "ram": "64G",
+        "comment": ""
+    },
+    "tenet221": {
+        "use": "True",
+        "name": "tenet221",
+        "cpu": "i7-10700K",
+        "nCpu": "8",
+        "ram": "64G",
+        "comment": ""
+    },
+    "tenet222": {
+        "use": "True",
+        "name": "tenet222",
+        "cpu": "i7-10700K",
+        "nCpu": "8",
+        "ram": "64G",
+        "comment": ""
+    },
+    "tenet223": {
+        "use": "True",
+        "name": "tenet223",
+        "cpu": "i7-10700K",
+        "nCpu": "8",
+        "ram": "64G",
+        "comment": ""
+    },
+    "tenet224": {
+        "use": "True",
+        "name": "tenet224",
+        "cpu": "i7-10700K",
+        "nCpu": "8",
+        "ram": "64G",
+        "comment": ""
+    },
+    "tenet225": {
+        "use": "True",
+        "name": "tenet225",
+        "cpu": "i7-10700K",
+        "nCpu": "8",
+        "ram": "64G",
+        "comment": ""
+    },
+    "tenet226": {
+        "use": "True",
+        "name": "tenet226",
+        "cpu": "i7-10700K",
+        "nCpu": "8",
+        "ram": "64G",
+        "comment": ""
+    }
+}

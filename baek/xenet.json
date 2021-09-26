@@ -1,0 +1,10 @@
+{
+    "xenet9": {
+        "use": "True",
+        "name": "xenet9",
+        "cpu": "6258Rx2",
+        "nCpu": "56",
+        "ram": "256G",
+        "comment": ""
+    }
+}

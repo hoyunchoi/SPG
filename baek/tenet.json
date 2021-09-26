@@ -1,0 +1,122 @@
+{
+    "tenet1": {
+        "use": "True",
+        "name": "tenet1",
+        "cpu": "Q9550",
+        "nCpu": "4",
+        "ram": "8G",
+        "comment": ""
+    },
+    "tenet2": {
+        "use": "True",
+        "name": "tenet2",
+        "cpu": "Q9550",
+        "nCpu": "4",
+        "ram": "8G",
+        "comment": ""
+    },
+    "tenet3": {
+        "use": "True",
+        "name": "tenet3",
+        "cpu": "Q9550",
+        "nCpu": "4",
+        "ram": "8G",
+        "comment": ""
+    },
+    "tenet4": {
+        "use": "True",
+        "name": "tenet4",
+        "cpu": "Q9550",
+        "nCpu": "4",
+        "ram": "8G",
+        "comment": ""
+    },
+    "tenet5": {
+        "use": "False",
+        "name": "tenet5",
+        "cpu": "Q9550",
+        "nCpu": "4",
+        "ram": "8G",
+        "comment": ""
+    },
+    "tenet6": {
+        "use": "False",
+        "name": "tenet6",
+        "cpu": "Q9550",
+        "nCpu": "4",
+        "ram": "8G",
+        "comment": ""
+    },
+    "tenet7": {
+        "use": "False",
+        "name": "tenet7",
+        "cpu": "Q9550",
+        "nCpu": "4",
+        "ram": "8G",
+        "comment": ""
+    },
+    "tenet8": {
+        "use": "False",
+        "name": "tenet8",
+        "cpu": "Q9550",
+        "nCpu": "4",
+        "ram": "8G",
+        "comment": ""
+    },
+    "tenet9": {
+        "use": "True",
+        "name": "tenet9",
+        "cpu": "Q9550",
+        "nCpu": "4",
+        "ram": "8G",
+        "comment": ""
+    },
+    "tenet10": {
+        "use": "False",
+        "name": "tenet10",
+        "cpu": "Q9550",
+        "nCpu": "4",
+        "ram": "8G",
+        "comment": ""
+    },
+    "tenet11": {
+        "use": "False",
+        "name": "tenet11",
+        "cpu": "Q9550",
+        "nCpu": "4",
+        "ram": "8G",
+        "comment": ""
+    },
+    "tenet12": {
+        "use": "True",
+        "name": "tenet12",
+        "cpu": "Q9550",
+        "nCpu": "4",
+        "ram": "8G",
+        "comment": ""
+    },
+    "tenet13": {
+        "use": "True",
+        "name": "tenet13",
+        "cpu": "Q9550",
+        "nCpu": "4",
+        "ram": "8G",
+        "comment": ""
+    },
+    "tenet14": {
+        "use": "True",
+        "name": "tenet14",
+        "cpu": "Q9550",
+        "nCpu": "4",
+        "ram": "8G",
+        "comment": ""
+    },
+    "tenet15": {
+        "use": "True",
+        "name": "tenet15",
+        "cpu": "Q9550",
+        "nCpu": "4",
+        "ram": "8G",
+        "comment": ""
+    }
+}

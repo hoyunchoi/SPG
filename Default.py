@@ -58,7 +58,7 @@ class Default:
             Return dictionary of machine group files
             Machine group files of each user group is at directory named after uesr group
         """
-        return {group: os.path.join(Default.ROOTDIR, self.userGroup, group + '.machine')
+        return {group: os.path.join(Default.ROOTDIR, self.userGroup, group + '.json')
                 for group in Default.MACHINEGROUP}
 
 ##################################### Define instance #####################################

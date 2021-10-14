@@ -3,7 +3,7 @@
         "use": "True",
         "name": "kuda1",
         "cpu": "E5-2680v4x2",
-        "num_cu": "28",
+        "num_cpu": "28",
         "ram": "128G",
         "gpu": "GTX-1080",
         "num_gpu": "4",

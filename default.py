@@ -1,16 +1,17 @@
-import os
 import sys
 import subprocess
+from pathlib import Path
 
+from singleton import Singleton
 
-class Default:
+class Default(metaclass=Singleton):
     """
         Default variables for SPG script
     """
 
     ################################### You May Change Here ###################################
     # Users
-    USER = {
+    USER: dict[str, list[str]] = {
         "administrator": ["root"],
         "kahng": [
             "hoyun",
@@ -33,27 +34,27 @@ class Default:
             "kiwon",
             "ybaek",
             "leorigon",
-        ],
+        ]
     }
 
     # Machine group names
-    GROUP = ["tenet", "xenet", "kuda"]
+    GROUP: list[str] = ["tenet", "xenet", "kuda"]
 
     # Root directory for SPG
-    ROOT_DIR = os.path.join("/root", "spg")
-    ROOT_DIR = "."
+    ROOT_DIR: Path = Path("/root/spg")
+    ROOT_DIR = Path(".")
     ###########################################################################################
 
     def __init__(self) -> None:
         self.user = subprocess.check_output("whoami",
                                             text=True,
                                             shell=True).strip()     # User who is running spg
-        self.path = os.getcwd()                                     # Path where the spg is called
+        self.path = Path.cwd()                                      # Path where the spg is called
 
-        self.user_group = self.__check_user()                       # Group where default user is in
-        self.terminal_width = self.__check_terminal_width()         # Width of current terminal
+        self.user_group = self._check_user()                       # Group where default user is in
+        self.terminal_width = self._check_terminal_width()         # Width of current terminal
 
-    def __check_user(self) -> str:
+    def _check_user(self) -> str:
         """
             Check if user is registered in SPG
             Return user's group name if user is registered in SPG
@@ -67,7 +68,7 @@ class Default:
         raise SystemExit(f'ERROR: User "{self.user}"" is not registerd in SPG' +
                          '\n' + 'Please contact to server administrator')
 
-    def __check_terminal_width(self) -> int:
+    def _check_terminal_width(self) -> int:
         """
             Check current terminal width
             If using non-conventional terminal, return infinite
@@ -79,17 +80,13 @@ class Default:
         except subprocess.CalledProcessError:
             return sys.maxsize
 
-    def get_group_file_dict(self) -> dict[str, str]:
+    def get_group_file_dict(self) -> dict[str, Path]:
         """
             Return dictionary of machine group files
             Machine group files of each user group is at directory named after uesr group
         """
-        return {group: os.path.join(Default.ROOT_DIR, self.user_group, group + ".json")
+        return {group: Default.ROOT_DIR / self.user_group / f"{group}.json"
                 for group in Default.GROUP}
-
-
-##################################### Define instance #####################################
-default = Default()
 
 if __name__ == "__main__":
     print('This is module "Default" from SPG')

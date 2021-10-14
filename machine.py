@@ -1,14 +1,15 @@
 import re
+import logging
 import argparse
 import subprocess
 from collections import Counter
-from typing import Optional
-from dataclasses import dataclass
+from typing import Optional, Union
+from dataclasses import dataclass, field
 
-from default import default
-from interaction import Printer, message_handler, run_kill_logger
+from default import Default
 from command import Command
 from job import CPUJob, GPUJob, Job
+from spgio import Printer, MessageHandler
 
 
 @dataclass
@@ -17,35 +18,38 @@ class Machine:
         data class for storing machine informations
         GPUMachine will be inherited from this class
     """
-    use: bool                       # Whether to be used or not: 1 for use, 0 for not use
-    name: str                       # Name of machine. ex) tenet1
-    cpu: str                        # Name of cpu
-    num_cpu: int                    # Number of cpu cores
-    ram: str                        # Size of RAM
-    comment: str                    # comment of machine. Not used
-    gpu: Optional[str] = ''         # Name of gpu (if exists)
-    num_gpu: Optional[int] = 0      # Number of gpus (if exists)
-    vram: Optional[str] = ''        # Size of VRAM per each gpu (if exists)
+    use: Union[str, bool]               # Whether to be used or not: True for use, False for not use
+    name: str                           # Name of machine. ex) tenet1
+    cpu: str                            # Name of cpu
+    num_cpu: int                        # Number of cpu cores
+    ram: str                            # Size of RAM
+    comment: str                        # comment of machine. Not used
+    gpu: str = field(default='')        # Name of gpu (if exists)
+    num_gpu: int = field(default=0)     # Number of gpus (if exists)
+    vram: str = field(default='')       # Size of VRAM per each gpu (if exists)
 
     def __post_init__(self) -> None:
         """
             Post processing initialize
         """
-        self.use = self.use.lower() in ['true', '1']
+        self.use = (self.use == "True")
         self.num_cpu = int(self.num_cpu)
 
         # Current job/free information
-        self.job_dict: dict[str, Job] = {}       # Dictionary of running jobs with key of PID
-        self.num_job: int = 0                    # Number of running jobs = len(jobList)
-        self.num_free_cpu: int = 0               # Number of free cpu cores
-        self.free_ram: str = ''                  # Size of free memory
+        self.job_list: list[Job] = []   # List of running jobs
+        self.num_job: int = 0           # Number of running jobs = len(jobList)
+        self.num_free_cpu: int = 0      # Number of free cpu cores
+        self.free_ram: str = ''         # Size of free memory
+
 
         # KILL
-        self.num_kill: int = 0                   # Number of killed jobs
+        self.num_kill: int = 0          # Number of killed jobs
 
         # Default variables
-        self.log_dict = {'machine': self.name, 'user': default.user}
         self.cmd_ssh = Command.get_ssh_cmd(self.name)
+        self.message_handler = MessageHandler()
+        self.logger = logging.getLogger("SPG")
+        self.log_dict = {'machine': self.name, 'user': Default().user}
 
     ########################## Get Line Format Information for Print ##########################
     def __format__(self, format_spec: str) -> str:
@@ -68,24 +72,28 @@ class Machine:
         return self.name
 
     ###################################### Basic Utility ######################################
-    def __find_cmd_from_pid(self, pid: str) -> str:
+    def _find_cmd_from_pid(self, pid: str) -> list[str]:
         """
-            Find command line in userJobList by pid
+            Find command line in job_list by pid
+            There can be serveral dispatchable entities with same pid.
+            Return all jobs with such pid
             Args
                 pid: target pid
             Return
-                command: command of the process
+                command: list command of the process
         """
-        try:
-            return self.job_dict[pid].cmd
+        # Find list of command sharing same pid
+        cmd_list = [job.cmd for job in self.job_list if job.pid == pid]
 
         # Job with input pid is not registered
-        except KeyError:
-            message_handler.error(f'ERROR: No such process in {self.name}: {pid}')
+        if not cmd_list:
+            self.message_handler.error(f'ERROR: No such process in {self.name}: {pid}')
             exit()
 
+        return cmd_list
+
     @staticmethod
-    def get_group_name(machine_name: str) -> int:
+    def get_group_name(machine_name: str) -> str:
         """
             Get group name of machine
             ex) tenet100 -> tenet
@@ -117,7 +125,7 @@ class Machine:
                                 shell=True)
         # Check scan error
         if result.stderr:
-            message_handler.error(f'ERROR from {self.name}: {result.stderr.strip()}')
+            self.message_handler.error(f'ERROR from {self.name}: {result.stderr.strip()}')
             return None
         # If there is no error return list of stdout
         return result.stdout.strip().split('\n')
@@ -132,14 +140,16 @@ class Machine:
                                 shell=True)
         return result.stdout.strip()
 
-    def scan_job(self, user_name: str, scan_level: int) -> None:
+    def scan_job(self,
+                 user_name: Optional[str],
+                 scan_level: int) -> None:
         """
             Scan the processes of input user.
-            job_dict, num_job will be updated
+            job_list, num_job will be updated
             when user_name is None: free informations will also be updated
             when machine is GPUMachine: num_free_gpu, free_vram will also be updated
             Args
-                user_name: Refer getprocessList for more description
+                user_name: Refer Command.get_ps_cmd for more description
                 scan_level: Refer 'Job.is_important' for more description
 
             For CPU Machine, select important job from _get_process_list
@@ -157,20 +167,19 @@ class Machine:
             if process:
                 job = CPUJob(self.name, process)
                 if job.is_important(scan_level):
-                    self.job_dict[job.pid] = job
-        self.num_job = len(self.job_dict)
+                    self.job_list.append(job)
+        self.num_job = len(self.job_list)
 
         # If user name is None, update free informations too
         if user_name is None:
             self.num_free_cpu = max(0, self.num_cpu - self.num_job)
             self.free_ram = self._get_free_ram()
 
-    def get_user_count(self) -> Counter[str, int]:
+    def get_user_count(self) -> Counter[str]:
         """
             Return the Counter of {user name: number of jobs}
         """
-        user_list = [job.user_name for job in self.job_dict.values()]
-        return Counter(user_list)
+        return Counter(job.user_name for job in self.job_list)
 
     ##################################### Run or Kill Job #####################################
     def run(self, command: str) -> None:
@@ -185,8 +194,10 @@ class Machine:
                        shell=True)
 
         # Print the result and save to logger
-        message_handler.success(f"SUCCESS {self.name:<10}: run \'{command}\'")
-        run_kill_logger.info(f'spg run {command}', extra=self.log_dict)
+        self.message_handler.success(f"SUCCESS {self.name:<10}: run \'{command}\'")
+
+        # Log
+        self.logger.info(f'spg run {command}', extra=self.log_dict)
 
     def KILL(self, args: argparse.Namespace) -> None:
         """
@@ -194,32 +205,42 @@ class Machine:
         """
         self.log_dict['user'] = args.user_name
         self.num_kill = 0
-        for job in self.job_dict.values():
+        logger = logging.getLogger("SPG")
+
+        for job in self.job_list:
             if job.is_kill(args):
-                # Find command for print result/logging
-                command = self.__find_cmd_from_pid(job.pid)
+                # Find command list for print result/logging
+                cmd_list = self._find_cmd_from_pid(job.pid)
 
                 # self.killPID(job.pid)
-                self.__kill(job)
+                self._kill(job)
                 self.num_kill += 1
 
                 # Print the result and save to logger
-                message_handler.success(f"SUCCESS {self.name:<10}: kill \'{command}\'")
-                run_kill_logger.info(f'spg kill {command}', extra=self.log_dict)
+                for cmd in cmd_list:
+                    self.message_handler.success(f"SUCCESS {self.name:<10}: kill \'{cmd}\'")
+                    logger.info(f'spg kill {cmd}', extra=self.log_dict)
 
-    def __kill(self, job: Job) -> None:
+    def _kill(self, job: Job) -> None:
         """
             Kill job and all the process until it's session leader
         """
         # Command to kill very processes until reaching session leader
-        cmd_kill = f'{self.cmd_ssh} \"{Command.get_kill_cmd(job.pid)}; '
+        cmd_kill = f'{self.cmd_ssh} \"{Command.get_kill_cmd(job.pid)} '
         pid = job.pid
         while pid != job.sid:
             # Update pid to it's ppid
-            pid = subprocess.check_output(f'{self.cmd_ssh} \"{Command.get_ppid_cmd(pid)}\"',
-                                          text=True,
-                                          shell=True).strip()
-            cmd_kill += f'{Command.get_kill_cmd(job.pid)}; '
+            try:
+                pid = subprocess.check_output(f'{self.cmd_ssh} \"{Command.get_ppid_cmd(pid)}\"',
+                                              text=True,
+                                              shell=True).strip()
+            except subprocess.CalledProcessError:
+                raise RuntimeError("Need to be checked")
+
+            # When ppid is root process, do not touch
+            if pid == "1":
+                break
+            cmd_kill += f'{Command.get_kill_cmd(pid)} '
         cmd_kill += '\"'
 
         # Run kill command
@@ -228,7 +249,7 @@ class Machine:
         # When error occurs, save it
         if result.stderr:
             kill_error_list = result.stderr.strip().split('\n')
-            message_handler.error('\n'.join(f'ERROR from {self.name}: {kill_error}'
+            self.message_handler.error('\n'.join(f'ERROR from {self.name}: {kill_error}'
                                             for kill_error in kill_error_list))
 
 
@@ -257,7 +278,7 @@ class GPUMachine(Machine):
                                                             'gpus', f'{self.free_vram} free'))
         return self.name
 
-    def __get_free_vram(self) -> str:
+    def _get_free_vram(self) -> str:
         """
             Get free vram information
             When one or more gpus is free, print it's total vram
@@ -279,12 +300,12 @@ class GPUMachine(Machine):
 
     def scan_job(self, user_name: str, scan_level: int) -> None:
         """
-            update job_dict and num_free_gpu
+            update job_list and num_free_gpu
             1. For every process in GPUs, check their pid
                 2-1. If there is no process, update num_free_gpu
                 2-2. If there is such process, find ps information by pid
                     3-1. If user_name from ps information matches, check the importance of job
-                        4-1. If the job is important, save the job to job_dict
+                        4-1. If the job is important, save the job to job_list
         """
         # Get list of raw process: Use nvidia-smi command
         process_list = self._get_process_list(Command.get_ns_process_cmd())
@@ -305,23 +326,24 @@ class GPUMachine(Machine):
                 continue
 
             # Get 'ps' information from PID of ns_info
-            ps_info = subprocess.run(f'{self.cmd_ssh} \"{Command.get_ps_from_pid_cmd(pid)}\"',
-                                     stdout=subprocess.PIPE,
-                                     text=True,
-                                     shell=True).stdout
+            ps_info_list = subprocess.run(f'{self.cmd_ssh} \"{Command.get_ps_from_pid_cmd(pid)}\"',
+                                          stdout=subprocess.PIPE,
+                                          text=True,
+                                          shell=True).stdout.strip().split('\n')
 
-            # Store the information to job Dict
-            if (user_name is None) or (ps_info.strip().split()[0] == user_name):
-                job = GPUJob(f'{self.name}-GPU{ns_info[0]}', ps_info, *ns_info[2:])
-                if job.is_important(scan_level):      # Most likely to be true
-                    self.job_dict[pid] = job
-        self.num_job = len(self.job_dict)
+            # Store the information to job list
+            for ps_info in ps_info_list:
+                if (user_name is None) or (ps_info.strip().split()[0] == user_name):
+                    job = GPUJob(f'{self.name}-GPU{ns_info[0]}', ps_info, *ns_info[2:])
+                    if job.is_important(scan_level):      # Most likely to be true
+                        self.job_list.append(job)
+        self.num_job = len(self.job_list)
 
         # Update free information
         if user_name is None:
             self.num_free_cpu = max(0, self.num_cpu - self.num_job)
             self.free_ram = self._get_free_ram()
-            self.free_vram = self.__get_free_vram()
+            self.free_vram = self._get_free_vram()
 
 
 if __name__ == "__main__":

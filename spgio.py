@@ -1,14 +1,16 @@
 import os
 import sys
 import atexit
+import logging
 import argparse
 import colorama
-from termcolor import cprint
+
 from tqdm import tqdm
-import logging
+from termcolor import cprint
 from logging.handlers import RotatingFileHandler
 
-from default import Default, default
+from default import Default
+from singleton import Singleton
 
 
 class InputHandler:
@@ -38,7 +40,7 @@ class InputHandler:
         return False
 
 
-class tqdm_spg:
+class TQDM:
     """
         tqdm used for spg
     """
@@ -74,7 +76,7 @@ class tqdm_spg:
         self.bar.update(1)
 
 
-class Printer:
+class Printer(metaclass=Singleton):
     """
         Main printer of SPG
         Handles tqdm bar and plain output of SPG
@@ -89,17 +91,19 @@ class Printer:
     def __init__(self) -> None:
         # Print function
         self.print_fn = tqdm.write                      # Function to use at printing
+
         # Format
-        self.line_format: str = None                    # Format of main line
-        self.summary_format: str = None                 # Format of summary line
+        self.line_format: str = ''                      # Format of main line
+        self.summary_format: str = ''                   # Format of summary line
 
         # tqdm
         self.bar_width = 40                             # Default width of tqdm bar
-        self.tqdm_dict: dict[str, tqdm_spg] = {}        # Dictionary of tqdm bar. key: group name, value: tqdm
+        self.tqdm_dict: dict[str, TQDM] = {}            # Dictionary of tqdm bar. key: group name, value: tqdm
+        self.terminal_width = Default().terminal_width  # Current terminal width
 
         # plain text
         self.column_line = ' ' * self.bar_width         # Default line with column name
-        self.str_line = self.__update_str_line()        # Default string line decorator
+        self.str_line = self._update_str_line()        # Default string line decorator
 
     def initialize(self, args: argparse.Namespace) -> None:
         """
@@ -127,14 +131,14 @@ class Printer:
             self.summary_format = self.line_format
             self.column_line = self.line_format.format('User', 'total', *group_name_list)
 
-        self.__update_str_line()
-        self.__update_bar_width(args.silent)
+        self._update_str_line()
+        self._update_bar_width(args.silent)
 
-    def __update_str_line(self) -> str:
+    def _update_str_line(self) -> str:
         self.str_line = '+' + '=' * (len(self.column_line) - 1)
         return self.str_line
 
-    def __update_bar_width(self, silent: bool) -> None:
+    def _update_bar_width(self, silent: bool) -> None:
         """
             Update bar width
             When silent is given, bar width should be None
@@ -145,7 +149,7 @@ class Printer:
             self.bar_width = None
             return
         # Otherwise, bar_width should be minimum between length of column line and terminal width
-        self.bar_width = min(len(self.column_line), default.terminal_width)
+        self.bar_width = min(len(self.column_line), self.terminal_width)
 
     ######################################## tqdm util ########################################
     def add_tqdm(self, group_name: str, pool: set[str]) -> None:
@@ -155,7 +159,7 @@ class Printer:
         """
         if self.bar_width is None:
             return
-        self.tqdm_dict[group_name] = tqdm_spg(pool, self.bar_width)
+        self.tqdm_dict[group_name] = TQDM(pool, self.bar_width)
 
     def update_tqdm(self, group_name: str, target: str) -> None:
         """
@@ -206,7 +210,8 @@ class Printer:
         self.print_fn(self.column_line)
         self.print_fn(self.str_line)
 
-class MessageHandler:
+
+class MessageHandler(metaclass=Singleton):
     """
         Store message from spg and print before exit
     """
@@ -243,12 +248,12 @@ class MessageHandler:
         self.error_list.append(msg)
 
 
-def get_run_kill_logger() -> logging.Logger:
+def create_logger() -> None:
     """
-        Return logging.Logger instance for logging run/kill command of SPG
+        Create logger instance for SPG
     """
     # Define logger instance
-    run_kill_logger = logging.getLogger('run-kill')
+    logger = logging.getLogger("SPG")
 
     # Define format of logging
     formatter = logging.Formatter(fmt='{asctime} {machine:<10} {user:<15}: {message}',
@@ -263,15 +268,8 @@ def get_run_kill_logger() -> logging.Logger:
     handler.setFormatter(formatter)
 
     # Return logger
-    run_kill_logger.addHandler(handler)
-    run_kill_logger.setLevel(logging.INFO)    # log over INFO level
-    return run_kill_logger
-
-
-##################################### Define instance #####################################
-printer = Printer()
-message_handler = MessageHandler()
-run_kill_logger = get_run_kill_logger()
+    logger.addHandler(handler)
+    logger.setLevel(logging.INFO)    # log over INFO level
 
 
 if __name__ == "__main__":

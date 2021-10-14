@@ -1200,7 +1200,7 @@
         "comment": ""
     },
     "tenet151": {
-        "use": "True",
+        "use": "False",
         "name": "tenet151",
         "cpu": "i7-9700",
         "num_cpu": "8",

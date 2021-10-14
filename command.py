@@ -1,6 +1,7 @@
 from typing import Optional
 
-from default import default
+from default import Default
+
 
 class Command:
     """
@@ -45,8 +46,8 @@ class Command:
         """
             Same as get_ps_cmd but specified by pid
         """
-        return (f'ps H - q {pid} - -no - headers '
-                '--format ruser: 15, stat, pid, sid, pcpu, pmem, rss: 10, time: 15, start_time, args')
+        return (f'ps H -q {pid} --no-headers '
+                '--format ruser:15,stat,pid,sid,pcpu,pmem,rss:10,time:15,start_time,args')
 
     @staticmethod
     def get_ppid_cmd(pid: str) -> str:
@@ -83,14 +84,14 @@ class Command:
         """
             Return run command at input path
         """
-        return f'cd {default.path}; {command}'
+        return f'cd {Default().path}; {command}'
 
     @staticmethod
     def get_kill_cmd(pid: str) -> str:
         """
             Return kill command of input pid
         """
-        return f'kill -9 {pid}'
+        return f'kill -9 {pid} 2>/dev/null;'
 
     @staticmethod
     def get_ns_process_cmd() -> str:

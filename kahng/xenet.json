@@ -8,7 +8,7 @@
         "comment": ""
     },
     "xenet2": {
-        "use": "True",
+        "use": "False",
         "name": "xenet2",
         "cpu": "E7430x2",
         "num_cpu": "28",

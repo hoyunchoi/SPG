@@ -2,7 +2,7 @@ import argparse
 from typing import Union
 from abc import ABC, abstractmethod
 
-from interaction import Printer, message_handler
+from spgio import Printer, MessageHandler
 
 
 class Job(ABC):
@@ -102,10 +102,10 @@ class Job(ABC):
                 True: It is important job. Should be counted
                 False: It is not important job. Should be skipped
         """
-        scan_mode_exception = ['ps H --user',     # From SPG scanning process
-                               'sshd',              # SSH daemon process
-                               '@notty',            # Login which does not require a terminal
-                               '[']                 # Not sure what this is
+        scan_mode_exception = ['ps H --user',               # From SPG scanning process
+                               'sshd',                      # SSH daemon process
+                               '@notty',                    # Login which does not require a terminal
+                               '/usr/lib/systemd/systemd']  # User-specific systemd
         if scan_level >= 2:
             scan_mode_exception += ['scala.tools.nsc.CompileServer']  # Not sure what this is
 
@@ -113,6 +113,10 @@ class Job(ABC):
         for exception in scan_mode_exception:
             if exception in self.cmd:
                 return False
+
+        # If filterd job has 20+% cpu usage, count it as important regardless of it's state
+        if float(self.cpu_percent) > 20.0:
+            return True
 
         # State is 'R'
         if 'R' in self.state:
@@ -126,7 +130,7 @@ class Job(ABC):
             return True
         # State is 'Z'. Warning message
         elif 'Z' in self.state:
-            message_handler.warning(f'WARNING: {self.machine_name} has Zombie process {self.pid}')
+            MessageHandler().warning(f'WARNING: {self.machine_name} has Zombie process {self.pid}')
             return False
         # State is not either R and D
         else:

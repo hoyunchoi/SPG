@@ -171,11 +171,6 @@ class Argument:
         """
             Check args for option 'job'
         """
-        # When 'all' flag is true, set user name to None
-        # Refer Commands.get_ps_cmd for the reason
-        if args.all:
-            args.user_name = None
-
         # Check if input user name is valid
         for user_list in Default.USER.values():
             if args.user_name in user_list:
@@ -183,6 +178,12 @@ class Argument:
         else:
             self.message_handler.error(f"Invalid user name: {args.user_name}")
             exit()
+
+        # When 'all' flag is true, set user name to None
+        # Refer Commands.get_ps_cmd for the reason
+        if args.all:
+            args.user_name = None
+
         return args
 
     def _check_user_option(self, args: argparse.Namespace) -> argparse.Namespace:

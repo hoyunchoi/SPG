@@ -260,10 +260,10 @@ def create_logger() -> None:
                                   style='{',
                                   datefmt='%Y-%m-%d %H:%M')
 
-    # Define handler of logger: Limit maximum log file size as 1GB
+    # Define handler of logger: Limit maximum log file size as 10MB
     handler = RotatingFileHandler(os.path.join(Default.ROOT_DIR, 'spg.log'),
                                   delay=True,
-                                  maxBytes=1024 * 1024 * 100,
+                                  maxBytes=1024 * 1024 * 10,
                                   backupCount=1)
     handler.setFormatter(formatter)
 

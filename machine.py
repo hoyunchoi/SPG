@@ -205,21 +205,20 @@ class Machine:
         """
         self.log_dict['user'] = args.user_name
         self.num_kill = 0
-        logger = logging.getLogger("SPG")
 
         for job in self.job_list:
             if job.is_kill(args):
-                # Find command list for print result/logging
+                # Find command list for print result
                 cmd_list = self._find_cmd_from_pid(job.pid)
 
                 # self.killPID(job.pid)
                 self._kill(job)
                 self.num_kill += 1
 
-                # Print the result and save to logger
+                # Print the result and log
                 for cmd in cmd_list:
                     self.message_handler.success(f"SUCCESS {self.name:<10}: kill \'{cmd}\'")
-                    logger.info(f'spg kill {cmd}', extra=self.log_dict)
+                    self.logger.info(f'spg kill {cmd}', extra=self.log_dict)
 
     def _kill(self, job: Job) -> None:
         """
@@ -295,8 +294,8 @@ class GPUMachine(Machine):
                                 shell=True)
         free_vram_list = result.stdout.strip().split('\n')
         max_free_vram = max(float(free_vram) for free_vram in free_vram_list)
-        max_free_vram *= 1.04858      # Mebibyte to Megabyte
-        return Job.get_mem_with_unit(max_free_vram, 'MB')
+        max_free_vram *= 1.04858                                    # Mebibyte to Megabyte
+        return Job.get_mem_with_unit(max_free_vram, 'MB')[:-1]      # Drop byte(B)
 
     def scan_job(self, user_name: str, scan_level: int) -> None:
         """

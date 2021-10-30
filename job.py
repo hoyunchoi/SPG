@@ -105,7 +105,8 @@ class Job(ABC):
         scan_mode_exception = ['ps H --user',               # From SPG scanning process
                                'sshd',                      # SSH daemon process
                                '@notty',                    # Login which does not require a terminal
-                               '/usr/lib/systemd/systemd']  # User-specific systemd
+                               '/usr/lib/systemd/systemd'   # User-specific systemd
+                               ,'.vscode-server']           # Remote SSH of vscode
         if scan_level >= 2:
             scan_mode_exception += ['scala.tools.nsc.CompileServer']  # Not sure what this is
 

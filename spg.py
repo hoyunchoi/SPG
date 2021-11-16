@@ -285,7 +285,7 @@ class SPG:
         num_cmd_after = len(cmd_queue)
 
         # Remove the input file and re-write with remaining command queue
-        subprocess.run(f'rm {args.cmd_file}', shell=True)
+        subprocess.run(['rm', args.cmd_file])
         with open(args.cmd_file, 'w') as f:
             f.write('\n'.join(str(cmd) for cmd in cmd_queue))
 

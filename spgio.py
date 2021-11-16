@@ -1,5 +1,5 @@
-import os
 import sys
+import shutil
 import atexit
 import logging
 import argparse
@@ -63,14 +63,12 @@ class TQDM:
         # Remove target from pool
         self.pool.remove(target)
 
-        # Description of bar
-        # Print any remaining in pool
         try:
-            description = f'|Scanning {next(iter(self.pool))}|'
-        # When nothing remains at pool, scanning is finished
+            # Description of bar: print any remaining in pool
+            self.bar.set_description_str(f'|Scanning {next(iter(self.pool))}|')
         except StopIteration:
-            description = '|Scanning finished|'
-        self.bar.set_description_str(desc=description)
+            # When nothing remains at pool, scanning is finished
+            self.bar.set_description_str('|Scanning finished|')
 
         # Update state of bar
         self.bar.update(1)
@@ -99,7 +97,8 @@ class Printer(metaclass=Singleton):
         # tqdm
         self.bar_width = 40                             # Default width of tqdm bar
         self.tqdm_dict: dict[str, TQDM] = {}            # Dictionary of tqdm bar. key: group name, value: tqdm
-        self.terminal_width = Default().terminal_width  # Current terminal width
+        self.terminal_width, _ = shutil.get_terminal_size(fallback=(sys.maxsize, 1))
+
 
         # plain text
         self.column_line = ' ' * self.bar_width         # Default line with column name
@@ -144,12 +143,12 @@ class Printer(metaclass=Singleton):
             When silent is given, bar width should be None
             Otherwise, bar width should minimum of column line length and terminal width.
         """
-        # When silent is true, bar_width should be None
         if silent:
+            # When silent is true, bar_width should be None
             self.bar_width = None
-            return
-        # Otherwise, bar_width should be minimum between length of column line and terminal width
-        self.bar_width = min(len(self.column_line), self.terminal_width)
+        else:
+            # Otherwise, bar_width is minimum between length of column line and terminal width
+            self.bar_width = min(len(self.column_line), self.terminal_width)
 
     ######################################## tqdm util ########################################
     def add_tqdm(self, group_name: str, pool: set[str]) -> None:
@@ -261,7 +260,7 @@ def create_logger() -> None:
                                   datefmt='%Y-%m-%d %H:%M')
 
     # Define handler of logger: Limit maximum log file size as 10MB
-    handler = RotatingFileHandler(os.path.join(Default.ROOT_DIR, 'spg.log'),
+    handler = RotatingFileHandler(Default.ROOT_DIR / 'spg.log',
                                   delay=True,
                                   maxBytes=1024 * 1024 * 10,
                                   backupCount=1)

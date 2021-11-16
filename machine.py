@@ -41,12 +41,11 @@ class Machine:
         self.num_free_cpu: int = 0      # Number of free cpu cores
         self.free_ram: str = ''         # Size of free memory
 
-
         # KILL
         self.num_kill: int = 0          # Number of killed jobs
 
         # Default variables
-        self.cmd_ssh = Command.get_ssh_cmd(self.name)
+        self.cmd_ssh = Command.ssh_to_machine(self.name)
         self.message_handler = MessageHandler()
         self.logger = logging.getLogger("SPG")
         self.log_dict = {'machine': self.name, 'user': Default().user}
@@ -109,7 +108,7 @@ class Machine:
         return int(re.sub('[^0-9]', '', machine_name))
 
     ########################### Get Information of Machine Instance ###########################
-    def _get_process_list(self, get_process_cmd: str) -> Optional[list[str]]:
+    def _get_process_list(self, get_process_cmd: list[str]) -> Optional[list[str]]:
         """
             Get list of processes
             When error occurs during SSH, return None
@@ -119,14 +118,14 @@ class Machine:
                 CPU Machine: List of process from 'ps'
                 GPU Machine: List of process from 'nvidia-smi'
         """
-        result = subprocess.run(f'{self.cmd_ssh} \"{get_process_cmd}\"',
+        result = subprocess.run(self.cmd_ssh + get_process_cmd,
                                 capture_output=True,
-                                text=True,
-                                shell=True)
+                                text=True)
         # Check scan error
         if result.stderr:
             self.message_handler.error(f'ERROR from {self.name}: {result.stderr.strip()}')
             return None
+
         # If there is no error return list of stdout
         return result.stdout.strip().split('\n')
 
@@ -134,11 +133,10 @@ class Machine:
         """
             Return absolute value of free RAM
         """
-        result = subprocess.run(f'{self.cmd_ssh} \"{Command.get_free_ram_cmd()}\"',
-                                stdout=subprocess.PIPE,
-                                text=True,
-                                shell=True)
-        return result.stdout.strip()
+        # Run command without returning error
+        stdout = subprocess.check_output(self.cmd_ssh + Command.free_ram(),
+                                         text=True)
+        return stdout.strip()
 
     def scan_job(self,
                  user_name: Optional[str],
@@ -149,14 +147,14 @@ class Machine:
             when user_name is None: free informations will also be updated
             when machine is GPUMachine: num_free_gpu, free_vram will also be updated
             Args
-                user_name: Refer Command.get_ps_cmd for more description
+                user_name: Refer Command.ps_from_user for more description
                 scan_level: Refer 'Job.is_important' for more description
 
             For CPU Machine, select important job from _get_process_list
             For GPU Machine, do thread job __scanGPU over GPUs
         """
         # Get list of raw process: Use ps command
-        process_list = self._get_process_list(Command.get_ps_cmd(user_name))
+        process_list = self._get_process_list(Command.ps_from_user(user_name))
 
         # When error occurs, process_list is None. Do nothing and return
         if process_list is None:
@@ -189,12 +187,14 @@ class Machine:
                 path: Where command is done
                 cmds: list of commands including program/arguments
         """
-        # cd to path and run the command as background process
-        subprocess.run(f'{self.cmd_ssh} \"{Command.get_run_cmd(command)}\" &',
-                       shell=True)
+        # Run command on background
+        subprocess.Popen(self.cmd_ssh + Command.run_at_cwd(command),
+                             stdout=subprocess.PIPE,
+                             stderr=subprocess.PIPE,
+                             text=True)
 
         # Print the result and save to logger
-        self.message_handler.success(f"SUCCESS {self.name:<10}: run \'{command}\'")
+        self.message_handler.success(f"SUCCESS {self.name:<10}: run '{command}'")
 
         # Log
         self.logger.info(f'spg run {command}', extra=self.log_dict)
@@ -211,9 +211,8 @@ class Machine:
                 # Find command list for print result
                 cmd_list = self._find_cmd_from_pid(job.pid)
 
-                # self.killPID(job.pid)
+                # Kill the target job
                 self._kill(job)
-                self.num_kill += 1
 
                 # Print the result and log
                 for cmd in cmd_list:
@@ -224,32 +223,38 @@ class Machine:
         """
             Kill job and all the process until it's session leader
         """
-        # Command to kill very processes until reaching session leader
-        cmd_kill = f'{self.cmd_ssh} \"{Command.get_kill_cmd(job.pid)} '
+        # Open process for ssh
+        ssh_process = subprocess.Popen(self.cmd_ssh,
+                                       stdin=subprocess.PIPE,
+                                       stdout=subprocess.PIPE,
+                                       stderr=subprocess.PIPE,
+                                       text=True)
+
+        # list of kill commands that should be run at machine
+        cmd_kill: list[str] = Command.kill_pid(job.pid)
         pid = job.pid
+
+        # Command to kill very processes until reaching session leader
         while pid != job.sid:
             # Update pid to it's ppid
-            try:
-                pid = subprocess.check_output(f'{self.cmd_ssh} \"{Command.get_ppid_cmd(pid)}\"',
-                                              text=True,
-                                              shell=True).strip()
-            except subprocess.CalledProcessError:
-                raise RuntimeError("Need to be checked")
+            pid = subprocess.check_output(self.cmd_ssh + Command.pid_to_ppid(pid),
+                                          text=True).strip()
 
             # When ppid is root process, do not touch
             if pid == "1":
                 break
-            cmd_kill += f'{Command.get_kill_cmd(pid)} '
-        cmd_kill += '\"'
+            cmd_kill += Command.kill_pid(pid)
 
-        # Run kill command
-        result = subprocess.run(cmd_kill, shell=True, capture_output=True, text=True)
+        # Run kill command inside ssh target machine
+        _, err = ssh_process.communicate(' '.join(cmd_kill))
 
         # When error occurs, save it
-        if result.stderr:
-            kill_error_list = result.stderr.strip().split('\n')
+        if err:
+            kill_error_list = err.strip().split('\n')
             self.message_handler.error('\n'.join(f'ERROR from {self.name}: {kill_error}'
-                                            for kill_error in kill_error_list))
+                                                 for kill_error in kill_error_list))
+        # Update number of kills
+        self.num_kill += 1
 
 
 class GPUMachine(Machine):
@@ -288,11 +293,11 @@ class GPUMachine(Machine):
             return self.vram
 
         # Otherwise, get list of free vram
-        result = subprocess.run(f'{self.cmd_ssh} \"{Command.get_free_vram_cmd()}\"',
-                                stdout=subprocess.PIPE,
-                                text=True,
-                                shell=True)
-        free_vram_list = result.stdout.strip().split('\n')
+        stdout = subprocess.check_output(self.cmd_ssh + Command.free_vram(),
+                                         text=True)
+        free_vram_list = stdout.strip().split('\n')
+
+        # Get maximum free vram
         max_free_vram = max(float(free_vram) for free_vram in free_vram_list)
         max_free_vram *= 1.04858                                    # Mebibyte to Megabyte
         return Job.get_mem_with_unit(max_free_vram, 'MB')[:-1]      # Drop byte(B)
@@ -307,7 +312,7 @@ class GPUMachine(Machine):
                         4-1. If the job is important, save the job to job_list
         """
         # Get list of raw process: Use nvidia-smi command
-        process_list = self._get_process_list(Command.get_ns_process_cmd())
+        process_list = self._get_process_list(Command.ns_process())
 
         # When error occurs, process_list is None. Do nothing and return
         if process_list is None:
@@ -325,10 +330,8 @@ class GPUMachine(Machine):
                 continue
 
             # Get 'ps' information from PID of ns_info
-            ps_info_list = subprocess.run(f'{self.cmd_ssh} \"{Command.get_ps_from_pid_cmd(pid)}\"',
-                                          stdout=subprocess.PIPE,
-                                          text=True,
-                                          shell=True).stdout.strip().split('\n')
+            ps_info_list = subprocess.check_output(self.cmd_ssh + Command.ps_from_pid(pid),
+                                                   text=True).strip().split('\n')
 
             # Store the information to job list
             for ps_info in ps_info_list:

@@ -180,7 +180,7 @@ class Argument:
             exit()
 
         # When 'all' flag is true, set user name to None
-        # Refer Commands.get_ps_cmd for the reason
+        # Refer Commands.ps_from_user for the reason
         if args.all:
             args.user_name = None
 

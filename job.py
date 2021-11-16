@@ -61,10 +61,10 @@ class Job(ABC):
     def get_time_window(time: str) -> int:
         """
             time as second
-            time has format [DD-]HH:MM:SS
+            time should have format [DD-]HH:MM:SS
         """
         to_second_list = [1, 60, 3600, 62400]           # second, minute, hour, day
-        time_list = time.replace('-', ':').split(':')   # [DD-]HH:MM:SS -> [DD:]HH:MM:SS
+        time_list = time.replace('-', ':').split(':')   # [DD-]HH:MM:SS -> [DD:]HH:MM:SS -> list
 
         return sum(int(time) * to_second
                    for time, to_second in zip(reversed(time_list), to_second_list))
@@ -78,15 +78,17 @@ class Job(ABC):
             Return
                 memory utilization in MB or GB unit
         """
+        if isinstance(mem, str):
+            mem = float(mem)
         unit_list = ['KB', 'MB', 'GB', 'TB']
-        current_unit_idx = unit_list.index(unit)
-        mem = float(mem)
+        idx = unit_list.index(unit)
 
-        while mem >= 1000.0:
+        for unit in unit_list[idx:]:
+            if mem < 1000.0:
+                break
             mem /= 1000.0
-            current_unit_idx += 1
 
-        return f'{mem:.1f}{unit_list[current_unit_idx]}'
+        return f'{mem:.1f}{unit}'
 
     ################################## Check job information ##################################
     def is_important(self, scan_level: int) -> bool:

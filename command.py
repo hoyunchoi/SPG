@@ -1,6 +1,6 @@
+from shlex import split
+from pathlib import Path
 from typing import Optional
-
-from default import Default
 
 
 class Command:
@@ -9,16 +9,20 @@ class Command:
         Every methods are static
     """
     @staticmethod
-    def get_ssh_cmd(machineName: str) -> str:
+    def ssh_to_machine(machineName: str) -> list[str]:
         """
             StrictHostKeyChecking: ssh without checking host key(fingerprint) at known_hosts
             ConnectTimeout: Timeout in seconds for connecting ssh
             UpdateHostKeys=no: Do not update know_hosts if it already exists
         """
-        return f'ssh -o StrictHostKeyChecking=no -o ConnectTimeout=4 {machineName} -o UpdateHostKeys=no'
+        return split('ssh -T '
+                     '-o StrictHostKeyChecking=no '
+                     '-o ConnectTimeout=4 '
+                     '-o UpdateHostKeys=no '
+                     f'{machineName}')
 
     @staticmethod
-    def get_ps_cmd(userName: Optional[str]) -> str:
+    def ps_from_user(user_name: Optional[str]) -> list[str]:
         """
             H: Show threads as if they were processes
             --no-headers: Do not print header
@@ -36,39 +40,34 @@ class Command:
                       args - command with all its arguments as a string
         """
         # When user name is none, get every process belongs to user registered in group 'users'
-        if userName is None:
-            userName = '$(getent group users | cut -d: -f4)'
-        return (f'ps H --user {userName} --no-headers '
-                '--format ruser:15,stat,pid,sid,pcpu,pmem,rss:10,time:15,start_time,args')
+        if user_name is None:
+            user_name = '$(getent group users | cut -d: -f4)'
+        return split('ps H --no-headers '
+                     f'--user {user_name} '
+                     '--format ruser:15,stat,pid,sid,pcpu,pmem,rss:10,time:15,start_time,args')
 
     @staticmethod
-    def get_ps_from_pid_cmd(pid: str) -> str:
-        """
-            Same as get_ps_cmd but specified by pid
-        """
-        return (f'ps H -q {pid} --no-headers '
-                '--format ruser:15,stat,pid,sid,pcpu,pmem,rss:10,time:15,start_time,args')
-
-    @staticmethod
-    def get_ppid_cmd(pid: str) -> str:
+    def pid_to_ppid(pid: str) -> list[str]:
         """
             Return ppid of input pid
             -q: search by pid
             --format ppid: parent pid
         """
-        return f'ps -q {pid} --no-headers --format ppid'
+        return split('ps --no-headers '
+                     f'-q {pid} '
+                     '--format ppid')
 
     @staticmethod
-    def get_free_ram_cmd() -> str:
+    def free_ram() -> list[str]:
         """
             -h: Show output fieds in human-readable unit
             --si: Use unit of kilo, mega, giga byte instead of kibi, mebi, gibi byte
             awk: Only print available memory
         """
-        return 'free -h --si | awk \'(NR==2){print \$7}\''
+        return split(r"free -h --si | awk \'(NR==2){print $7}\'")
 
     @staticmethod
-    def get_free_vram_cmd() -> str:
+    def free_vram() -> list[str]:
         """
             --query-gpu: Show information related to gpu
                         memory.free - free vram in MiB unit
@@ -77,24 +76,27 @@ class Command:
                         noheader - don't print header
                         nounits - don't print unit(MiB)
         """
-        return 'nvidia-smi --query-gpu=memory.free --format=csv,noheader,nounits'
+        return split('nvidia-smi '
+                     '--query-gpu=memory.free '
+                     '--format=csv,noheader,nounits')
 
     @staticmethod
-    def get_run_cmd(command: str) -> str:
+    def run_at_cwd(command: str) -> list[str]:
         """
             Return run command at input path
         """
-        return f'cd {Default().path}; {command}'
+        return split(f'cd {Path.cwd()}; {command}')
 
     @staticmethod
-    def get_kill_cmd(pid: str) -> str:
+    def kill_pid(pid: str) -> list[str]:
         """
             Return kill command of input pid
+            stderr of the kill command will be ignored
         """
-        return f'kill -9 {pid} 2>/dev/null;'
+        return split(f'kill -9 {pid} 2> /dev/null;')
 
     @staticmethod
-    def get_ns_process_cmd() -> str:
+    def ns_process() -> list[str]:
         """
             pmon: process monitor mode
             -c: sampling count
@@ -103,8 +105,20 @@ class Command:
                 m - memory
             Return format: gpuIdx pid gpuPercent vramPercent varmUse
         """
-        return (f'nvidia-smi pmon -c 1 -s um '
-                '| tail -n +3 | awk \'{print \$1,\$2,\$4,\$5,\$8}\'')
+        return split('nvidia-smi pmon '
+                     '-c 1 '
+                     '-s um '
+                     '| tail -n +3 '      # First two rows are column name
+                     r"| awk \'{print $1,$2,$4,$5,$8}\'")
+
+    @staticmethod
+    def ps_from_pid(pid: str) -> list[str]:
+        """
+            Same as ps_from_user but specified by pid
+        """
+        return split('ps H --no-headers '
+                     f'-q {pid} '
+                     '--format ruser:15,stat,pid,sid,pcpu,pmem,rss:10,time:15,start_time,args')
 
 
 if __name__ == "__main__":

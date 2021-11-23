@@ -1,13 +1,15 @@
 import sys
 import shutil
 import atexit
-import logging
 import argparse
-import colorama
-
 from tqdm import tqdm
-from termcolor import cprint
+from typing import Optional
+
+import logging
 from logging.handlers import RotatingFileHandler
+
+import colorama
+from termcolor import cprint
 
 from default import Default
 from singleton import Singleton
@@ -18,7 +20,7 @@ class InputHandler:
         Handle user input
     """
     @staticmethod
-    def yes_no(msg: str = None) -> bool:
+    def yes_no(msg: Optional[str] = None) -> bool:
         """
             Get input yes or no
             If other input is given, ask again for 5 times
@@ -79,46 +81,49 @@ class Printer(metaclass=Singleton):
         Main printer of SPG
         Handles tqdm bar and plain output of SPG
     """
-    job_info_format: str = '| {:<10} | {:<15} | {:<3} | {:>7} | {:>6} | {:>6} | {:>7} | {:>11} | {:>5} | {}'
-    machine_info_format: str = '| {:<10} | {:<11} | {:>4} {:<4} | {:>5}'
-    machine_free_info_format: str = '| {:<10} | {:<11} | {:>4} {:<4} | {:>10}'
-    group_info_format: str = '| {:<10} | total {:>4} machines & {:>4} core'
-    group_gpu_info_format: str = '| {:<10} | {:>26} gpus'
-    group_job_info_format: str = '| {:<10} | total {:>4} jobs'
+    job_info_format = '| {:<10} | {:<15} | {:<3} | {:>7} | {:>6} | {:>6} | {:>7} | {:>11} | {:>5} | {}'
+    machine_info_format = '| {:<10} | {:<11} | {:>4} {:<4} | {:>5}'
+    machine_free_info_format = '| {:<10} | {:<11} | {:>4} {:<4} | {:>10}'
+    group_info_format = '| {:<10} | total {:>4} machines & {:>4} core'
+    group_gpu_info_format = '| {:<10} | {:>26} gpus'
+    group_job_info_format = '| {:<10} | total {:>4} jobs'
 
     def __init__(self) -> None:
         # Print function
-        self.print_fn = tqdm.write                      # Function to use at printing
+        self.print_fn = tqdm.write                 # Function to use at printing
 
         # Format
-        self.line_format: str = ''                      # Format of main line
-        self.summary_format: str = ''                   # Format of summary line
+        self.line_format = ''                      # Format of main line
+        self.summary_format = ''                   # Format of summary line
 
         # tqdm
-        self.bar_width = 40                             # Default width of tqdm bar
-        self.tqdm_dict: dict[str, TQDM] = {}            # Dictionary of tqdm bar. key: group name, value: tqdm
+        self.bar_width = 40                        # Default width of tqdm bar
+        self.tqdm_dict: dict[str, TQDM] = {}       # Dictionary of tqdm bar. key: group name, value: tqdm
         self.terminal_width, _ = shutil.get_terminal_size(fallback=(sys.maxsize, 1))
 
-
         # plain text
-        self.column_line = ' ' * self.bar_width         # Default line with column name
-        self.str_line = self._update_str_line()        # Default string line decorator
+        self.column_line = ' ' * self.bar_width    # Default line with column name
+        self.str_line = self._update_str_line()    # Default string line decorator
 
     def initialize(self, args: argparse.Namespace) -> None:
         """
             Initialize printer object
         """
         if args.option == 'list':
-            self.column_line = Printer.machine_info_format.format('Machine', 'ComputeUnit',
-                                                                  'tot', 'unit', 'mem')
+            self.column_line = Printer.machine_info_format.format(
+                'Machine', 'ComputeUnit', 'tot', 'unit', 'mem'
+            )
 
         elif args.option == 'free':
-            self.column_line = Printer.machine_free_info_format.format('Machine', 'ComputeUnit',
-                                                                       'free', 'unit', 'free mem')
+            self.column_line = Printer.machine_free_info_format.format(
+                'Machine', 'ComputeUnit', 'free', 'unit', 'free mem'
+            )
 
         elif args.option == 'job':
-            self.column_line = Printer.job_info_format.format('Machine', 'User', 'ST', 'PID', 'CPU(%)',
-                                                              'MEM(%)', 'Memory', 'Time', 'Start', 'Command')
+            self.column_line = Printer.job_info_format.format(
+                'Machine', 'User', 'ST', 'PID', 'CPU(%)', 'MEM(%)',
+                'Memory', 'Time', 'Start', 'Command'
+            )
 
         elif args.option == 'user':
             # Group name list is not specified. Take every groups
@@ -176,7 +181,7 @@ class Printer(metaclass=Singleton):
         self.tqdm_dict[group_name].bar.close()
 
     ########################################## Print ##########################################
-    def print(self, msg: str = None) -> None:
+    def print(self, msg: Optional[str] = None) -> None:
         """
             Print input msg
             When msg is None, print default value: string line

@@ -17,7 +17,8 @@ class Job(ABC):
                 machine_name: Name of machine where this job is running
                 info: Contain information of job, as the result of 'ps'
                       Refer Commands.getPSCmd for detailed format
-                args: Used for GPU machine that should be initialized using other information than info
+                args: Used for GPU machine that should be initialized
+                      by other information than info
         """
         self.machine_name = machine_name        # Name of machine where this job is running
         self.info = info.strip().split()
@@ -63,8 +64,11 @@ class Job(ABC):
             time as second
             time should have format [DD-]HH:MM:SS
         """
-        to_second_list = [1, 60, 3600, 62400]           # second, minute, hour, day
-        time_list = time.replace('-', ':').split(':')   # [DD-]HH:MM:SS -> [DD:]HH:MM:SS -> list
+        # second, minute, hour, day
+        to_second_list = [1, 60, 3600, 62400]
+
+        # [DD-]HH:MM:SS -> [DD:]HH:MM:SS -> list
+        time_list = time.replace('-', ':').split(':')
 
         return sum(int(time) * to_second
                    for time, to_second in zip(reversed(time_list), to_second_list))
@@ -95,7 +99,7 @@ class Job(ABC):
         """
             Check if the job is important or not with following rules
             1. Whether the state of job is 'R': Running or 'D': waiting for IO
-            1-1 when job state is 'R', it should have either 5+(%) cpu usage or 1+(sec) running time
+            1-1 when job state is 'R', it should have either 5(%)cpu usage or 1(sec) time
             2. Whether the fraction of commands is in exception list
             Args
                 job: target job to be determined
@@ -104,11 +108,13 @@ class Job(ABC):
                 True: It is important job. Should be counted
                 False: It is not important job. Should be skipped
         """
-        scan_mode_exception = ['ps H --user',               # From SPG scanning process
-                               'sshd',                      # SSH daemon process
-                               '@notty',                    # Login which does not require a terminal
-                               '/usr/lib/systemd/systemd'   # User-specific systemd
-                               ,'.vscode-server']           # Remote SSH of vscode
+        scan_mode_exception = [
+            'ps H --no-headers',         # From SPG scanning process
+            'sshd',                      # SSH daemon process
+            '@notty',                    # Login which does not require a terminal
+            '/usr/lib/systemd/systemd'   # User-specific systemd
+            , '.vscode-server'           # Remote SSH of vscode
+        ]
         if scan_level >= 2:
             scan_mode_exception += ['scala.tools.nsc.CompileServer']  # Not sure what this is
 
@@ -122,22 +128,26 @@ class Job(ABC):
             return True
 
         # State is 'R'
-        if 'R' in self.state:
+        elif 'R' in self.state:
             # Filter job by cpu usage and running time
-            if (float(self.cpu_percent) < 5.0) and (self.get_time_window(self.time) < 1):
-                return False
-            else:
+            if (float(self.cpu_percent) > 5.0) or (self.get_time_window(self.time) > 1):
                 return True
+            else:
+                return False
+
         # State is 'D'
         elif 'D' in self.state:
             return True
+
         # State is 'Z'. Warning message
         elif 'Z' in self.state:
-            MessageHandler().warning(f'WARNING: {self.machine_name} has Zombie process {self.pid}')
+            MessageHandler().warning(
+                f'WARNING: {self.machine_name} has Zombie process {self.pid}'
+            )
             return False
-        # State is not either R and D
-        else:
-            return False
+
+        # State is at S state with lower cpu usage
+        return False
 
     def is_kill(self, args: argparse.Namespace) -> bool:
         """
@@ -168,11 +178,15 @@ class CPUJob(Job):
         self.ram_use = self.get_mem_with_unit(self.ram_use, 'KB')
 
     def __format__(self, format_spec: str) -> str:
+        job_info = self.pid
+
         if format_spec == 'info':
-            return Printer.job_info_format.format(self.machine_name, self.user_name, self.state, self.pid,
-                                                  self.cpu_percent, self.ram_percent, self.ram_use, self.time,
-                                                  self.start, self.cmd)
-        return self.pid
+            job_info = Printer.job_info_format.format(
+                self.machine_name, self.user_name, self.state, self.pid, self.cpu_percent,
+                self.ram_percent, self.ram_use, self.time, self.start, self.cmd
+            )
+
+        return job_info
 
 
 class GPUJob(Job):
@@ -186,11 +200,15 @@ class GPUJob(Job):
         self.vram_use = self.get_mem_with_unit(self.vram_use, 'MB')
 
     def __format__(self, format_spec: str) -> str:
+        job_info = self.pid
+
         if format_spec == 'info':
-            return Printer.job_info_format.format(self.machine_name, self.user_name, self.state, self.pid,
-                                                  self.gpu_percent, self.vram_percent, self.vram_use, self.time,
-                                                  self.start, self.cmd)
-        return self.pid
+            job_info = Printer.job_info_format.format(
+                self.machine_name, self.user_name, self.state, self.pid, self.gpu_percent,
+                self.vram_percent, self.vram_use, self.time, self.start, self.cmd
+            )
+
+        return job_info
 
 
 if __name__ == "__main__":

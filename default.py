@@ -3,6 +3,7 @@ from pathlib import Path
 
 from singleton import Singleton
 
+
 class Default(metaclass=Singleton):
     """
         Default variables for SPG script
@@ -69,6 +70,7 @@ class Default(metaclass=Singleton):
         """
         return {group: Default.ROOT_DIR / self.user_group / f"{group}.json"
                 for group in Default.GROUP}
+
 
 if __name__ == "__main__":
     print('This is module "Default" from SPG')

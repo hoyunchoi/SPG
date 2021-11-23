@@ -1,7 +1,7 @@
 import getpass
 from pathlib import Path
 
-from singleton import Singleton
+from lib.singleton import Singleton
 
 
 class Default(metaclass=Singleton):

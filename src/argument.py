@@ -1,9 +1,9 @@
 import argparse
 import textwrap
 
-from machine import Machine
-from default import Default
-from spgio import InputHandler, MessageHandler
+from src.machine import Machine
+from src.default import Default
+from src.spgio import InputHandler, MessageHandler
 
 
 class Argument:

@@ -6,12 +6,11 @@ from typing import Optional
 import concurrent.futures as cf
 from collections import deque, Counter
 
-from group import Group
-from machine import Machine
-from argument import Argument
-
-from default import Default
-from spgio import Printer, MessageHandler, create_logger
+from src.group import Group
+from src.default import Default
+from src.machine import Machine
+from src.argument import Argument
+from src.spgio import Printer, MessageHandler, create_logger
 
 
 class SPG:
@@ -24,20 +23,11 @@ class SPG:
             group_name: Group(group_name, group_file)
             for group_name, group_file in Default().get_group_file_dict().items()
         }
+        self.group_list: list[Group] = []       # Target group from arguments
 
         # Printer and message handlers
         self.printer = Printer()
         self.message_handler = MessageHandler()
-
-        # Options
-        self.target_group_list: list[Group]       # List of groups from arguments
-        self.option = {'list': self.list,
-                       'free': self.free,
-                       'job': self.job,
-                       'user': self.user,
-                       'run': self.run,
-                       'runs': self.runs,
-                       'KILL': self.KILL}
 
     def __call__(self, args: argparse.Namespace) -> None:
         """
@@ -49,12 +39,12 @@ class SPG:
         # Get group list
         try:
             self.group_list = self._find_group_list_from_argument(args)
-        # In case of option 'run', machine name list is not defined
         except AttributeError:
+            # In case of option 'run', machine name list is not defined
             pass
 
         # Run SPG
-        self.option[args.option](args)
+        getattr(self, args.option)(args)
 
     ###################################### Basic Utility ######################################
     def _find_group_from_name(self, group_name: str) -> Group:
@@ -151,7 +141,7 @@ class SPG:
         """
             Scan running jobs
             Args
-                targetGroupList: list of group to scan
+                group_list: list of group to scan
                 user_name: whose job to scan
                 scan_level: refer Job.isImportant
         """

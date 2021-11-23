@@ -2,7 +2,7 @@ import argparse
 from typing import Union
 from abc import ABC, abstractmethod
 
-from spgio import Printer, MessageHandler
+from src.spgio import Printer, MessageHandler
 
 
 class Job(ABC):

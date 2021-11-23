@@ -5,8 +5,8 @@ import concurrent.futures as cf
 from typing import Optional, Any
 from collections import deque, Counter, abc
 
-from spgio import Printer
-from machine import Machine, GPUMachine
+from src.spgio import Printer
+from src.machine import Machine, GPUMachine
 
 
 class Group:

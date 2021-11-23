@@ -6,10 +6,10 @@ from typing import Optional, Union
 from collections import abc, Counter
 from dataclasses import dataclass, field
 
-from default import Default
-from command import Command
-from job import CPUJob, GPUJob, Job
-from spgio import Printer, MessageHandler
+from src.default import Default
+from src.command import Command
+from src.job import CPUJob, GPUJob, Job
+from src.spgio import Printer, MessageHandler
 
 
 @dataclass

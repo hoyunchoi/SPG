@@ -11,8 +11,8 @@ from logging.handlers import RotatingFileHandler
 import colorama
 from termcolor import cprint
 
-from default import Default
-from singleton import Singleton
+from src.default import Default
+from lib.singleton import Singleton
 
 
 class InputHandler:

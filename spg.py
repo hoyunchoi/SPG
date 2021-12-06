@@ -10,7 +10,7 @@ from src.group import Group
 from src.default import Default
 from src.machine import Machine
 from src.argument import Argument
-from src.spgio import Printer, MessageHandler, create_logger
+from src.spgio import Printer, MessageHandler, configure_logger
 
 
 class SPG:
@@ -333,7 +333,7 @@ def main():
     args = arguments.get_args()
 
     # Create logger
-    create_logger()
+    configure_logger()
 
     # Run SPG according to arguments
     spg = SPG()

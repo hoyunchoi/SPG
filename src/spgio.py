@@ -252,7 +252,7 @@ class MessageHandler(metaclass=Singleton):
         self.error_list.append(msg)
 
 
-def create_logger() -> None:
+def configure_logger() -> None:
     """
         Create logger instance for SPG
     """

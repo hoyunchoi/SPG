@@ -400,13 +400,10 @@ class Argument:
         """
         document = textwrap.dedent('''\
                                    spg run [machine] [program] (arguments)
-
                                    CAUTION!
                                    1. Invoke the job in the directory where you want the program to run
-                                   2. Don't append \'&\' character at the tail of commands.
-                                      spg will do it for you
-                                   3. If you want to use redirection symbols < or >,
-                                      type them in a quote, such as \'<\' or \'>\'
+                                   2. If your program uses -, -- arguments or redirection symbols < or >,
+                                      wrap the program and arguments with quote: ' or "
                                    ''')
         parser_run = self.option_parser.add_parser('run',
                                                    help='Run a job',
@@ -429,10 +426,8 @@ class Argument:
 
                                    CAUTION!
                                    1. Invoke the job in the directory where you want the program to run
-                                   2. Don't append \'&\' character at the tail of commands.
-                                      spg will do it for you
-                                   3. If you want to use redirection symbols < or >,
-                                      type them in a quote, such as \'<\' or \'>\'
+                                   2. If your program uses -, -- arguments or redirection symbols < or >,
+                                      wrap the program and arguments with quote: ' or "
                                    4. You can assign maximum of 50 jobs at one time.
                                    5. Executed commands will be dropped from input command file
                                    ''')

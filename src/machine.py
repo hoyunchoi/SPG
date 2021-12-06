@@ -193,16 +193,20 @@ class Machine:
                 cmds: list of commands including program/arguments
         """
         # Run command on background
-        subprocess.Popen(self.cmd_ssh + Command.run_at_cwd(command),
-                         stdout=subprocess.PIPE,
-                         stderr=subprocess.PIPE,
-                         text=True)
+        subprocess.run(self.cmd_ssh + Command.run_at_cwd(command))
+        # subprocess.Popen(self.cmd_ssh + Command.run_at_cwd(command),
+        #                  stdout=subprocess.PIPE,
+        #                  stderr=subprocess.PIPE,
+        #                  text=True)
 
         # Print the result and save to logger
         self.message_handler.success(f"SUCCESS {self.name:<10}: run '{command}'")
 
         # Log
-        self.logger.info(f'spg run {command}', extra=self.log_dict)
+        try:
+            self.logger.info(f'spg run {command}', extra=self.log_dict)
+        except PermissionError:
+            self.message_handler.error(f"Log file is rotated. Please contact to server administrator for changing log file permission")
 
     def KILL(self, args: argparse.Namespace) -> None:
         """
@@ -224,7 +228,10 @@ class Machine:
             # Print the result and log
             for cmd in cmd_list:
                 self.message_handler.success(f"SUCCESS {self.name:<10}: kill \'{cmd}\'")
-                self.logger.info(f'spg kill {cmd}', extra=self.log_dict)
+                try:
+                    self.logger.info(f'spg kill {cmd}', extra=self.log_dict)
+                except PermissionError:
+                    self.message_handler.error(f"Log file is rotated. Please contact to server administrator for changing log file permission")
 
     def _kill_single_job(self, job: Job) -> None:
         """

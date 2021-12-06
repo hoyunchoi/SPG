@@ -109,6 +109,7 @@ class Job(ABC):
                 False: It is not important job. Should be skipped
         """
         scan_mode_exception = [
+            'kworker',                   # Kernel worker
             'ps H --no-headers',         # From SPG scanning process
             'sshd',                      # SSH daemon process
             '@notty',                    # Login which does not require a terminal

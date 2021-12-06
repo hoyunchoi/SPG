@@ -1,4 +1,5 @@
-import getpass
+import os
+import pwd
 from pathlib import Path
 
 from lib.singleton import Singleton
@@ -46,7 +47,7 @@ class Default(metaclass=Singleton):
 
     def __init__(self) -> None:
         # Get information of current user
-        self.user = getpass.getuser()
+        self.user = pwd.getpwuid(os.geteuid()).pw_name
         self.user_group = self._check_user()
 
     def _check_user(self) -> str:

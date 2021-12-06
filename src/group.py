@@ -149,10 +149,12 @@ class Group:
         def filter_free(machine_list: abc.Iterable[Machine]) -> abc.Iterable[Machine]:
             """ Return iterable of free machine """
             for machine in machine_list:
-                if machine.num_free_cpu:
-                    yield machine
-                elif isinstance(machine, GPUMachine) and machine.num_free_gpu:
-                    yield machine
+                if isinstance(machine, GPUMachine):
+                    if machine.num_free_gpu:
+                        yield machine
+                else:
+                    if machine.num_free_cpu:
+                        yield machine
 
         free_machine_list = [machine for machine in filter_free(self.machine_dict.values())]
         num_free_cpu = sum(machine.num_free_cpu for machine in free_machine_list)

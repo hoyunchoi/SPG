@@ -168,9 +168,12 @@ class Machine:
 
         # Save scanned job informations
         for process in process_list:
+            if process == '':
+                continue
             job = CPUJob(self.name, process)
             if job.is_important(scan_level):
                 self.job_list.append(job)
+
         self.num_job = len(self.job_list)
 
         # If user name is None, update free informations too
@@ -193,11 +196,7 @@ class Machine:
                 cmds: list of commands including program/arguments
         """
         # Run command on background
-        subprocess.run(self.cmd_ssh + Command.run_at_cwd(command))
-        # subprocess.Popen(self.cmd_ssh + Command.run_at_cwd(command),
-        #                  stdout=subprocess.PIPE,
-        #                  stderr=subprocess.PIPE,
-        #                  text=True)
+        subprocess.Popen(self.cmd_ssh + Command.run_at_cwd(command))
 
         # Print the result and save to logger
         self.message_handler.success(f"SUCCESS {self.name:<10}: run '{command}'")
@@ -294,7 +293,6 @@ class GPUMachine(Machine):
             machine_info += '\n' + Printer.machine_free_info_format.format(
                 '', self.gpu, self.num_free_gpu, 'gpus', f'{self.free_vram} free'
             )
-
         return machine_info
 
     def _get_free_vram(self) -> str:

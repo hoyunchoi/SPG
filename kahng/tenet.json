@@ -504,12 +504,12 @@
         "comment": ""
     },
     "tenet64": {
-        "use": "True",
+        "use": "False",
         "name": "tenet64",
         "cpu": "i7-2600",
         "num_cpu": "4",
         "ram": "16G",
-        "comment": ""
+        "comment": "Repetly poweroff(2021.10.29) -> reboot(2021.11.16) -> Power failed(2021.12.6)"
     },
     "tenet65": {
         "use": "True",
@@ -552,12 +552,12 @@
         "comment": ""
     },
     "tenet70": {
-        "use": "True",
+        "use": "False",
         "name": "tenet70",
         "cpu": "i7-2600",
         "num_cpu": "4",
         "ram": "32G",
-        "comment": ""
+        "comment": "Power failed(2021.12.6)"
     },
     "tenet71": {
         "use": "True",
@@ -1013,7 +1013,7 @@
         "cpu": "i7-7700",
         "num_cpu": "4",
         "ram": "64G",
-        "comment": ""
+        "comment": "Power off by unknown issue(2021.10.18) -> Back to work without anything(2021.10.20)"
     },
     "tenet128": {
         "use": "True",
@@ -1061,7 +1061,7 @@
         "cpu": "i7-8700K",
         "num_cpu": "6",
         "ram": "64G",
-        "comment": ""
+        "comment": "ping goes but not ssh(2021.09.27) -> Reboot(2021.09.29)"
     },
     "tenet134": {
         "use": "True",
@@ -1069,7 +1069,7 @@
         "cpu": "i7-8700K",
         "num_cpu": "6",
         "ram": "64G",
-        "comment": ""
+        "comment": "Power off by unknown issue(2021.10.18) -> Reboot(2021.10.20)"
     },
     "tenet135": {
         "use": "True",
@@ -1077,7 +1077,7 @@
         "cpu": "i7-8700K",
         "num_cpu": "6",
         "ram": "64G",
-        "comment": ""
+        "comment": "Power off by unknown issue(2021.10.18) -> Reboot(2021.10.20)"
     },
     "tenet136": {
         "use": "True",
@@ -1200,12 +1200,12 @@
         "comment": ""
     },
     "tenet151": {
-        "use": "False",
+        "use": "True",
         "name": "tenet151",
         "cpu": "i7-9700",
         "num_cpu": "8",
         "ram": "64G",
-        "comment": ""
+        "comment": "Power off(2021.10.01) -> Reboot(2021.12.6)"
     },
     "tenet152": {
         "use": "True",
@@ -1240,12 +1240,12 @@
         "comment": ""
     },
     "tenet156": {
-        "use": "True",
+        "use": "False",
         "name": "tenet156",
         "cpu": "i7-9700",
         "num_cpu": "8",
         "ram": "64G",
-        "comment": ""
+        "comment": "Spontaneous reboot(2021.11.29)"
     },
     "tenet157": {
         "use": "True",
@@ -1376,12 +1376,12 @@
         "comment": ""
     },
     "tenet173": {
-        "use": "True",
+        "use": "False",
         "name": "tenet173",
         "cpu": "i7-9700K",
         "num_cpu": "8",
         "ram": "64G",
-        "comment": ""
+        "comment": "Power off(2021.11.14) -> Power failed(2021.11.16)"
     },
     "tenet174": {
         "use": "True",

@@ -1,12 +1,13 @@
 import json
 import argparse
 from pathlib import Path
+from typing import Optional
 import concurrent.futures as cf
-from typing import Optional, Any
 from collections import deque, Counter, abc
 
-from src.spgio import Printer
-from src.machine import Machine, GPUMachine
+from .utils import get_machine_index
+from .spgio import Printer, ProgressBar
+from .machine import Machine, GPUMachine
 
 
 class Group:
@@ -24,9 +25,6 @@ class Group:
                 group_file: Full path of machine file.
                 First line should be comment
         """
-        # Printer for group
-        self.printer = Printer()
-
         # Default informations
         self.name: str = group_name                 # Name of machine group. Ex) tenet
         self.machine_dict: dict[str, Machine] = {}  # Dictionary of machines with key of name
@@ -53,34 +51,30 @@ class Group:
         self._read_group_file(group_file)
         self._update_summary()
 
-    def __setattr__(self, name: str, value: Any) -> None:
-        """
-            Set attribute of group member
-        """
-        super().__setattr__(name, value)
-        if name == "machine_dict":
-            # When machine dictionary is updated, update summary information too
-            self._update_summary()
-
     def _read_group_file(self, group_file: Path) -> None:
-        """
-            Read group file and store machine information to machine_dict
-        """
-        with open(group_file, 'r') as file:
+        """ Read group file and store machine information to machine_dict """
+        with open(group_file, "r") as file:
             machine_dict = json.load(file)
 
         # Initialize dictionary of machine
         for machine_name, machine_info in machine_dict.items():
-            if machine_info.get('gpu') is None:
+            if machine_info.get("gpu") is None:
                 # When no gpu keyword, machine is cpu machine
                 machine = Machine(**machine_info)
             else:
                 # Otherwise, machine is gpu machine
                 machine = GPUMachine(**machine_info)
 
-            # Only store machine explicitly marked as "use" = "True"
+            # Only store machine explicitly marked as "use = True"
             if machine.use:
                 self.machine_dict[machine_name] = machine
+
+    def prune_machine_dict(self, machine_list: list[Machine]) -> None:
+        """ Prune machine dictionary so that it only holds machine in machine_list """
+        self.machine_dict = {machine.name: machine for machine in machine_list}
+
+        # When machine dictionary is updated, update summary information too
+        self._update_summary()
 
     def _update_summary(self) -> None:
         """
@@ -102,20 +96,20 @@ class Group:
         """
         # group summary of machine information
         group_info = self.name
-        if format_spec == 'info':
+        if format_spec == "info":
             group_info = Printer.group_info_format.format(
                 self.name, self.num_machine, self.num_cpu
             )
             if self.num_gpu:
-                group_info += '\n' + Printer.group_gpu_info_format.format('', self.num_gpu)
+                group_info += "\n" + Printer.group_gpu_info_format.format("", self.num_gpu)
 
         # group summary of machine free information
-        elif format_spec == 'free':
+        elif format_spec == "free":
             group_info = Printer.group_info_format.format(
                 self.name, self.num_free_machine, self.num_free_cpu
             )
             if self.num_gpu:
-                group_info += '\n' + Printer.group_gpu_info_format.format('', self.num_free_gpu)
+                group_info += "\n" + Printer.group_gpu_info_format.format("", self.num_free_gpu)
 
         # group summary of every jobs at group
         elif format_spec == "job":
@@ -164,45 +158,30 @@ class Group:
         return num_free_cpu, num_free_gpu, free_machine_list
 
     def get_user_count(self) -> Counter[str]:
-        """
-            Return the dictionary of {user name: number of jobs}
-        """
+        """ Return the dictionary of {user name: number of jobs} """
         user_count = Counter()
         for machine in self.machine_dict.values():
             user_count.update(machine.get_user_count())
         return user_count
 
     ############################## Scan Job Information and Save ##############################
-    def scan_job(self, user_name: Optional[str], scan_level: int) -> None:
+    def scan_job(self, user_name: Optional[str], scan_level: int, progress_bar: Optional[ProgressBar]) -> None:
         """
             Scan job of every machines in machineList
             num_job, busy_machine_list will be updated
             If user Name is not given, free informations will also be updated
             Args
-                user_name: refer Machine.getJobList
-                scan_level: refer Job.isImportant
+                user_name: Refer Command.ps_from_user for more description
+                scan_level: Refer Job.is_important for more description
         """
-        def scan_job(machine: Machine) -> None:
-            """ Scan job without updating bar """
+        def scan_single_machine(machine: Machine) -> None:
             machine.scan_job(user_name, scan_level)
+            if progress_bar is not None:
+                progress_bar.update(machine.name)
 
-        def scan_job_and_update_bar(machine: Machine) -> None:
-            """ Scan job and update bar """
-            machine.scan_job(user_name, scan_level)
-            self.printer.update_tqdm(self.name, machine.name)
-
-        # Define progressbar
-        self.printer.add_tqdm(self.name, set(self.machine_dict))
-
-        # Multi-threaded scanning: maximum worker w.r.t Windows
+        # Multi-threaded scanning: maximum worker w.r.t Windows (61)
         with cf.ThreadPoolExecutor(max_workers=61) as executor:
-            if self.printer.bar_width is None:
-                executor.map(scan_job, self.machine_dict.values())
-            else:
-                executor.map(scan_job_and_update_bar, self.machine_dict.values())
-
-        # Close progressbar
-        self.printer.close_tqdm(self.name)
+            executor.map(scan_single_machine, self.machine_dict.values())
 
         # Save the scanned information
         self.num_job, self.busy_machine_list = self._get_job_info()
@@ -230,7 +209,7 @@ class Group:
             # When start/end machine index is given, iterate only over given machines
             free_machine_list = [
                 free_machine for free_machine in self.free_machine_list
-                if (start_end[0] <= Machine.get_index(free_machine.name) <= start_end[1])
+                if (start_end[0] <= get_machine_index(free_machine.name) <= start_end[1])
             ]
 
         # Run commands
@@ -267,4 +246,4 @@ class Group:
 
 
 if __name__ == "__main__":
-    print("This is module 'Group' from SPG")
+    print("This is module Group from SPG")

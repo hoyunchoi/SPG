@@ -15,4 +15,4 @@ class Singleton(type):
 
 
 if __name__ == "__main__":
-    print("This is moudle 'Singleton' from SPG")
+    print("This is module Singleton from SPG")

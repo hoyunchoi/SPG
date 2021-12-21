@@ -1,7 +1,6 @@
 import sys
 import shutil
 import atexit
-import argparse
 from tqdm import tqdm
 from typing import Optional
 
@@ -11,174 +10,115 @@ from logging.handlers import RotatingFileHandler
 import colorama
 from termcolor import cprint
 
-from src.default import Default
-from lib.singleton import Singleton
+from .default import Default
+from .singleton import Singleton
 
 
-class InputHandler:
-    """
-        Handle user input
-    """
-    @staticmethod
-    def yes_no(msg: Optional[str] = None) -> bool:
-        """
-            Get input yes or no
-            If other input is given, ask again for 5 times
-            'yes', 'y', 'Y', 'Ye', ... : pass
-            'no', 'n', 'No', ... : fail
-        """
-        # Print message first if given
-        if msg is not None:
-            print(msg)
+class ProgressBar:
+    """ Progress bar per machine groups using tqdm """
 
-        # Ask 5 times
-        for _ in range(5):
-            reply = str(input('(y/n): ')).strip().lower()
-            if reply[0] == 'y':
-                return True
-            if reply[0] == 'n':
-                return False
-            print("You should provied either 'y' or 'n'", end=' ')
-        return False
-
-
-class TQDM:
-    """
-        tqdm used for spg
-    """
-
-    def __init__(self, pool: set[str], bar_width: int) -> None:
+    def __init__(self, name: str, pool: set[str], bar_width: int) -> None:
+        self.name = name
         self.pool = pool
         self.bar = tqdm(total=len(self.pool),
-                        bar_format='{desc}{bar}|{percentage:3.1f}%|',
+                        bar_format="{desc}{bar}|{percentage:3.1f}%|",
                         ascii=True,
                         ncols=bar_width,
                         file=sys.stdout,
                         miniters=1)
 
-    def update(self, target: str) -> None:
+    def update(self, target: Optional[str]) -> None:
         """
             Update state of bar
             Args
-                target: element of pool which should be dropped
+                target: element of pool which will be erased
         """
         # Remove target from pool
-        self.pool.remove(target)
+        if target is not None:
+            self.pool.remove(target)
+
+            # Update state of bar
+            self.bar.update(1)
 
         try:
             # Description of bar: print any remaining in pool
-            self.bar.set_description_str(f'|Scanning {next(iter(self.pool))}|')
+            self.bar.set_description_str(f"|Scanning {next(iter(self.pool)):<8}|")
         except StopIteration:
             # When nothing remains at pool, scanning is finished
-            self.bar.set_description_str('|Scanning finished|')
+            self.bar.set_description_str(f"|Finished {self.name:<8}|")
 
-        # Update state of bar
-        self.bar.update(1)
+    def close(self) -> None:
+        """ Close the bar """
+        self.bar.close()
 
 
-class Printer(metaclass=Singleton):
-    """
-        Main printer of SPG
-        Handles tqdm bar and plain output of SPG
-    """
-    job_info_format = '| {:<10} | {:<15} | {:<3} | {:>7} | {:>6} | {:>6} | {:>7} | {:>11} | {:>5} | {}'
-    machine_info_format = '| {:<10} | {:<11} | {:>4} {:<4} | {:>5}'
-    machine_free_info_format = '| {:<10} | {:<11} | {:>4} {:<4} | {:>10}'
-    group_info_format = '| {:<10} | total {:>4} machines & {:>4} core'
-    group_gpu_info_format = '| {:<10} | {:>26} gpus'
-    group_job_info_format = '| {:<10} | total {:>4} jobs'
+class Printer:
+    """ Handles progress bar and plain output of SPG """
+    job_info_format = "| {:<10} | {:<15} | {:<3} | {:>7} | {:>6} | {:>6} | {:>7} | {:>11} | {:>5} | {}"
+    machine_info_format = "| {:<10} | {:<11} | {:>4} {:<4} | {:>5}"
+    machine_free_info_format = "| {:<10} | {:<11} | {:>4} {:<4} | {:>10}"
+    group_info_format = "| {:<10} | total {:>4} machines & {:>4} core"
+    group_gpu_info_format = "| {:<10} | {:>26} gpus"
+    group_job_info_format = "| {:<10} | total {:>4} jobs"
+    DEFAULT_WIDTH = 40
 
-    def __init__(self) -> None:
-        # Print function
+    def __init__(self, option: str, group_list: Optional[list[str]], silent: bool) -> None:
         self.print_fn = tqdm.write                 # Function to use at printing
 
-        # Format
-        self.line_format = ''                      # Format of main line
-        self.summary_format = ''                   # Format of summary line
+        # Progress bar
+        self.silent = silent                        # If true, skip progress bar
+        self.bar_dict: dict[str, ProgressBar] = {}  # Container of progess bar
 
-        # tqdm
-        self.bar_width = 40                        # Default width of tqdm bar
-        self.tqdm_dict: dict[str, TQDM] = {}       # Dictionary of tqdm bar. key: group name, value: tqdm
-        self.terminal_width, _ = shutil.get_terminal_size(fallback=(sys.maxsize, 1))
-
-        # plain text
-        self.column_line = ' ' * self.bar_width    # Default line with column name
-        self.str_line = self._update_str_line()    # Default string line decorator
-
-    def initialize(self, args: argparse.Namespace) -> None:
-        """
-            Initialize printer object
-        """
-        if args.option == 'list':
+        # Column names for each options
+        if option == "list":
             self.column_line = Printer.machine_info_format.format(
-                'Machine', 'ComputeUnit', 'tot', 'unit', 'mem'
+                "Machine", "ComputeUnit", "tot", "unit", "mem"
             )
-
-        elif args.option == 'free':
+        elif option == "free":
             self.column_line = Printer.machine_free_info_format.format(
-                'Machine', 'ComputeUnit', 'free', 'unit', 'free mem'
+                "Machine", "ComputeUnit", "free", "unit", "free mem"
             )
-
-        elif args.option == 'job':
+        elif option == "job":
             self.column_line = Printer.job_info_format.format(
-                'Machine', 'User', 'ST', 'PID', 'CPU(%)', 'MEM(%)',
-                'Memory', 'Time', 'Start', 'Command'
+                "Machine", "User", "ST", "PID", "CPU(%)", "MEM(%)",
+                "Memory", "Time", "Start", "Command"
             )
-
-        elif args.option == 'user':
-            # Group name list is not specified. Take every groups
-            if args.group_name_list is None:
-                group_name_list = Default.GROUP
-            else:
-                group_name_list = args.group_name_list
-            self.line_format = '| {:<15} | {:>8} |' + '{:>8} |' * len(group_name_list)
-            self.summary_format = self.line_format
-            self.column_line = self.line_format.format('User', 'total', *group_name_list)
-
-        self._update_str_line()
-        self._update_bar_width(args.silent)
-
-    def _update_str_line(self) -> str:
-        self.str_line = '+' + '=' * (len(self.column_line) - 1)
-        return self.str_line
-
-    def _update_bar_width(self, silent: bool) -> None:
-        """
-            Update bar width
-            When silent is given, bar width should be None
-            Otherwise, bar width should minimum of column line length and terminal width.
-        """
-        if silent:
-            # When silent is true, bar_width should be None
-            self.bar_width = None
+        elif option == "user":
+            # Print format should be dynamically changed depending on input group list
+            if group_list is None:
+                group_list = Default.GROUP
+            self.user_format = "| {:<15} | {:>8} |" + "{:>8} |" * len(group_list)
+            self.column_line = self.user_format.format("User", "total", *group_list)
         else:
-            # Otherwise, bar_width is minimum between length of column line and terminal width
-            self.bar_width = min(len(self.column_line), self.terminal_width)
+            self.column_line = " " * self.DEFAULT_WIDTH
+
+        # Progress bar width should be minimum of column line length and terminal width.
+        terminal_width, _ = shutil.get_terminal_size(fallback=(sys.maxsize, 1))
+        self.bar_width = min(len(self.column_line), terminal_width)
+        self.str_line = "+" + "=" * (self.bar_width - 1)
 
     ######################################## tqdm util ########################################
-    def add_tqdm(self, group_name: str, pool: set[str]) -> None:
-        """
-            Add tqdm for spg to tqdm dict
-            When bar_width is None, this should not create bar
-        """
-        if self.bar_width is None:
+    def add_progress_bar(self, group_name: str, pool: set[str]) -> None:
+        """ Add progress bar to bar dict """
+        if self.silent:
+            # When silent, do nothing
             return
-        self.tqdm_dict[group_name] = TQDM(pool, self.bar_width)
+        self.bar_dict[group_name] = ProgressBar(group_name, pool, self.bar_width)
+        self.bar_dict[group_name].update(None)
 
-    def update_tqdm(self, group_name: str, target: str) -> None:
-        """
-            Update state of tqdm bar with description
-        """
-        self.tqdm_dict[group_name].update(target)
-
-    def close_tqdm(self, group_name: str) -> None:
-        """
-            Close tqdm bar
-            When bar_width is None, this should not close bar
-        """
-        if self.bar_width is None:
+    def update_progress_bar(self, group_name: str, target: str) -> None:
+        """ Update state of tqdm bar with description """
+        if self.silent:
+            # When silent, do nothing
             return
-        self.tqdm_dict[group_name].bar.close()
+        self.bar_dict[group_name].update(target)
+
+    def close_progress_bar(self, group_name: str) -> None:
+        """ Close tqdm bar """
+        if self.silent:
+            # When silent, do nothing
+            return
+        self.bar_dict[group_name].close()
 
     ########################################## Print ##########################################
     def print(self, msg: Optional[str] = None) -> None:
@@ -190,18 +130,6 @@ class Printer(metaclass=Singleton):
             self.print_fn(self.str_line)
         else:
             self.print_fn(msg)
-
-    def print_line_format(self, *args) -> None:
-        """
-            Print input arguments at line format
-        """
-        self.print_fn(self.line_format.format(*args))
-
-    def print_summary_format(self, *args) -> None:
-        """
-            Print input arguments at summary format
-        """
-        self.print_fn(self.summary_format.format(*args))
 
     def print_first_section(self) -> None:
         """
@@ -216,9 +144,7 @@ class Printer(metaclass=Singleton):
 
 
 class MessageHandler(metaclass=Singleton):
-    """
-        Store message from spg and print before exit
-    """
+    """ Store message from spg and print before exit """
 
     def __init__(self) -> None:
         self.success_list: list[str] = []    # List of success messages
@@ -232,15 +158,15 @@ class MessageHandler(metaclass=Singleton):
         # Initialize colorama for compatibility of Windows
         colorama.init()
 
-        # Print success messages
+        # Print success messages: sys.stderr for splitting with tqdm
         if self.success_list:
-            cprint('\n'.join(self.success_list), 'green', file=sys.stderr)
+            cprint("\n".join(self.success_list), "green", file=sys.stderr)
         # Print warning messages
         if self.warning_list:
-            cprint('\n'.join(self.warning_list), 'yellow')
+            cprint("\n".join(self.warning_list), "yellow")
         # Print error messages
         if self.error_list:
-            cprint('\n'.join(self.error_list), 'red')
+            cprint("\n".join(self.error_list), "red")
 
     def success(self, msg: str) -> None:
         self.success_list.append(msg)
@@ -253,19 +179,17 @@ class MessageHandler(metaclass=Singleton):
 
 
 def configure_logger() -> None:
-    """
-        Create logger instance for SPG
-    """
+    """ Create logger instance for SPG """
     # Define logger instance
     logger = logging.getLogger("SPG")
 
     # Define format of logging
-    formatter = logging.Formatter(fmt='{asctime} {machine:<10} {user:<15}: {message}',
-                                  style='{',
-                                  datefmt='%Y-%m-%d %H:%M')
+    formatter = logging.Formatter(fmt="{asctime} {machine:<10} {user:<15}: {message}",
+                                  style="{",
+                                  datefmt="%Y-%m-%d %H:%M")
 
     # Define handler of logger: Limit maximum log file size as 10MB
-    handler = RotatingFileHandler(Default.ROOT_DIR / 'spg.log',
+    handler = RotatingFileHandler(Default.ROOT_DIR / "spg.log",
                                   delay=True,
                                   maxBytes=1024 * 1024 * 10,
                                   backupCount=1)
@@ -277,4 +201,4 @@ def configure_logger() -> None:
 
 
 if __name__ == "__main__":
-    print("This is module 'Handler' from SPG")
+    print("This is module spgio from SPG")

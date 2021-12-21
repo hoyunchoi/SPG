@@ -2,14 +2,11 @@ import os
 import pwd
 from pathlib import Path
 
-from lib.singleton import Singleton
+from .singleton import Singleton
 
 
 class Default(metaclass=Singleton):
-    """
-        Default variables for SPG script
-    """
-
+    """ Default variables for SPG script """
     ################################### You May Change Here ###################################
     # Users
     USER: dict[str, list[str]] = {
@@ -60,9 +57,9 @@ class Default(metaclass=Singleton):
             if self.user in user_list:
                 return user_group
 
-        # Couldn't find user name
-        raise SystemExit(f'ERROR: User "{self.user}"" is not registerd in SPG' +
-                         '\n' + 'Please contact to server administrator')
+        # Couldn"t find user name
+        raise SystemExit(f"ERROR: User '{self.user}' is not registerd in SPG\n"
+                         "Please contact to server administrator")
 
     def get_group_file_dict(self) -> dict[str, Path]:
         """
@@ -74,4 +71,4 @@ class Default(metaclass=Singleton):
 
 
 if __name__ == "__main__":
-    print('This is module "Default" from SPG')
+    print("This is module Default from SPG")

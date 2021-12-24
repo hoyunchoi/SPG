@@ -17,7 +17,7 @@ class Argument:
             prog="spg",
             formatter_class=argparse.RawTextHelpFormatter,
             description="Statistical Physics Group",
-            usage="spg (-h) (-s) [option] (args)"
+            usage="spg (-h) (-s) [option] ..."
         )
         self.main_parser.add_argument(
             "-s", "--silent",
@@ -62,28 +62,29 @@ class Argument:
         Return argparse namespace contains following
             silent: bool
             option: str
-
-            machine: Union[str, list[str], None]    # list, free, job, user, run, KILL
+            machine
                 run: str
                 runs: None
-                otherwise: list[str]
-            group: Union[str, list[str], None]      # list, free, job, user, runs, KILL
+                list, free, job, user, KILL: list[str] | None
+            group
                 run: None
                 runs: str
-                otherwise: list[str]
-            command: Optional[str]                  # run, runs, job, KILL
-                run: running command
-                runs: command file
-                job, KILL: target command
+                list, free, job, user, KILL: list[str] | None
 
-            start_end: Optional[tuple[int,int]]
+            command
+                run: str -> running command
+                runs: str -> command file
+                job, KILL: str | None -> target command
 
-            all: Optional[bool]                     # job, KILL
-                True: overwrite user option to None
-            user: Optional[str]                     # job, KILL
-            pid: Optional[list[str]]                # job, KILL
-            time: Optional[int]                     # job, KILL
-            start: Optional[str]                    # job, KILL
+            start_end
+                runs: tuple[int,int] | None -> Boundary of target machine
+
+            attributes only for matching jobs: option job/KILL
+                all: bool | None -> If true, overwrite user argument to None
+                user: str | None -> Target user, default: current user
+                pid: list[str] | None -> Target pid
+                time: int | None -> Target time window
+                start: str | None -> Target start time
         """
         args = self.main_parser.parse_args()
 
@@ -91,125 +92,125 @@ class Argument:
         self._redirect_deprecated(args)
 
         # Check arguments for each options are proper or not
-        if args.option == "list":
-            self._overwrite_group(args)
-
-        elif args.option == "free":
-            self._overwrite_group(args)
-
-        elif args.option == "job":
-            self._check_user(args)
-            self._check_pid(args)
-            self._overwrite_group(args)
-            self._unlist_command(args)
-            self._time_to_seconds(args)
-
-        elif args.option == "user":
-            self._overwrite_group(args)
-
-        elif args.option == "run":
-            self._unlist_command(args)
-
-        elif args.option == "runs":
-            self._check_group_boundary(args)
-
-        elif args.option == "KILL":
-            self._check_user(args)
-            self._check_user_KILL(args)
-            self._check_pid(args)
-            self._overwrite_group(args)
-            self._unlist_command(args)
-            self._double_check_KILL(args)
-            self._time_to_seconds(args)
+        match args.option:
+            case "list" | "free" | "user":
+                self._overwrite_group(args)
+            case "job":
+                self._check_user(args)
+                if args.all:
+                    args.user = None
+                self._check_pid(args)
+                self._overwrite_group(args)
+                self._unlist_command(args)
+                self._time_to_seconds(args)
+            case "run":
+                self._unlist_command(args)
+                args.group = None
+            case "runs":
+                self._check_group_boundary(args)
+                args.machine = None
+            case "KILL":
+                self._check_user(args)
+                if args.all:
+                    args.user = None
+                self._check_user_KILL(args)
+                self._check_pid(args)
+                self._overwrite_group(args)
+                self._unlist_command(args)
+                self._double_check_KILL(args)
+                self._time_to_seconds(args)
 
         return args
 
     ###################################### Basic Utility ######################################
     def _redirect_deprecated(self, args: argparse.Namespace) -> None:
-        if args.option in ["list", "free", "job", "user", "run", "runs", "KILL"]:
-            return
+        match args.option:
+            # Do not redirect
+            case "list" | "free" | "job" | "user" | "run" | "runs" | "KILL":
+                pass
 
-        # Redirect to list
-        elif args.option == "machine":
-            args.option = "list"
-            self.message_handler.warning(
-                "This method will be deprecated. Use 'spg list' instead"
-            )
+            # Redirect to list
+            case "machine":
+                args.option = "list"
+                self.message_handler.warning(
+                    "This method will be deprecated. Use 'spg list' instead"
+                )
 
-        # Redirect to job
-        elif args.option == "me":
-            args.option = "job"
-            args.all = False
-            args.user = self.default.user
-            self.message_handler.warning(
-                "This method will be deprecated. Use 'spg job' instead"
-            )
-        elif args.option == "all":
-            args.option = "job"
-            args.all = True
-            args.user = None
-            self.message_handler.warning(
-                "This method will be deprecated. Use 'spg job -a' instead"
-            )
+            # Redirect to job
+            case "me":
+                args.option = "job"
+                args.all = False
+                args.user = self.default.user
+                self.message_handler.warning(
+                    "This method will be deprecated. Use 'spg job' instead"
+                )
+            case "all":
+                args.option = "job"
+                args.all = True
+                args.user = None
+                self.message_handler.warning(
+                    "This method will be deprecated. Use 'spg job -a' instead"
+                )
 
-        # Redirect to KILL
-        elif args.option == "kill":
-            args.option = "KILL"
-            args.machine = [args.machine_name]
-            args.pid = args.pid
-            self.message_handler.warning(
-                "This method will be deprecated. "
-                "Use 'spg KILL -m [machine name] -p [pid list]' instead"
-            )
-        elif args.option == "killall":
-            args.option = "KILL"
-            args.pid = None
-            args.command = None
-            args.time = None
-            self.message_handler.warning(
-                "This method will be deprecated. Use 'spg KILL' instead"
-            )
-        elif args.option == "killmachine":
-            args.option = "KILL"
-            args.pid = None
-            args.command = None
-            args.time = None
-            args.machine = [args.machine_name]
-            self.message_handler.warning(
-                "This method will be deprecated. Use 'spg KILL -m [machine list]' instead"
-            )
-        elif args.option == "killthis":
-            args.option = "KILL"
-            args.pid = None
-            args.command = args.pattern
-            args.time = None
-            self.message_handler.warning(
-                "This method will be deprecated. Use 'spg KILL -c [command]' instead"
-            )
-        elif args.option == "killbefore":
-            args.option = "KILL"
-            args.pid = None
-            args.command = None
-            self.message_handler.warning(
-                "This method will be deprecated. Use 'spg KILL -t [time]' instead"
-            )
+            # Redirect to KILL
+            case "kill":
+                args.option = "KILL"
+                args.machine = [args.machine_name]
+                args.pid = args.pid
+                self.message_handler.warning(
+                    "This method will be deprecated. "
+                    "Use 'spg KILL -m [machine name] -p [pid list]' instead"
+                )
+            case "killall":
+                args.option = "KILL"
+                args.pid = None
+                args.command = None
+                args.time = None
+                self.message_handler.warning(
+                    "This method will be deprecated. Use 'spg KILL' instead"
+                )
+            case "killmachine":
+                args.option = "KILL"
+                args.pid = None
+                args.command = None
+                args.time = None
+                args.machine = [args.machine_name]
+                self.message_handler.warning(
+                    "This method will be deprecated. Use 'spg KILL -m [machine list]' instead"
+                )
+            case "killthis":
+                args.option = "KILL"
+                args.pid = None
+                args.command = args.pattern
+                args.time = None
+                self.message_handler.warning(
+                    "This method will be deprecated. Use 'spg KILL -c [command]' instead"
+                )
+            case "killbefore":
+                args.option = "KILL"
+                args.pid = None
+                args.command = None
+                self.message_handler.warning(
+                    "This method will be deprecated. Use 'spg KILL -t [time]' instead"
+                )
 
     def _overwrite_group(self, args: argparse.Namespace) -> None:
         """ Overwrite group option by machine option is exists """
-        if args.machine is not None:
-            # Group from machine
-            group = list(
-                set(get_machine_group(machine_name)
-                    for machine_name in args.machine)
-            )
+        if args.machine is None:
+            return
 
-            # Overwrite if necessary
-            if args.group != group:
-                if isinstance(args.group, list):
-                    self.message_handler.warning(
-                        "Group option is suppressed by Machine option"
-                    )
-                args.group = group
+        # Group from machine
+        group = list(set(
+            get_machine_group(machine_name) for machine_name in args.machine
+        ))
+
+        # Overwrite if necessary
+        if args.group != group:
+            if isinstance(args.group, list):
+                self.message_handler.warning(
+                    "Group option is suppressed by Machine option"
+                )
+            args.group = group
 
     def _check_user(self, args: argparse.Namespace) -> None:
         """ Check argument user """
@@ -221,52 +222,43 @@ class Argument:
             self.message_handler.error(f"Invalid user name: {args.user}")
             exit()
 
-        # When "all" flag is true, set user name to None
-        # Refer Commands.ps_from_user for the reason
-        if args.all:
-            args.user = None
-
     def _check_pid(self, args) -> None:
         """ When pid list is given, you should specify machine name """
         if (args.pid is not None) and (len(args.machine) != 1):
             self.message_handler.error(
-                "When killing job with pid list, you should specify single machine name"
+                "When killing job with pid list, "
+                "you should specify single machine name"
             )
             exit()
 
     def _unlist_command(self, args: argparse.Namespace) -> None:
         """ Change option command from list of string to string """
-        if args.command is not None:
-            args.command = " ".join(args.command)
+        if args.command is None:
+            return
+        args.command = " ".join(args.command)
 
     def _time_to_seconds(self, args: argparse.Namespace) -> None:
         """ Convert time window (str) to time window (seconds) """
-        if args.time is not None:
-            seconds = input_time_to_seconds(args.time)
-            if seconds is None:
-                self.message_handler.error(f"Invalid time window: {args.time}\n"
-                                           "Run 'spg KILL -h' for more help")
-                exit()
-            args.time = seconds
+        if args.time is None:
+            return
+
+        args.time = input_time_to_seconds(args.time)
 
     def _check_group_boundary(self, args: argparse.Namespace) -> None:
         """ Check args for option 'runs' """
-        if len(args.group) == 1:
-            # Only group name is specified
-            args.start_end = None
-            args.group = args.group[0]
-
-        elif len(args.group) == 3:
-            # Group name and their start, end numbers are specified
-            args.start_end = tuple([int(args.group[1]), int(args.group[2])])
-            args.group = args.group[0]
-
-        else:
-            self.message_handler.error(
-                "When using 'runs' option, "
-                "you should specifiy machine group and optional start/end number"
-            )
-            exit()
+        match args.group:
+            case [group]:
+                args.group = group
+                args.start_end = None
+            case [group, start, end]:
+                args.group = group
+                args.start_end = (int(start), int(end))
+            case _:
+                self.message_handler.error(
+                    "When using 'runs' option, "
+                    "you should specifiy machine group and optional start/end number"
+                )
+                exit()
 
     def _check_user_KILL(self, args: argparse.Namespace) -> None:
         """ Check argument user for option 'KILL' """
@@ -692,9 +684,9 @@ class Argument:
             )
         )
         parser_killthis.add_argument(
-            'pattern',
-            nargs='+',
-            help='List of words to search. Target command should have exact pattern'
+            "pattern",
+            nargs="+",
+            help="List of words to search. Target command should have exact pattern"
         )
         self._add_optional_group(parser_killthis)
         self._add_optional_machine(parser_killthis)

@@ -1,6 +1,5 @@
 from shlex import split
 from pathlib import Path
-from typing import Optional
 
 
 class Command:
@@ -19,7 +18,7 @@ class Command:
                      f"{machineName}")
 
     @staticmethod
-    def ps_from_user(user_name: Optional[str]) -> list[str]:
+    def ps_from_user(user_name: str | None) -> list[str]:
         """
             H: Show threads as if they were processes
             --no-headers: Do not print header

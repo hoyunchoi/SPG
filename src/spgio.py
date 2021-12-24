@@ -1,25 +1,23 @@
 import sys
 import shutil
 import atexit
+import colorama
 from tqdm import tqdm
-from typing import Optional
 
 import logging
 from logging.handlers import RotatingFileHandler
 
-import colorama
-from termcolor import cprint
-
 from .default import Default
 from .singleton import Singleton
+from .utils import get_machine_group
 
 
 class ProgressBar:
     """ Progress bar per machine groups using tqdm """
 
-    def __init__(self, name: str, pool: set[str], bar_width: int) -> None:
-        self.name = name
+    def __init__(self, pool: set[str], bar_width: int) -> None:
         self.pool = pool
+        self.name = get_machine_group(next(iter(pool)))
         self.bar = tqdm(total=len(self.pool),
                         bar_format="{desc}{bar}|{percentage:3.1f}%|",
                         ascii=True,
@@ -27,12 +25,8 @@ class ProgressBar:
                         file=sys.stdout,
                         miniters=1)
 
-    def update(self, target: Optional[str]) -> None:
-        """
-            Update state of bar
-            Args
-                target: element of pool which will be erased
-        """
+    def update(self, target: str | None) -> None:
+        """ Update state of bar with erasing target from pool """
         # Remove target from pool
         if target is not None:
             self.pool.remove(target)
@@ -60,9 +54,14 @@ class Printer:
     group_info_format = "| {:<10} | total {:>4} machines & {:>4} core"
     group_gpu_info_format = "| {:<10} | {:>26} gpus"
     group_job_info_format = "| {:<10} | total {:>4} jobs"
-    DEFAULT_WIDTH = 40
 
-    def __init__(self, option: str, group_list: Optional[list[str]], silent: bool) -> None:
+    def __init__(self, option: str, silent: bool, group_list: list[str] | None = None) -> None:
+        """
+            Args
+                option: main option
+                silent: If true, do not print process bar
+                group_list: Only used when option is user.h
+        """
         self.print_fn = tqdm.write                 # Function to use at printing
 
         # Progress bar
@@ -90,20 +89,20 @@ class Printer:
             self.user_format = "| {:<15} | {:>8} |" + "{:>8} |" * len(group_list)
             self.column_line = self.user_format.format("User", "total", *group_list)
         else:
-            self.column_line = " " * self.DEFAULT_WIDTH
+            self.column_line = " " * 40     # Default width is 40
 
         # Progress bar width should be minimum of column line length and terminal width.
         terminal_width, _ = shutil.get_terminal_size(fallback=(sys.maxsize, 1))
         self.bar_width = min(len(self.column_line), terminal_width)
         self.str_line = "+" + "=" * (self.bar_width - 1)
 
-    ######################################## tqdm util ########################################
+    ###################################### tqdm handling ######################################
     def add_progress_bar(self, group_name: str, pool: set[str]) -> None:
         """ Add progress bar to bar dict """
         if self.silent:
             # When silent, do nothing
             return
-        self.bar_dict[group_name] = ProgressBar(group_name, pool, self.bar_width)
+        self.bar_dict[group_name] = ProgressBar(pool, self.bar_width)
         self.bar_dict[group_name].update(None)
 
     def update_progress_bar(self, group_name: str, target: str) -> None:
@@ -121,7 +120,7 @@ class Printer:
         self.bar_dict[group_name].close()
 
     ########################################## Print ##########################################
-    def print(self, msg: Optional[str] = None) -> None:
+    def print(self, msg: str | None = None) -> None:
         """
             Print input msg
             When msg is None, print default value: string line
@@ -160,13 +159,13 @@ class MessageHandler(metaclass=Singleton):
 
         # Print success messages: sys.stderr for splitting with tqdm
         if self.success_list:
-            cprint("\n".join(self.success_list), "green", file=sys.stderr)
+            print(colorama.Fore.GREEN + "\n".join(sorted(self.success_list)))
         # Print warning messages
         if self.warning_list:
-            cprint("\n".join(self.warning_list), "yellow")
+            print(colorama.Fore.YELLOW + "\n".join(sorted(self.warning_list)))
         # Print error messages
         if self.error_list:
-            cprint("\n".join(self.error_list), "red")
+            print(colorama.Fore.RED + "\n".join(sorted(self.error_list)))
 
     def success(self, msg: str) -> None:
         self.success_list.append(msg)

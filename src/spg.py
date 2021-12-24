@@ -3,14 +3,13 @@
 import argparse
 from pathlib import Path
 import concurrent.futures as cf
-from typing import Optional, Iterable
-from collections import deque, Counter
+from collections import abc, deque, Counter
 
 from .group import Group
 from .default import Default
 from .machine import Machine
-from .utils import get_machine_group
-from .spgio import Printer, MessageHandler, ProgressBar
+from .spgio import Printer, MessageHandler
+from .utils import get_machine_group, get_machine_index
 
 
 class SPG:
@@ -27,39 +26,43 @@ class SPG:
             for group_name, group_file in group_file_dict.items()
         }
 
-        # Prune group dictionary
-        if hasattr(args, "machine") and isinstance(args.machine, list):
-            # List of target machines per each group
-            machine_per_group: dict[str, list[Machine]] = {
-                group_name: [] for group_name in args.group
-            }
-            for machine_name in args.machine:
-                machine = self._find_machine_from_name(machine_name)
-                group_name = get_machine_group(machine_name)
-                machine_per_group[group_name].append(machine)
+        # Prune group dictionary and corresponding machine dictionary
+        if args.option == "runs":
+            # args.group is str and has 'start_end' attribute
+            self.group_dict = {args.group: self.group_dict[args.group]}
+            if args.start_end is not None:
+                start, end = args.start_end
+                group = self.group_dict[args.group]
+                group.machine_dict = {
+                    machine.name: machine for machine in group.machine_dict.values()
+                    if (start <= get_machine_index(machine.name) <= end)
+                }
+                group.update_summary()
 
-            # update group dict
-            for group_name in list(self.group_dict):
-                if group_name in args.group:
-                    # Update machine dict for each group
-                    self.group_dict[group_name].prune_machine_dict(
-                        machine_per_group[group_name]
-                    )
-                else:
-                    del self.group_dict[group_name]
-
-        elif hasattr(args, "group") and isinstance(args.group, list):
-            # Update group dict
+        elif isinstance(args.machine, list):
+            # args.machine is specified, so as args.group
             self.group_dict = {
-                group_name: self.group_dict[group_name]
-                for group_name in args.group
+                group_name: self.group_dict[group_name] for group_name in args.group
+            }
+            machine_per_group = self._find_machine_per_group(args.machine, args.group)
+            # Prune machine dictionary per each groups
+            for group_name, group in self.group_dict.items():
+                group.machine_dict = {
+                    machine.name: machine for machine in machine_per_group[group_name]
+                }
+                group.update_summary()
+
+        elif isinstance(args.group, list):
+            # args.machine is not specified but args.group is specified
+            self.group_dict = {
+                group_name: self.group_dict[group_name] for group_name in args.group
             }
 
         # printer and message handlers
-        if hasattr(args, "group"):
-            self.printer = Printer(args.option, args.group, args.silent)
+        if args.option == "user":
+            self.printer = Printer(args.option, args.silent, args.group)
         else:
-            self.printer = Printer(args.option, None, args.silent)
+            self.printer = Printer(args.option, args.silent)
         self.message_handler = MessageHandler()
 
     def __call__(self) -> None:
@@ -90,10 +93,24 @@ class SPG:
             self.message_handler.error(f"ERROR: No such machine: {machine_name}")
             exit()
 
+    def _find_machine_per_group(self,
+                                machine_name_list: list[str],
+                                group_name_list: list[str]) -> dict[str, list[Machine]]:
+        """ Find list of machines per each group """
+        machine_per_group: dict[str, list[Machine]] = {
+            group_name: [] for group_name in group_name_list
+        }
+        for machine_name in machine_name_list:
+            machine = self._find_machine_from_name(machine_name)
+            group_name = get_machine_group(machine_name)
+            machine_per_group[group_name].append(machine)
+
+        return machine_per_group
+
     ############################## Scan Job Information and Save ##############################
     def scan_job(self,
-                 group_list: Iterable[Group],
-                 user_name: Optional[str],
+                 group_list: abc.Iterable[Group],
+                 user_name: str | None,
                  scan_level: int) -> None:
         """
             Scan running jobs
@@ -103,7 +120,7 @@ class SPG:
                 scan_level: refer Job.isImportant
         """
         def scan_group(group: Group) -> None:
-            bar: Optional[ProgressBar] = self.printer.bar_dict.get(group.name)
+            bar = self.printer.bar_dict.get(group.name)
             group.scan_job(user_name, scan_level, bar)
 
         if not self.printer.silent:
@@ -172,9 +189,10 @@ class SPG:
             group.num_job = 0
             for machine in group.busy_machine_list:
                 for job in machine.job_list:
-                    if job.match(self.args):
-                        self.printer.print(f"{job:info}")
-                        group.num_job += 1
+                    if not job.match(self.args):
+                        continue
+                    self.printer.print(f"{job:info}")
+                    group.num_job += 1
                 self.printer.print()
 
         # Summary
@@ -251,7 +269,7 @@ class SPG:
             self.printer.print()
 
         # Run jobs
-        cmd_queue = group.runs(cmd_queue, max_calls, self.args.start_end)
+        cmd_queue = group.runs(cmd_queue, max_calls)
         num_cmd_after = len(cmd_queue)
 
         # Remove the input file and re-write with remaining command queue
@@ -264,20 +282,23 @@ class SPG:
 
     def KILL(self) -> None:
         """ kill all matching jobs """
-        def kill_group(group: Group) -> None:
-            group.KILL(self.args)
-
         # Scanning
         self.scan_job(self.group_dict.values(), self.args.user, scan_level=1)
         if not self.printer.silent:
             self.printer.print()
 
         # Kill jobs
-        with cf.ThreadPoolExecutor(max_workers=5) as executor:
-            executor.map(kill_group, self.group_dict.values())
+        with cf.ThreadPoolExecutor(max_workers=61) as executor:
+            for group in self.group_dict.values():
+                for machine in group.busy_machine_list:
+                    for job in machine.job_list:
+                        if job.match(self.args):
+                            executor.submit(machine.kill, job)
 
         # Summarize the kill result
-        num_kill = sum(group.num_kill for group in self.group_dict.values())
+        num_kill = 0
+        for group in self.group_dict.values():
+            num_kill += sum(machine.num_kill for machine in group.busy_machine_list)
         self.message_handler.success(f"\nKilled {num_kill} jobs")
         return None
 

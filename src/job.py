@@ -91,24 +91,22 @@ class Job(ABC):
         if float(self.cpu_percent) > 20.0:
             return True
 
-        # State is 'R'
-        elif "R" in self.state:
-            # Filter job by cpu usage and running time
-            if (float(self.cpu_percent) > 5.0) or (ps_time_to_seconds(self.time) > 1):
+        match list(self.state):
+            case ["R", *_]:
+                # State is 'R': Filter job by cpu usage and running time
+                if (float(self.cpu_percent) > 5.0) or (ps_time_to_seconds(self.time) > 1):
+                    return True
+                else:
+                    return False
+            case ["D", *_]:
+                # State is 'D'
                 return True
-            else:
+            case ["Z", *_]:
+                # State is 'Z'. Warning message
+                MessageHandler().warning(
+                    f"WARNING: {self.machine_name} has Zombie process {self.pid}"
+                )
                 return False
-
-        # State is 'D'
-        elif "D" in self.state:
-            return True
-
-        # State is 'Z'. Warning message
-        elif "Z" in self.state:
-            MessageHandler().warning(
-                f"WARNING: {self.machine_name} has Zombie process {self.pid}"
-            )
-            return False
 
         # State is at S state with lower cpu usage
         return False

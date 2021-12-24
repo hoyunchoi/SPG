@@ -1,11 +1,8 @@
 import json
-import argparse
 from pathlib import Path
-from typing import Optional
 import concurrent.futures as cf
-from collections import deque, Counter, abc
+from collections import abc, deque, Counter
 
-from .utils import get_machine_index
 from .spgio import Printer, ProgressBar
 from .machine import Machine, GPUMachine
 
@@ -49,7 +46,7 @@ class Group:
 
         # Initialize group and corresponding machines
         self._read_group_file(group_file)
-        self._update_summary()
+        self.update_summary()
 
     def _read_group_file(self, group_file: Path) -> None:
         """ Read group file and store machine information to machine_dict """
@@ -69,14 +66,7 @@ class Group:
             if machine.use:
                 self.machine_dict[machine_name] = machine
 
-    def prune_machine_dict(self, machine_list: list[Machine]) -> None:
-        """ Prune machine dictionary so that it only holds machine in machine_list """
-        self.machine_dict = {machine.name: machine for machine in machine_list}
-
-        # When machine dictionary is updated, update summary information too
-        self._update_summary()
-
-    def _update_summary(self) -> None:
+    def update_summary(self) -> None:
         """
             Update summary information of group
             number of machines
@@ -143,12 +133,9 @@ class Group:
         def filter_free(machine_list: abc.Iterable[Machine]) -> abc.Iterable[Machine]:
             """ Return iterable of free machine """
             for machine in machine_list:
-                if isinstance(machine, GPUMachine):
-                    if machine.num_free_gpu:
-                        yield machine
-                else:
-                    if machine.num_free_cpu:
-                        yield machine
+                if ((type(machine) == Machine and machine.num_free_cpu) or
+                        (isinstance(machine, GPUMachine) and machine.num_free_gpu)):
+                    yield machine
 
         free_machine_list = [machine for machine in filter_free(self.machine_dict.values())]
         num_free_cpu = sum(machine.num_free_cpu for machine in free_machine_list)
@@ -165,7 +152,7 @@ class Group:
         return user_count
 
     ############################## Scan Job Information and Save ##############################
-    def scan_job(self, user_name: Optional[str], scan_level: int, progress_bar: Optional[ProgressBar]) -> None:
+    def scan_job(self, user_name: str | None, scan_level: int, progress_bar: ProgressBar | None) -> None:
         """
             Scan job of every machines in machineList
             num_job, busy_machine_list will be updated
@@ -174,48 +161,38 @@ class Group:
                 user_name: Refer Command.ps_from_user for more description
                 scan_level: Refer Job.is_important for more description
         """
-        def scan_single_machine(machine: Machine) -> None:
-            machine.scan_job(user_name, scan_level)
-            if progress_bar is not None:
+        if progress_bar is None:
+            def scan_machine(machine: Machine) -> None:
+                machine.scan_job(user_name, scan_level)
+        else:
+            def scan_machine(machine: Machine) -> None:
+                machine.scan_job(user_name, scan_level)
                 progress_bar.update(machine.name)
 
         # Multi-threaded scanning: maximum worker w.r.t Windows (61)
         with cf.ThreadPoolExecutor(max_workers=61) as executor:
-            executor.map(scan_single_machine, self.machine_dict.values())
+            executor.map(scan_machine, self.machine_dict.values())
 
         # Save the scanned information
         self.num_job, self.busy_machine_list = self._get_job_info()
-        if user_name is not None:
-            return
-
-        # When user_name is None, also need to update free information
-        self.num_free_cpu, self.num_free_gpu, self.free_machine_list = self._get_free_info()
-        self.num_free_machine = len(self.free_machine_list)
+        if user_name is None:
+            # When user_name is None, also need to update free information
+            self.num_free_cpu, self.num_free_gpu, self.free_machine_list = self._get_free_info()
+            self.num_free_machine = len(self.free_machine_list)
 
     ##################################### Run or Kill Job #####################################
     def runs(self,
              cmd_queue: deque[str],
-             max_calls: int,
-             start_end: Optional[tuple[int, int]]) -> deque[str]:
+             max_calls: int) -> deque[str]:
         """
             Run jobs in cmd_queue
             Return
                 cmd_queue: Remaining commands after run
         """
-        if start_end is None:
-            # When start/end machine index is not given, iterate over all machines
-            free_machine_list = self.free_machine_list
-        else:
-            # When start/end machine index is given, iterate only over given machines
-            free_machine_list = [
-                free_machine for free_machine in self.free_machine_list
-                if (start_end[0] <= get_machine_index(free_machine.name) <= start_end[1])
-            ]
-
         # Run commands
         with cf.ThreadPoolExecutor(max_workers=50) as executor:
             num_thread = min(len(cmd_queue), max_calls)
-            for _, machine in zip(range(num_thread), free_machine_list):
+            for _, machine in zip(range(num_thread), self.free_machine_list):
                 if isinstance(machine, GPUMachine):
                     # For gpu machine, number of free gpu should be counted
                     available = min(machine.num_free_cpu, machine.num_free_gpu)
@@ -233,16 +210,6 @@ class Group:
 
         # Return the remining command queue
         return cmd_queue
-
-    def KILL(self, args: argparse.Namespace) -> None:
-        def kill_machine(machine: Machine) -> None:
-            machine.KILL(args)
-
-        with cf.ThreadPoolExecutor(max_workers=61) as executor:
-            executor.map(kill_machine, self.busy_machine_list)
-
-        # Summarize the kill result
-        self.num_kill = sum(machine.num_kill for machine in self.busy_machine_list)
 
 
 if __name__ == "__main__":

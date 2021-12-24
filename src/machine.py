@@ -1,7 +1,5 @@
 import logging
-import argparse
 import subprocess
-from typing import Optional, Union
 from collections import abc, Counter
 from dataclasses import dataclass, field
 
@@ -18,7 +16,7 @@ class Machine:
         data class for storing machine informations
         GPUMachine will be inherited from this class
     """
-    use: Union[str, bool]               # Whether to be used or not: True for use
+    use: bool                           # Whether to be used or not: True for use
     name: str                           # Name of machine. ex) tenet1
     cpu: str                            # Name of cpu
     num_cpu: int                        # Number of cpu cores
@@ -96,7 +94,7 @@ class Machine:
         return cmd_list
 
     ########################### Get Information of Machine Instance ###########################
-    def _get_process_list(self, get_process_cmd: list[str]) -> Optional[list[str]]:
+    def _get_process_list(self, get_process_cmd: list[str]) -> list[str]:
         """
             Get list of processes
             When error occurs during SSH, return None
@@ -114,7 +112,7 @@ class Machine:
             self.message_handler.error(
                 f"ERROR from {self.name}: {result.stderr.strip()}"
             )
-            return None
+            raise RuntimeError
 
         # If there is no error return list of stdout
         return result.stdout.strip().split("\n")
@@ -127,7 +125,7 @@ class Machine:
         return stdout.strip()
 
     def scan_job(self,
-                 user_name: Optional[str],
+                 user_name: str | None,
                  scan_level: int) -> None:
         """
             Scan the processes of input user.
@@ -142,20 +140,17 @@ class Machine:
             For GPU Machine, do thread job __scanGPU over GPUs
         """
         # Get list of raw process
-        process_list = self._get_process_list(Command.ps_from_user(user_name))
-
-        # When error occurs, process_list is None. Do nothing and return
-        if process_list is None:
+        try:
+            process_list = self._get_process_list(Command.ps_from_user(user_name))
+        except RuntimeError:
+            # When error occurs, Do nothing and return since error is already reported
             return
 
         # Save scanned job informations
         for process in process_list:
-            if process == "":
-                continue
             job = CPUJob(self.name, process)
             if job.is_important(scan_level):
                 self.job_list.append(job)
-
         self.num_job = len(self.job_list)
 
         # If user name is None, update free informations too
@@ -189,34 +184,11 @@ class Machine:
                 "Contact to server administrator for changing log file permission"
             )
 
-    def KILL(self, args: argparse.Namespace) -> None:
-        """ Kill every job satisfying args condition """
-        self.log_dict["user"] = args.user
-        self.num_kill = 0
-
-        for job in self.job_list:
-            if not job.match(args):
-                continue
-
-            # Find cmd list for print result
-            cmd_list = self._find_cmd_from_pid(job.pid)
-
-            # Kill the target job
-            self._kill_single_job(job)
-
-            # Print the result and log
-            for cmd in cmd_list:
-                self.message_handler.success(f"SUCCESS {self.name:<10}: kill '{cmd}'")
-                try:
-                    self.logger.info(f"spg kill {cmd}", extra=self.log_dict)
-                except PermissionError:
-                    self.message_handler.error(
-                        "Log file is rotated.\n"
-                        "Contact to server administrator for changing log file permission"
-                    )
-
-    def _kill_single_job(self, job: Job) -> None:
+    def kill(self, job: Job) -> None:
         """ Kill job and all the process until it's session leader """
+        # Find cmd list for print result
+        cmd_list = self._find_cmd_from_pid(job.pid)
+
         # Open process for ssh
         ssh_process = subprocess.Popen(self.cmd_ssh,
                                        stdin=subprocess.PIPE,
@@ -243,11 +215,23 @@ class Machine:
 
         # When error occurs, save it
         if kill_err:
-            kill_error_list = kill_err.strip().split("\n")
+            kill_err_list = kill_err.strip().split("\n")
             self.message_handler.error(
-                "\n".join(f"ERROR from {self.name}: {kill_error}"
-                          for kill_error in kill_error_list)
+                "\n".join(f"ERROR from {self.name}: {err}"
+                          for err in kill_err_list)
             )
+            return
+
+        # Print the result and log
+        for cmd in cmd_list:
+            self.message_handler.success(f"SUCCESS {self.name:<10}: kill '{cmd}'")
+            try:
+                self.logger.info(f"spg kill {cmd}", extra=self.log_dict)
+            except PermissionError:
+                self.message_handler.error(
+                    "Log file is rotated.\n"
+                    "Contact to server administrator for changing log file permission"
+                )
 
         # Update number of kills
         self.num_kill += 1
@@ -295,7 +279,7 @@ class GPUMachine(Machine):
         max_free_vram *= 1.04858                                    # Mebibyte to Megabyte
         return get_mem_with_unit(max_free_vram, "MB")[:-1]          # Drop byte character (B)
 
-    def scan_job(self, user_name: Optional[str], scan_level: int) -> None:
+    def scan_job(self, user_name: str | None, scan_level: int) -> None:
         """
             update job_list and num_free_gpu
             1. For every process in GPUs, check their pid
@@ -306,24 +290,26 @@ class GPUMachine(Machine):
         """
         def filter_by_user(ps_info_list: list[str]) -> abc.Iterable[str]:
             """ Return iterable of ps_info which belongs to user_name """
+            # When user name is None, return all ps info
+            if user_name is None:
+                return ps_info_list
+
+            # When user name is specified, return ps info belongs to user
             for ps_info in ps_info_list:
-                if user_name is None:
-                    yield ps_info
-                elif ps_info.strip().split()[0] == user_name:
+                if ps_info.strip().split()[0] == user_name:
                     yield ps_info
 
         # Get list of raw process: Use nvidia-smi
-        process_list = self._get_process_list(Command.ns_process())
-
-        # When error occurs, process_list is None. Do nothing and return
-        if process_list is None:
-            return None
+        try:
+            process_list = self._get_process_list(Command.ns_process())
+        except RuntimeError:
+            # When error occurs, Do nothing and return since error is already reported
+            return
 
         # Save scanned job informations
         for process in process_list:
-            # Check the process
-            ns_info = process.strip().split()   # gpuIdx, pid, gpuPercent, vramPercent, vramUse
-            pid = ns_info[1]
+            # Check the process: gpu_idx, pid, gpuPercent, vramPercent, vramUse
+            gpu_idx, pid, *ns_info = process.strip().split()
 
             # When no information is detected, nvidia-smi returns "-"
             if pid == "-":
@@ -336,7 +322,8 @@ class GPUMachine(Machine):
 
             # Store the information to job list
             for ps_info in filter_by_user(ps_info_list):
-                job = GPUJob(f"{self.name}-GPU{ns_info[0]}", ps_info, *ns_info[2:])
+                job = GPUJob(machine_name=f"{self.name}-GPU{gpu_idx}",
+                             info=ps_info, *ns_info)
                 if job.is_important(scan_level):      # Most likely to be true
                     self.job_list.append(job)
                     break                             # Single job per pid

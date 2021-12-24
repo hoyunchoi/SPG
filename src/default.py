@@ -64,7 +64,7 @@ class Default(metaclass=Singleton):
     def get_group_file_dict(self) -> dict[str, Path]:
         """
             Return dictionary of machine group files
-            Machine group files of each user group is at directory named after uesr group
+            Machine group files of each user group is at directory named after user group
         """
         return {group: Default.ROOT_DIR / self.user_group / f"{group}.json"
                 for group in Default.GROUP}

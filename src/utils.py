@@ -1,7 +1,4 @@
 import re
-from typing import Optional, Union
-
-from src.spgio import MessageHandler
 
 
 def get_machine_group(name: str) -> str:
@@ -17,7 +14,7 @@ def get_machine_index(name: str) -> int:
     return int(re.sub("[^0-9]", "", name))
 
 
-def get_mem_with_unit(mem: Union[str, float], unit: str) -> str:
+def get_mem_with_unit(mem: str | float, unit: str) -> str:
     """
         Change memory in KB unit to MB or GB
         Args
@@ -32,6 +29,7 @@ def get_mem_with_unit(mem: Union[str, float], unit: str) -> str:
     try:
         idx = unit_list.index(unit)
     except ValueError:
+        from .spgio import MessageHandler
         MessageHandler().error(f"Invalid memory unit: {unit}")
         exit()
 
@@ -43,19 +41,21 @@ def get_mem_with_unit(mem: Union[str, float], unit: str) -> str:
     return f"{mem:.1f}{unit}"
 
 
-def input_time_to_seconds(time: list[str]) -> Optional[int]:
+def input_time_to_seconds(time: list[str]) -> int:
     """ Input time format to seconds """
     unit_to_second = {"s": 1, "m": 60, "h": 3600, "d": 86400, "w": 604800}
     try:
         return sum(int(t[:-1]) * unit_to_second[t[-1]] for t in time)
     except (KeyError, ValueError):
-        return None
+        from .spgio import MessageHandler
+        MessageHandler().error(f"Invalid time window: {' '.join(time)}")
+        MessageHandler().error("Run 'spg KILL -h' for more help")
+        exit()
 
 
 def ps_time_to_seconds(time: str) -> int:
     """ ps time format [DD-]HH:MM:SS to seconds """
-    # second, minute, hour, day
-    to_second_list = [1, 60, 3600, 62400]
+    to_second_list = [1, 60, 3600, 62400]    # second, minute, hour, day
 
     # [DD-]HH:MM:SS -> [DD:]HH:MM:SS -> list
     time_list = time.replace("-", ":").split(":")
@@ -66,7 +66,7 @@ def ps_time_to_seconds(time: str) -> int:
     )
 
 
-def yes_no(msg: Optional[str] = None) -> bool:
+def yes_no(msg: str | None = None) -> bool:
     """
         Get input yes or no
         If other input is given, ask again for 5 times
@@ -82,10 +82,11 @@ def yes_no(msg: Optional[str] = None) -> bool:
         reply = str(input("(y/n): ")).strip().lower()
         if reply[0] == "y":
             return True
-        if reply[0] == "n":
+        elif reply[0] == "n":
             return False
         print("You should provied either 'y' or 'n'", end=" ")
     return False
+
 
 if __name__ == "__main__":
     print("This is module utils from SPG")

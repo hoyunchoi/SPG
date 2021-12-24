@@ -5,6 +5,7 @@ import concurrent.futures as cf
 from collections import abc, deque, Counter
 
 from .group import Group
+from .option import Option
 from .default import Default
 from .machine import Machine
 from .argument import Argument
@@ -26,7 +27,7 @@ class SPG:
         }
 
         # Prune group dictionary and corresponding machine dictionary
-        if args.option == "runs":
+        if args.option is Option.runs:
             # args.group is str and has 'start_end' attribute
             assert isinstance(args.group, str)
             self.group_dict = {args.group: self.group_dict[args.group]}
@@ -60,7 +61,7 @@ class SPG:
             }
 
         # printer and message handlers
-        if args.option == "user":
+        if args.option is Option.user:
             assert not isinstance(args.group, str)
             self.printer = Printer(args.option, args.silent, args.group)
         else:
@@ -69,7 +70,7 @@ class SPG:
 
     def __call__(self) -> None:
         # Run SPG
-        getattr(self, self.args.option)()
+        getattr(self, self.args.option.name)()
 
     ###################################### Basic Utility ######################################
     def _find_group_from_name(self, group_name: str) -> Group:

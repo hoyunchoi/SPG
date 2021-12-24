@@ -3,10 +3,10 @@ from dataclasses import dataclass
 from collections.abc import Sequence
 from argparse import Action, ArgumentParser, Namespace, RawTextHelpFormatter
 
+from .option import Option
 from .default import Default
 from .spgio import MessageHandler
 from .utils import get_machine_group, input_time_to_seconds, yes_no
-
 
 def add_optional_group(parser: ArgumentParser) -> None:
     """ Add optional argument of "-g" or "--groupList" to input parser """
@@ -454,7 +454,7 @@ def get_args(user_input: list[str] | None = None) -> Namespace:
 class Argument:
     """ Argument dataclass to store user input """
     silent: bool
-    option: str
+    option: Option
     machine: str | list[str] | None = None      # Target machine. For run, it is str
     group: str | list[str] | None = None        # Target group. For runs, it is str
     start_end: tuple[int, int] | None = None    # Boundary of target group
@@ -469,22 +469,22 @@ class Argument:
     command: str | None = None
 
     def __post_init__(self) -> None:
-        self._redirect_deprecated()
+        self.option = self._redirect_deprecated_options()
 
         match self.option:
-            case "list" | "free" | "user":
+            case Option.list | Option.free | Option.user:
                 self._overwrite_group()
-            case "job":
+            case Option.job:
                 self._check_user()
                 self._check_pid()
                 self._overwrite_group()
                 self._time_to_seconds()
-            case "run":
+            case Option.run:
                 self.group = None
-            case "runs":
+            case Option.runs:
                 self._check_group_boundary()
                 self.machine = None
-            case "KILL":
+            case Option.KILL:
                 self._check_user()
                 self._check_user_KILL()
                 self._check_pid()
@@ -493,40 +493,41 @@ class Argument:
                 self._double_check_KILL()
 
     ###################################### Basic Utility ######################################
-    def _redirect_deprecated(self) -> None:
+    def _redirect_deprecated_options(self) -> Option:
         """ Redirect deprecated options """
-        if self.option in ["list", "free", "job", "user", "run", "runs", "KILL"]:
+        if self.option in list(Option):
+            return self.option
+        elif self.option in ["list", "free", "job", "user", "run", "runs", "KILL"]:
             # When given option is proper, do nothing and return
-            return
+            return Option[self.option]
 
         message_handler = MessageHandler()
         match self.option:
             # Redirect to list
             case "machine":
-                self.option = "list"
                 message_handler.warning(
                     "This method will be deprecated. Use 'spg list' instead"
                 )
+                return Option.list
 
             # Redirect to job
             case "me":
-                self.option = "job"
                 self.all = False
                 self.user = Default().user
                 message_handler.warning(
                     "This method will be deprecated. Use 'spg job' instead"
                 )
+                return Option.job
             case "all":
-                self.option = "job"
                 self.all = True
                 self.user = None
                 message_handler.warning(
                     "This method will be deprecated. Use 'spg job -a' instead"
                 )
+                return Option.job
 
             # Redirect to KILL
             case "kill":
-                self.option = "KILL"
                 assert isinstance(self.machine, str)
                 self.machine = [self.machine]
                 self.pid = self.pid
@@ -534,16 +535,16 @@ class Argument:
                     "This method will be deprecated. "
                     "Use 'spg KILL -m [machine] -p [pid]' instead"
                 )
+                return Option.KILL
             case "killall":
-                self.option = "KILL"
                 self.pid = None
                 self.command = None
                 self.time = None
                 message_handler.warning(
                     "This method will be deprecated. Use 'spg KILL' instead"
                 )
+                return Option.KILL
             case "killmachine":
-                self.option = "KILL"
                 self.pid = None
                 self.command = None
                 self.time = None
@@ -552,21 +553,23 @@ class Argument:
                 message_handler.warning(
                     "This method will be deprecated. Use 'spg KILL -m [machine]' instead"
                 )
+                return Option.KILL
             case "killthis":
-                self.option = "KILL"
                 self.pid = None
                 self.command = self.command
                 self.time = None
                 message_handler.warning(
                     "This method will be deprecated. Use 'spg KILL -c [command]' instead"
                 )
+                return Option.KILL
             case "killbefore":
-                self.option = "KILL"
                 self.pid = None
                 self.command = None
                 message_handler.warning(
                     "This method will be deprecated. Use 'spg KILL -t [time]' instead"
                 )
+                return Option.KILL
+        raise RuntimeError(f"No such option: {self.option}")
 
     def _overwrite_group(self) -> None:
         """ Overwrite group option by machine option if it exists """

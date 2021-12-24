@@ -8,6 +8,7 @@ import logging
 from logging.handlers import RotatingFileHandler
 
 from .default import Default
+from .option import Option
 from .singleton import Singleton
 from .utils import get_machine_group
 
@@ -55,7 +56,7 @@ class Printer:
     group_gpu_info_format = "| {:<10} | {:>26} gpus"
     group_job_info_format = "| {:<10} | total {:>4} jobs"
 
-    def __init__(self, option: str, silent: bool, group_list: list[str] | None = None) -> None:
+    def __init__(self, option: Option, silent: bool, group_list: list[str] | None = None) -> None:
         """
             Args
                 option: main option
@@ -69,20 +70,20 @@ class Printer:
         self.bar_dict: dict[str, ProgressBar] = {}  # Container of progess bar
 
         # Column names for each options
-        if option == "list":
+        if option is Option.list:
             self.column_line = Printer.machine_info_format.format(
                 "Machine", "ComputeUnit", "tot", "unit", "mem"
             )
-        elif option == "free":
+        elif option is Option.free:
             self.column_line = Printer.machine_free_info_format.format(
                 "Machine", "ComputeUnit", "free", "unit", "free mem"
             )
-        elif option == "job":
+        elif option is Option.job:
             self.column_line = Printer.job_info_format.format(
                 "Machine", "User", "ST", "PID", "CPU(%)", "MEM(%)",
                 "Memory", "Time", "Start", "Command"
             )
-        elif option == "user":
+        elif option is Option.user:
             # Print format should be dynamically changed depending on input group list
             if group_list is None:
                 group_list = Default.GROUP

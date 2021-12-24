@@ -8,6 +8,27 @@ from .default import Default
 from .spgio import MessageHandler
 from .utils import get_machine_group, input_time_to_seconds, yes_no
 
+
+class CommandAction(Action):
+    def __init__(self,
+                 option_strings: Sequence[str],
+                 dest: str,
+                 nargs: int | str,
+                 metavar: str | None = ...,
+                 required: bool = False,
+                 help: str | None = ...):
+        super().__init__(option_strings, dest, nargs=nargs, metavar=metavar, required=required, help=help)
+
+    def __call__(self,
+                 parser: ArgumentParser,
+                 namespace: Namespace,
+                 values: Sequence[str] | None,
+                 option_string: str | None) -> None:
+        if isinstance(values, Sequence):
+            values = " ".join(values)
+        setattr(namespace, self.dest, values)
+
+
 def add_optional_group(parser: ArgumentParser) -> None:
     """ Add optional argument of "-g" or "--groupList" to input parser """
     parser.add_argument(
@@ -76,24 +97,6 @@ def add_optional_pid(parser: ArgumentParser) -> None:
 
 def add_optional_command(parser: ArgumentParser) -> None:
     """ Add optional argument of "-c" or "--command" to input parser """
-    class CommandAction(Action):
-        def __init__(self,
-                     option_strings: Sequence[str],
-                     dest: str,
-                     nargs: int | str,
-                     metavar: str,
-                     help: str):
-            super().__init__(option_strings, dest, nargs=nargs, metavar=metavar, help=help)
-
-        def __call__(self,
-                     parser: ArgumentParser,
-                     namespace: Namespace,
-                     values: Sequence[str] | None,
-                     option_string: str | None) -> None:
-            if isinstance(values, Sequence):
-                values = " ".join(values)
-            setattr(namespace, self.dest, values)
-
     parser.add_argument(
         "-c", "--command",
         metavar="",
@@ -138,7 +141,7 @@ def add_optional_start(parser: ArgumentParser) -> None:
     )
 
 
-def get_args(user_input: list[str] | None = None) -> Namespace:
+def get_args(user_input: str | list[str] | None = None) -> Namespace:
     # Generate base SPG parser
     main_parser = ArgumentParser(
         prog="spg",
@@ -160,7 +163,7 @@ def get_args(user_input: list[str] | None = None) -> Namespace:
         metavar="Available options",
         description=textwrap.dedent(
             """\
-            Arguments inside square brackets [] are necessary aruments while parentheses () are optional
+            Arguments inside square brackets [] are required aruments while parentheses () are optional
             For more information of each [option],
             type 'spg [option] -h' or 'spg [option] --help'
             """
@@ -255,6 +258,7 @@ def get_args(user_input: list[str] | None = None) -> Namespace:
                             help="target machine name")
     parser_run.add_argument("command",
                             nargs="+",
+                            action=CommandAction,
                             help="command you want to run. [program] (arguments)")
 
     ####################################### Runs Parser #######################################
@@ -397,7 +401,9 @@ def get_args(user_input: list[str] | None = None) -> Namespace:
 
     ################################## Deprecate killmachine ##################################
     parser_killmachine = option_parser.add_parser(name="killmachine",
-                                                  help="Deprecated")
+                                                  formatter_class=RawTextHelpFormatter,
+                                                  help="Deprecated",
+                                                  usage="spg killmachine [machine name]")
     add_positional_machine(parser_killmachine)
     add_optional_user(parser_killmachine)
 
@@ -416,6 +422,7 @@ def get_args(user_input: list[str] | None = None) -> Namespace:
     parser_killthis.add_argument(
         "command",
         nargs="+",
+        action=CommandAction,
         help="List of words to search. Target command should have exact pattern"
     )
     add_optional_group(parser_killthis)
@@ -446,6 +453,8 @@ def get_args(user_input: list[str] | None = None) -> Namespace:
     # Parse the arguments
     if user_input is None:
         return main_parser.parse_args()
+    elif isinstance(user_input, str):
+        return main_parser.parse_args(user_input.split())
     else:
         return main_parser.parse_args(user_input)
 
@@ -453,13 +462,13 @@ def get_args(user_input: list[str] | None = None) -> Namespace:
 @dataclass
 class Argument:
     """ Argument dataclass to store user input """
-    silent: bool
     option: Option
+    silent: bool = False
     machine: str | list[str] | None = None      # Target machine. For run, it is str
     group: str | list[str] | None = None        # Target group. For runs, it is str
     start_end: tuple[int, int] | None = None    # Boundary of target group
-    all: bool | None = None                     # If true, overwrite user argument to None
-    user: str | None = None                     # Target user, default: current user
+    all: bool = False                           # If true, overwrite user argument to None
+    user: str | None = Default().user           # Target user, default: current user
     pid: list[str] | None = None                # Target pid
     time: list[str] | None = None               # Target time window in string format
     time_seconds: int | None = None             # Target time window in seconds
@@ -492,6 +501,10 @@ class Argument:
                 self._time_to_seconds()
                 self._double_check_KILL()
 
+    @classmethod
+    def from_input(cls, user_input: str | list[str] | None = None):
+        return cls(**vars(get_args(user_input)))
+
     ###################################### Basic Utility ######################################
     def _redirect_deprecated_options(self) -> Option:
         """ Redirect deprecated options """
@@ -506,7 +519,7 @@ class Argument:
             # Redirect to list
             case "machine":
                 message_handler.warning(
-                    "This method will be deprecated. Use 'spg list' instead"
+                    "'spg machine' will be deprecated. Use 'spg list' instead"
                 )
                 return Option.list
 
@@ -515,14 +528,14 @@ class Argument:
                 self.all = False
                 self.user = Default().user
                 message_handler.warning(
-                    "This method will be deprecated. Use 'spg job' instead"
+                    "'spg me' will be deprecated. Use 'spg job' instead"
                 )
                 return Option.job
             case "all":
                 self.all = True
                 self.user = None
                 message_handler.warning(
-                    "This method will be deprecated. Use 'spg job -a' instead"
+                    "'spg all' will be deprecated. Use 'spg job -a' instead"
                 )
                 return Option.job
 
@@ -532,7 +545,7 @@ class Argument:
                 self.machine = [self.machine]
                 self.pid = self.pid
                 message_handler.warning(
-                    "This method will be deprecated. "
+                    "'spg kill' will be deprecated. "
                     "Use 'spg KILL -m [machine] -p [pid]' instead"
                 )
                 return Option.KILL
@@ -541,7 +554,7 @@ class Argument:
                 self.command = None
                 self.time = None
                 message_handler.warning(
-                    "This method will be deprecated. Use 'spg KILL' instead"
+                    "'spg killall' will be deprecated. Use 'spg KILL' instead"
                 )
                 return Option.KILL
             case "killmachine":
@@ -551,7 +564,7 @@ class Argument:
                 assert isinstance(self.machine, str)
                 self.machine = [self.machine]
                 message_handler.warning(
-                    "This method will be deprecated. Use 'spg KILL -m [machine]' instead"
+                    "'spg killmachine' will be deprecated. Use 'spg KILL -m [machine]' instead"
                 )
                 return Option.KILL
             case "killthis":
@@ -559,14 +572,14 @@ class Argument:
                 self.command = self.command
                 self.time = None
                 message_handler.warning(
-                    "This method will be deprecated. Use 'spg KILL -c [command]' instead"
+                    "'spg killthis' will be deprecated. Use 'spg KILL -c [command]' instead"
                 )
                 return Option.KILL
             case "killbefore":
                 self.pid = None
                 self.command = None
                 message_handler.warning(
-                    "This method will be deprecated. Use 'spg KILL -t [time]' instead"
+                    "'spg killbefore' will be deprecated. Use 'spg KILL -t [time]' instead"
                 )
                 return Option.KILL
         raise RuntimeError(f"No such option: {self.option}")

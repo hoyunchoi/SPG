@@ -177,9 +177,31 @@ class MessageHandler(metaclass=Singleton):
     def error(self, msg: str) -> None:
         self.error_list.append(msg)
 
+    def clear(self) -> None:
+        """ Only used for test """
+        self.success_list.clear()
+        self.warning_list.clear()
+        self.error_list.clear()
+
 
 def configure_logger() -> None:
     """ Create logger instance for SPG """
+    class UserWritableRotatingFileHandler(RotatingFileHandler):
+        def doRollover(self) -> None:
+            from pathlib import Path
+
+            # Rotate the file
+            super().doRollover()
+
+            # Add user writable permission
+            Path(self.baseFilename).chmod(0o646)
+
+            # Warning log and log backup file still belongs to spg executor, not root
+            MessageHandler().warning(
+                "Log file is rotated.\n"
+                "Contact to server administrator for changing log file ownership"
+            )
+
     # Define logger instance
     logger = logging.getLogger("SPG")
 
@@ -189,10 +211,9 @@ def configure_logger() -> None:
                                   datefmt="%Y-%m-%d %H:%M")
 
     # Define handler of logger: Limit maximum log file size as 10MB
-    handler = RotatingFileHandler(Default.ROOT_DIR / "spg.log",
-                                  delay=True,
-                                  maxBytes=1024 * 1024 * 10,
-                                  backupCount=1)
+    handler = UserWritableRotatingFileHandler(Default.ROOT_DIR / "spg.log",
+                                              maxBytes=1024 * 1024 * 10,
+                                              backupCount=1)
     handler.setFormatter(formatter)
 
     # Return logger

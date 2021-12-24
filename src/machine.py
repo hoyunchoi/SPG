@@ -176,13 +176,7 @@ class Machine:
         self.message_handler.success(f"SUCCESS {self.name:<10}: run '{cmd}'")
 
         # Log
-        try:
-            self.logger.info(f"spg run {cmd}", extra=self.log_dict)
-        except PermissionError:
-            self.message_handler.error(
-                "Log file is rotated.\n"
-                "Contact to server administrator for changing log file permission"
-            )
+        self.logger.info(f"spg run {cmd}", extra=self.log_dict)
 
     def kill(self, job: Job) -> None:
         """ Kill job and all the process until it's session leader """
@@ -225,13 +219,7 @@ class Machine:
         # Print the result and log
         for cmd in cmd_list:
             self.message_handler.success(f"SUCCESS {self.name:<10}: kill '{cmd}'")
-            try:
-                self.logger.info(f"spg kill {cmd}", extra=self.log_dict)
-            except PermissionError:
-                self.message_handler.error(
-                    "Log file is rotated.\n"
-                    "Contact to server administrator for changing log file permission"
-                )
+            self.logger.info(f"spg kill {cmd}", extra=self.log_dict)
 
         # Update number of kills
         self.num_kill += 1

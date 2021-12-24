@@ -1,4 +1,3 @@
-import argparse
 from abc import ABC, abstractmethod
 
 from .spgio import Printer, MessageHandler
@@ -111,22 +110,22 @@ class Job(ABC):
         # State is at S state with lower cpu usage
         return False
 
-    def match(self, args: argparse.Namespace) -> bool:
-        """ Check if this job fulfills the condition of args """
+    def match(self, pid: list[str] | None, command: str | None, time: int | None, start: str | None) -> bool:
+        """ Check if this job fulfills the given condition """
         # When pid list is given, job's pid should be one of them
-        if (args.pid is not None) and (self.pid not in args.pid):
+        if (pid is not None) and (self.pid not in pid):
             return False
 
         # When command pattern is given, job's command should include the pattern
-        if (args.command is not None) and (args.command not in self.cmd):
+        if (command is not None) and (command not in self.cmd):
             return False
 
         # When time is given, job's time should be less than the time
-        if (args.time is not None) and (ps_time_to_seconds(self.time) >= args.time):
+        if (time is not None) and (ps_time_to_seconds(self.time) >= time):
             return False
 
         # When start is given, job's start should be same as the argument
-        if (args.start is not None) and (self.start != args.start):
+        if (start is not None) and (self.start != start):
             return False
 
         # Every options are considered. When passed, the job should be killed

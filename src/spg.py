@@ -1,6 +1,5 @@
 #! /usr/bin/python
 
-import argparse
 from pathlib import Path
 import concurrent.futures as cf
 from collections import abc, deque, Counter
@@ -8,14 +7,14 @@ from collections import abc, deque, Counter
 from .group import Group
 from .default import Default
 from .machine import Machine
+from .argument import Argument
 from .spgio import Printer, MessageHandler
 from .utils import get_machine_group, get_machine_index
-
 
 class SPG:
     """ SPG : Statistical Physics Group """
 
-    def __init__(self, args: argparse.Namespace) -> None:
+    def __init__(self, args: Argument) -> None:
         # Save arguments
         self.args = args
 
@@ -29,6 +28,7 @@ class SPG:
         # Prune group dictionary and corresponding machine dictionary
         if args.option == "runs":
             # args.group is str and has 'start_end' attribute
+            assert isinstance(args.group, str)
             self.group_dict = {args.group: self.group_dict[args.group]}
             if args.start_end is not None:
                 start, end = args.start_end
@@ -41,6 +41,7 @@ class SPG:
 
         elif isinstance(args.machine, list):
             # args.machine is specified, so as args.group
+            assert isinstance(args.group, list)
             self.group_dict = {
                 group_name: self.group_dict[group_name] for group_name in args.group
             }
@@ -60,6 +61,7 @@ class SPG:
 
         # printer and message handlers
         if args.option == "user":
+            assert not isinstance(args.group, str)
             self.printer = Printer(args.option, args.silent, args.group)
         else:
             self.printer = Printer(args.option, args.silent)
@@ -188,12 +190,17 @@ class SPG:
         for group in self.group_dict.values():
             group.num_job = 0
             for machine in group.busy_machine_list:
+                print_line = False
                 for job in machine.job_list:
-                    if not job.match(self.args):
-                        continue
-                    self.printer.print(f"{job:info}")
-                    group.num_job += 1
-                self.printer.print()
+                    if job.match(self.args.pid,
+                                 self.args.command,
+                                 self.args.time_seconds,
+                                 self.args.start):
+                        self.printer.print(f"{job:info}")
+                        group.num_job += 1
+                        print_line = True
+                if print_line:
+                    self.printer.print()
 
         # Summary
         for group in self.group_dict.values():
@@ -238,6 +245,7 @@ class SPG:
     def run(self) -> None:
         """ Run a job """
         # Find machine
+        assert isinstance(self.args.machine, str)
         machine = self._find_machine_from_name(self.args.machine)
 
         # Scanning
@@ -250,14 +258,16 @@ class SPG:
             )
 
         # Run a job
+        assert self.args.command is not None
         machine.run(self.args.command)
 
     def runs(self, max_calls: int = 50) -> None:
         """ Run several jobs """
         # Find group
-        group = self._find_group_from_name(self.args.group)
+        group = next(iter(self.group_dict.values()))
 
         # Read command file
+        assert self.args.command is not None
         cmd_file = Path(self.args.command).resolve()
         with open(cmd_file, "r") as f:
             cmd_queue = deque(f.read().splitlines())
@@ -292,7 +302,10 @@ class SPG:
             for group in self.group_dict.values():
                 for machine in group.busy_machine_list:
                     for job in machine.job_list:
-                        if job.match(self.args):
+                        if job.match(self.args.pid,
+                                     self.args.command,
+                                     self.args.time_seconds,
+                                     self.args.start):
                             executor.submit(machine.kill, job)
 
         # Summarize the kill result

@@ -351,7 +351,6 @@ def get_args(user_input: str | list[str] | None = None) -> Namespace:
     )
     add_optional_group(parser_all)
     add_optional_machine(parser_all)
-    add_optional_user(parser_all)
 
     ###################################### Deprecate me ######################################
     parser_me = option_parser.add_parser(
@@ -400,10 +399,12 @@ def get_args(user_input: str | list[str] | None = None) -> Namespace:
     add_optional_user(parser_killall)
 
     ################################## Deprecate killmachine ##################################
-    parser_killmachine = option_parser.add_parser(name="killmachine",
-                                                  formatter_class=RawTextHelpFormatter,
-                                                  help="Deprecated",
-                                                  usage="spg killmachine [machine name]")
+    parser_killmachine = option_parser.add_parser(
+        name="killmachine",
+        formatter_class=RawTextHelpFormatter,
+        help="Deprecated",
+        usage="spg killmachine [machine name]"
+    )
     add_positional_machine(parser_killmachine)
     add_optional_user(parser_killmachine)
 
@@ -421,13 +422,13 @@ def get_args(user_input: str | list[str] | None = None) -> Namespace:
     )
     parser_killthis.add_argument(
         "command",
+        metavar="command",
         nargs="+",
         action=CommandAction,
         help="List of words to search. Target command should have exact pattern"
     )
     add_optional_group(parser_killthis)
     add_optional_machine(parser_killthis)
-    add_optional_user(parser_killthis)
 
     ################################## Deprecate killbefore ###################################
     parser_killbefore = option_parser.add_parser(
@@ -448,13 +449,13 @@ def get_args(user_input: str | list[str] | None = None) -> Namespace:
     )
     add_optional_group(parser_killbefore)
     add_optional_machine(parser_killbefore)
-    add_optional_user(parser_killbefore)
 
     # Parse the arguments
     if user_input is None:
         return main_parser.parse_args()
     elif isinstance(user_input, str):
-        return main_parser.parse_args(user_input.split())
+        from shlex import split
+        return main_parser.parse_args(split(user_input))
     else:
         return main_parser.parse_args(user_input)
 
@@ -590,7 +591,7 @@ class Argument:
             return
 
         # Group from machine
-        group = list(set(
+        group = list(dict.fromkeys(
             get_machine_group(machine_name) for machine_name in self.machine
         ))
 
@@ -605,7 +606,7 @@ class Argument:
     def _check_user(self) -> None:
         """ Check if input user is registered """
         if self.all:
-            self.user is None
+            self.user = None
             return
 
         # Check if input user name is valid
@@ -700,7 +701,7 @@ class Argument:
 
         # Get user input
         if not yes_no(question + "?"):
-            exit()
+            exit("Aborting...")
 
 
 if __name__ == "__main__":

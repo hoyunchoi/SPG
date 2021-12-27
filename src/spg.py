@@ -8,9 +8,11 @@ from .group import Group
 from .option import Option
 from .default import Default
 from .machine import Machine
+from .job import JobCondition
 from .argument import Argument
 from .spgio import Printer, MessageHandler
 from .utils import get_machine_group, get_machine_index
+
 
 class SPG:
     """ SPG : Statistical Physics Group """
@@ -114,7 +116,7 @@ class SPG:
     def scan_job(self,
                  group_list: abc.Iterable[Group],
                  user_name: str | None,
-                 scan_level: int) -> None:
+                 job_condition: JobCondition | None = None) -> None:
         """
             Scan running jobs
             Args
@@ -124,7 +126,7 @@ class SPG:
         """
         def scan_group(group: Group) -> None:
             bar = self.printer.bar_dict.get(group.name)
-            group.scan_job(user_name, scan_level, bar)
+            group.scan_job(user_name, bar, job_condition)
 
         if not self.printer.silent:
             # Decorate tqdm bar when using tqdm
@@ -162,7 +164,7 @@ class SPG:
     def free(self) -> None:
         """ Print list of machine free information """
         # Scanning
-        self.scan_job(self.group_dict.values(), user_name=None, scan_level=2)
+        self.scan_job(self.group_dict.values(), user_name=None)
 
         # First section
         self.printer.print_first_section()
@@ -181,27 +183,23 @@ class SPG:
 
     def job(self) -> None:
         """ Print current state of jobs """
+        job_condition = JobCondition(pid=self.args.pid,
+                                     command=self.args.command,
+                                     time=self.args.time_seconds,
+                                     start=self.args.start)
+
         # Scanning
-        self.scan_job(self.group_dict.values(), user_name=self.args.user, scan_level=2)
+        self.scan_job(self.group_dict.values(), self.args.user, job_condition)
 
         # First section
         self.printer.print_first_section()
 
         # Main section
         for group in self.group_dict.values():
-            group.num_job = 0
             for machine in group.busy_machine_list:
-                print_line = False
                 for job in machine.job_list:
-                    if job.match(self.args.pid,
-                                 self.args.command,
-                                 self.args.time_seconds,
-                                 self.args.start):
-                        self.printer.print(f"{job:info}")
-                        group.num_job += 1
-                        print_line = True
-                if print_line:
-                    self.printer.print()
+                    self.printer.print(f"{job:info}")
+                self.printer.print()
 
         # Summary
         for group in self.group_dict.values():
@@ -211,7 +209,7 @@ class SPG:
     def user(self) -> None:
         """ Print job count of users per machine group """
         # Scanning
-        self.scan_job(self.group_dict.values(), user_name=None, scan_level=2)
+        self.scan_job(self.group_dict.values(), user_name=None)
 
         # Get user count
         num_job_per_user = Counter()
@@ -250,7 +248,7 @@ class SPG:
         machine = self._find_machine_from_name(self.args.machine)
 
         # Scanning
-        machine.scan_job(user_name=None, scan_level=2)
+        machine.scan_job(user_name=None)
 
         # When no free core is detected, doule check the run command
         if not machine.num_free_cpu:
@@ -275,7 +273,7 @@ class SPG:
         num_cmd_before = len(cmd_queue)
 
         # Scanning
-        self.scan_job([group], user_name=None, scan_level=2)
+        self.scan_job([group], user_name=None)
         if not self.printer.silent:
             self.printer.print()
 
@@ -293,8 +291,12 @@ class SPG:
 
     def KILL(self) -> None:
         """ kill all matching jobs """
+        job_condition = JobCondition(pid=self.args.pid,
+                                     command=self.args.command,
+                                     time=self.args.time_seconds,
+                                     start=self.args.start)
         # Scanning
-        self.scan_job(self.group_dict.values(), self.args.user, scan_level=1)
+        self.scan_job(self.group_dict.values(), self.args.user, job_condition)
         if not self.printer.silent:
             self.printer.print()
 
@@ -303,11 +305,7 @@ class SPG:
             for group in self.group_dict.values():
                 for machine in group.busy_machine_list:
                     for job in machine.job_list:
-                        if job.match(self.args.pid,
-                                     self.args.command,
-                                     self.args.time_seconds,
-                                     self.args.start):
-                            executor.submit(machine.kill, job)
+                        executor.submit(machine.kill, job)
 
         # Summarize the kill result
         num_kill = 0

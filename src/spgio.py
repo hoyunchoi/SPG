@@ -54,7 +54,7 @@ class Printer:
     machine_free_info_format = "| {:<10} | {:<11} | {:>4} {:<4} | {:>10}"
     group_info_format = "| {:<10} | total {:>4} machines & {:>4} core"
     group_gpu_info_format = "| {:<10} | {:>26} gpus"
-    group_job_info_format = "| {:<10} | total {:>4} jobs"
+    group_job_info_format = "| {:<10} | total {:>4} machines & {:>4} jobs"
 
     def __init__(self, option: Option, silent: bool, group_list: list[str] | None = None) -> None:
         """

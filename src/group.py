@@ -3,6 +3,7 @@ from pathlib import Path
 import concurrent.futures as cf
 from collections import abc, deque, Counter
 
+from .job import JobCondition
 from .spgio import Printer, ProgressBar
 from .machine import Machine, GPUMachine
 
@@ -10,8 +11,8 @@ from .machine import Machine, GPUMachine
 class Group:
     """
         Save the information of group of machines
-        By default, machine group is defined by group file
-        When SPG got specific machine list, machines will be changed
+        By default, machines are read from group file
+        When SPG gets specific machine list from argument, machines will be changed
     """
 
     def __init__(self, group_name: str, group_file: Path) -> None:
@@ -24,7 +25,7 @@ class Group:
         """
         # Default informations
         self.name: str = group_name                 # Name of machine group. Ex) tenet
-        self.machine_dict: dict[str, Machine] = {}  # Dictionary of machines with key of name
+        self.machine_dict: dict[str, Machine] = {}  # Dictionary of machines
 
         # Summary informations
         self.num_machine: int = 0                   # Number of machines in the group
@@ -69,9 +70,7 @@ class Group:
     def update_summary(self) -> None:
         """
             Update summary information of group
-            number of machines
-            number of cpu cores
-            number of gpus
+            number of machines / cpu cores / gpus
         """
         self.num_machine = len(self.machine_dict)
         self.num_cpu = sum(machine.num_cpu for machine in self.machine_dict.values())
@@ -80,9 +79,10 @@ class Group:
     ########################## Get Line Format Information for Print ##########################
     def __format__(self, format_spec: str) -> str:
         """
-            Return machine information in line format
-            Args
-                format_spec: which information to return
+            Return group information according to format spec
+            - info: group information of machines/cores
+            - free: group free informations
+            - job: group information of running jobs
         """
         # group summary of machine information
         group_info = self.name
@@ -103,7 +103,9 @@ class Group:
 
         # group summary of every jobs at group
         elif format_spec == "job":
-            group_info = Printer.group_job_info_format.format(self.name, self.num_job)
+            group_info = Printer.group_job_info_format.format(
+                self.name, len(self.busy_machine_list), self.num_job
+            )
 
         return group_info
 
@@ -152,7 +154,10 @@ class Group:
         return user_count
 
     ############################## Scan Job Information and Save ##############################
-    def scan_job(self, user_name: str | None, scan_level: int, progress_bar: ProgressBar | None) -> None:
+    def scan_job(self,
+                 user_name: str | None,
+                 progress_bar: ProgressBar | None,
+                 job_condition: JobCondition | None = None) -> None:
         """
             Scan job of every machines in machineList
             num_job, busy_machine_list will be updated
@@ -163,10 +168,10 @@ class Group:
         """
         if progress_bar is None:
             def scan_machine(machine: Machine) -> None:
-                machine.scan_job(user_name, scan_level)
+                machine.scan_job(user_name, job_condition)
         else:
             def scan_machine(machine: Machine) -> None:
-                machine.scan_job(user_name, scan_level)
+                machine.scan_job(user_name, job_condition)
                 progress_bar.update(machine.name)
 
         # Multi-threaded scanning: maximum worker w.r.t Windows (61)

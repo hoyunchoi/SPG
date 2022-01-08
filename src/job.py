@@ -45,7 +45,6 @@ class Job(ABC):
         self.cmd = " ".join(self.cmd)
 
     ########################## Get Line Format Information for Print ##########################
-
     @abstractmethod
     def __format__(self, format_spec: str) -> str:
         """
@@ -148,12 +147,18 @@ class CPUJob(Job):
 
 
 class GPUJob(Job):
-    def __init__(self, machine_name: str, info: str, *gpu_info) -> None:
+    def __init__(self,
+     machine_name: str, 
+     info: str, 
+     gpu_percent: str,
+     vram_percent: str,
+     vram_use: str) -> None:
         super().__init__(machine_name, info)
 
         # Add aditional information about GPU
-        self.gpu_percent, self.vram_percent, self.vram_use = gpu_info
-        self.vram_use = get_mem_with_unit(self.vram_use, "MB")
+        self.gpu_percent = gpu_percent
+        self.vram_percent = vram_percent
+        self.vram_use = vram_use
 
     def __format__(self, format_spec: str) -> str:
         job_info = self.pid

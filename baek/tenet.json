@@ -88,12 +88,12 @@
         "comment": ""
     },
     "tenet12": {
-        "use": "True",
+        "use": "False",
         "name": "tenet12",
         "cpu": "Q9550",
         "num_cpu": "4",
         "ram": "8G",
-        "comment": ""
+        "comment": "Power off(2022.01.06)"
     },
     "tenet13": {
         "use": "True",
@@ -416,12 +416,12 @@
         "comment": ""
     },
     "tenet53": {
-        "use": "True",
+        "use": "False",
         "name": "tenet53",
         "cpu": "i7-2600",
         "num_cpu": "4",
         "ram": "8G",
-        "comment": ""
+        "comment": "Power off(2021.01.08)"
     },
     "tenet54": {
         "use": "True",

@@ -163,7 +163,7 @@ class Group:
             num_job, busy_machine_list will be updated
             If user Name is not given, free informations will also be updated
             Args
-                user_name: Refer Command.ps_from_user for more description
+                user_name: Refer command.ps_from_user for more description
                 scan_level: Refer Job.is_important for more description
         """
         if progress_bar is None:

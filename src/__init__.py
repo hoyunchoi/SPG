@@ -1,5 +1,4 @@
 from .argument import get_args, Argument
-from .command import Command
 from .default import Default
 from .group import Group
 from .job import CPUJob, GPUJob

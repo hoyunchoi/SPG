@@ -286,8 +286,8 @@ class SPG:
         with open(cmd_file, "w") as f:
             f.write("\n".join(str(cmd) for cmd in cmd_queue))
 
+        self.message_handler.sort()
         self.message_handler.success(f"\nRun {num_cmd_before - num_cmd_after} jobs")
-        return None
 
     def KILL(self) -> None:
         """ kill all matching jobs """
@@ -311,8 +311,9 @@ class SPG:
         num_kill = 0
         for group in self.group_dict.values():
             num_kill += sum(machine.num_kill for machine in group.busy_machine_list)
+
+        self.message_handler.sort()
         self.message_handler.success(f"\nKilled {num_kill} jobs")
-        return None
 
 
 if __name__ == "__main__":

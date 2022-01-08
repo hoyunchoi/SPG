@@ -3,8 +3,8 @@ import subprocess
 from collections import abc, Counter
 from dataclasses import dataclass, field
 
+from . import command
 from .default import Default
-from .command import Command
 from .utils import get_mem_with_unit
 from .spgio import Printer, MessageHandler
 from .job import CPUJob, GPUJob, Job, JobCondition
@@ -37,7 +37,7 @@ class Machine:
         self.num_kill: int = 0              # Number of killed jobs
 
         # Default variables
-        self.cmd_ssh = Command.ssh_to_machine(self.name)
+        self.cmd_ssh = command.ssh_to_machine(self.name)
         self.message_handler = MessageHandler()
         self.logger = logging.getLogger("SPG")
         self.log_dict = {"machine": self.name, "user": Default().user}
@@ -47,7 +47,7 @@ class Machine:
         """
             Return machine information according to format spec
             - info: machine information
-            - free: machine free information
+        r    - free: machine free information
             - otherwise: machine name
         """
         machine_info = self.name
@@ -111,9 +111,9 @@ class Machine:
 
     def _get_free_ram(self) -> str:
         """ Return absolute value of free RAM """
-        free_ram = subprocess.check_output(self.cmd_ssh + Command.free_ram(),
+        free_ram = subprocess.check_output(self.cmd_ssh + command.free_ram(),
                                            text=True)
-        return free_ram.strip()
+        return free_ram.split("\n")[1].split()[-1]
 
     def scan_job(self,
                  user_name: str | None,
@@ -121,18 +121,14 @@ class Machine:
         """
             Scan the processes of input user.
             job_list, num_job will be updated
-            when user_name is None: free informations will also be updated
             when machine is GPUMachine: num_free_gpu, free_vram will also be updated
             Args
-                user_name: Refer Command.ps_from_user for more description
+                user_name: Refer command.ps_from_user for more description
                 scan_level: Refer Job.is_important for more description
-
-            For CPU Machine, select important job from _get_process_list
-            For GPU Machine, do thread job __scanGPU over GPUs
         """
         # Get list of raw process
         try:
-            process_list = self._get_process_list(Command.ps_from_user(user_name))
+            process_list = self._get_process_list(command.ps_from_user(user_name))
         except RuntimeError:
             # When error occurs, Do nothing and return since error is already reported
             return
@@ -157,7 +153,7 @@ class Machine:
     def run(self, cmd: str) -> None:
         """ run input command at current directory """
         # Run cmd on background
-        subprocess.Popen(self.cmd_ssh + Command.run_at_cwd(cmd))
+        subprocess.Popen(self.cmd_ssh + command.run_at_cwd(cmd))
 
         # Print the result and save to logger
         self.message_handler.success(f"SUCCESS {self.name:<10}: run '{cmd}'")
@@ -178,18 +174,18 @@ class Machine:
                                        text=True)
 
         # list of kill commands that should be run at machine
-        cmd_kill = Command.kill_pid(job.pid)
+        cmd_kill = command.kill_pid(job.pid)
         pid = job.pid
 
-        # Command to kill very processes until reaching session leader
+        # command to kill very processes until reaching session leader
         while pid != job.sid:
             # Update pid to it's ppid
-            pid = subprocess.check_output(self.cmd_ssh + Command.pid_to_ppid(pid),
+            pid = subprocess.check_output(self.cmd_ssh + command.pid_to_ppid(pid),
                                           text=True).strip()
             # When ppid is root process, do not touch
             if pid == "1":
                 break
-            cmd_kill += Command.kill_pid(pid)
+            cmd_kill += command.kill_pid(pid)
 
         # Run kill cmd inside ssh target machine
         _, kill_err = ssh_process.communicate(" ".join(cmd_kill))
@@ -246,7 +242,7 @@ class GPUMachine(Machine):
             return self.vram
 
         # Otherwise, get list of free vram
-        free_vram_list = subprocess.check_output(self.cmd_ssh + Command.free_vram(),
+        free_vram_list = subprocess.check_output(self.cmd_ssh + command.free_vram(),
                                                  text=True).strip().split("\n")
 
         # Get maximum free vram
@@ -269,38 +265,47 @@ class GPUMachine(Machine):
             """ Return iterable of ps_info which belongs to user_name """
             # When user name is None, return all ps info
             if user_name is None:
-                return ps_info_list
+                for ps_info in ps_info_list:
+                    yield ps_info
 
             # When user name is specified, return ps info belongs to user
             for ps_info in ps_info_list:
                 if ps_info.strip().split()[0] == user_name:
                     yield ps_info
-
         # Get list of raw process: Use nvidia-smi
         try:
-            process_list = self._get_process_list(Command.ns_process())
+            process_list = self._get_process_list(command.ns_process())
         except RuntimeError:
             # When error occurs, Do nothing and return since error is already reported
             return
 
-        # Save scanned job informations
-        for process in process_list:
-            # Check the process: gpu_idx, pid, gpuPercent, vramPercent, vramUse
-            gpu_idx, pid, *ns_info = process.strip().split()
+        # First two lines of process list are column names
+        for process in process_list[2:]:
+            (gpu_idx, pid, _, gpu_percent,
+             vram_percent, _, _, vram_use, _) = process.strip().split()
 
             # When no information is detected, nvidia-smi returns "-"
             if pid == "-":
                 self.num_free_gpu += 1  # num_free_gpu is updated regardless of user_name
                 continue
+            vram_use = get_mem_with_unit(vram_use, "MB")
+            if gpu_percent == "-":
+                gpu_percent = "0"
+            if vram_percent == "-":
+                vram_percent = f"{float(vram_use[:-2]) / float(self.vram[:-1]) * 100.0:.0f}"
 
             # Get 'ps' information from PID of ns_info
-            ps_info_list = subprocess.check_output(self.cmd_ssh + Command.ps_from_pid(pid),
+            ps_info_list = subprocess.check_output(self.cmd_ssh + command.ps_from_pid(pid),
                                                    text=True).strip().split("\n")
 
             # Store the information to job list
             for ps_info in filter_by_user(ps_info_list):
-                job = GPUJob(f"{self.name}-GPU{gpu_idx}", ps_info, *ns_info)
-                if job.is_important() and job.match(job_condition):
+                job = GPUJob(machine_name=f"{self.name}-GPU{gpu_idx}",
+                             info=ps_info,
+                             gpu_percent=gpu_percent,
+                             vram_percent=vram_percent,
+                             vram_use=vram_use)
+                if job.match(job_condition):
                     self.job_list.append(job)
                     break                             # Single job per pid
         self.num_job = len(self.job_list)

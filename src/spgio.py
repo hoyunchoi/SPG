@@ -2,6 +2,7 @@ import sys
 import shutil
 import atexit
 import colorama
+from enum import Enum
 from tqdm import tqdm
 
 import logging
@@ -143,13 +144,20 @@ class Printer:
         self.print_fn(self.str_line)
 
 
+class MessageType(Enum):
+    """ Type of messages with corresponding colors """
+    SUCCESS = colorama.Fore.GREEN
+    WARNING = colorama.Fore.YELLOW
+    ERROR = colorama.Fore.RED
+
+
 class MessageHandler(metaclass=Singleton):
     """ Store message from spg and print before exit """
 
     def __init__(self) -> None:
-        self.success_list: list[str] = []    # List of success messages
-        self.warning_list: list[str] = []    # List of warning messages
-        self.error_list: list[str] = []      # List of error messages
+        self.msg: dict[MessageType, list[str]] = {
+            message_type: [] for message_type in MessageType
+        }
 
         # Register to atexit so that report method will be called before any exit state
         atexit.register(self.report)
@@ -158,30 +166,30 @@ class MessageHandler(metaclass=Singleton):
         # Initialize colorama for compatibility of Windows
         colorama.init()
 
-        # Print success messages: sys.stderr for splitting with tqdm
-        if self.success_list:
-            print(colorama.Fore.GREEN + "\n".join(sorted(self.success_list)))
-        # Print warning messages
-        if self.warning_list:
-            print(colorama.Fore.YELLOW + "\n".join(sorted(self.warning_list)))
-        # Print error messages
-        if self.error_list:
-            print(colorama.Fore.RED + "\n".join(sorted(self.error_list)))
+        # Print message with corresponding color
+        for message_type, message in self.msg.items():
+            if message:
+                print(message_type.value + "\n".join(message))
+        print(colorama.Style.RESET_ALL)
 
     def success(self, msg: str) -> None:
-        self.success_list.append(msg)
+        self.msg[MessageType.SUCCESS].append(msg)
 
     def warning(self, msg: str) -> None:
-        self.warning_list.append(msg)
+        self.msg[MessageType.WARNING].append(msg)
 
     def error(self, msg: str) -> None:
-        self.error_list.append(msg)
+        self.msg[MessageType.ERROR].append(msg)
+
+    def sort(self) -> None:
+        """ Sort messages inside msg """
+        for message in self.msg.values():
+            message.sort()
 
     def clear(self) -> None:
         """ Only used for test """
-        self.success_list.clear()
-        self.warning_list.clear()
-        self.error_list.clear()
+        for message in self.msg.values():
+            message.clear()
 
 
 def configure_logger() -> None:
@@ -210,9 +218,9 @@ def configure_logger() -> None:
                                   style="{",
                                   datefmt="%Y-%m-%d %H:%M")
 
-    # Define handler of logger: Limit maximum log file size as 10MB
+    # Define handler of logger: Limit maximum log file size as 100MB
     handler = UserWritableRotatingFileHandler(Default.ROOT_DIR / "spg.log",
-                                              maxBytes=1024 * 1024 * 10,
+                                              maxBytes=100 * 1024 * 1024,
                                               backupCount=1)
     handler.setFormatter(formatter)
 

@@ -6,7 +6,7 @@ class Singleton(type):
         Singleton pattern
         Not recommanded but use until find good alternatives
     """
-    _instances = {}
+    _instances: dict[Any, Any] = {}
 
     def __call__(cls, *args: Any, **kwds: Any) -> Any:
         if cls not in cls._instances:

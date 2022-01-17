@@ -3,7 +3,7 @@ import unittest
 
 from src.spg import SPG
 from src.argument import Argument
-from src.spgio import MessageHandler
+from src.output import MessageHandler
 from .test_item import TestItem
 
 class TestList(unittest.TestCase):

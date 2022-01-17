@@ -26,8 +26,8 @@ def ps_from_user(user_name: str | None) -> list[str]:
                 pcpu - cpu utilization (unit of percent)
                 pmem - memory utilization (unit of percent)
                 rss:10 - memory utilization (unit of kilobytes), maximum length of 10
-                time:15 - cumulative CPU time in '[DD-]HH:MM:SS' format, maximum length of 15
-                start_time - starting time or date
+                etime:15 - cumulative CPU time in '[DD-]HH:MM:SS' format, maximum length of 15
+                stime - starting time or date
                 args - command with all its arguments as a string
     """
     if user_name is None:
@@ -37,7 +37,7 @@ def ps_from_user(user_name: str | None) -> list[str]:
         "ps H "                 # Show threads as if they were processes
         "--no-headers "         # Do not print header
         f"--user {user_name} "  # Only select effective user ID.
-        "--format ruser:15,stat,pid,sid,pcpu,pmem,rss:10,time:15,start_time,args"
+        "--format ruser:15,stat,pid,sid,pcpu,pmem,rss:10,etime:15,stime,args"
     )
 
 def ps_from_pid(pid: str) -> list[str]:
@@ -52,9 +52,9 @@ def ps_from_pid(pid: str) -> list[str]:
 def pid_to_ppid(pid: str) -> list[str]:
     """ ps command to find ppid(parent pid) of input process """
     return split(
-        "ps --no-headers "  # Do not print header
-        f"-q {pid} "        # Search by pid
-        "--format ppid"     # Only return paraent pid
+        "ps --no-headers "          # Do not print header
+        f"-q {pid} "                # Search by pid
+        "--format ruser:15,ppid"    # Only return paraent pid
     )
 
 def free_ram() -> list[str]:

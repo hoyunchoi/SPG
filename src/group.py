@@ -4,7 +4,7 @@ import concurrent.futures as cf
 from collections import abc, deque, Counter
 
 from .job import JobCondition
-from .spgio import Printer, ProgressBar
+from .output import Printer, ProgressBar
 from .machine import Machine, GPUMachine
 
 

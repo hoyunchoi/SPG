@@ -5,7 +5,7 @@ from argparse import Action, ArgumentParser, Namespace, RawTextHelpFormatter
 
 from .option import Option
 from .default import Default
-from .spgio import MessageHandler
+from .output import MessageHandler
 from .utils import get_machine_group, input_time_to_seconds, yes_no
 
 
@@ -38,7 +38,7 @@ def add_optional_group(parser: ArgumentParser) -> None:
         metavar="",
         help=textwrap.dedent(
             f"""\
-            List of target machine group name, seperated by space
+            List of target machine group name, separated by space.
             Currently available: {Default.GROUP}
             """
         )
@@ -54,7 +54,7 @@ def add_optional_machine(parser: ArgumentParser) -> None:
         metavar="",
         help=textwrap.dedent(
             """\
-            List of target machine name, seperated by space
+            List of target machine name, separated by space.
             ex) tenet1 / tenet1 tenet2
             """
         )
@@ -68,15 +68,17 @@ def add_optional_user(parser: ArgumentParser) -> None:
         "-u", "--user",
         metavar="",
         default=Default().user,
-        help="Target user name"
+        help="Target user name."
     )
 
 
 def add_optional_all_user(parser: ArgumentParser) -> None:
     """ Add optional argument of "-a" or "--all" to input parser """
-    parser.add_argument("-a", "--all",
-                        action="store_true",
-                        help="When given, print jobs of all users")
+    parser.add_argument(
+        "-a", "--all",
+        action="store_true",
+        help="When given, print jobs of all users."
+    )
 
 
 def add_optional_pid(parser: ArgumentParser) -> None:
@@ -89,7 +91,7 @@ def add_optional_pid(parser: ArgumentParser) -> None:
             """\
             Jobs with specific pid.
             When this option is given, you should specifiy single machine name.
-            List of pid of target job, seperated by space.
+            List of pid of target job, separated by space.
             """
         )
     )
@@ -120,7 +122,7 @@ def add_optional_time(parser: ArgumentParser) -> None:
         help=textwrap.dedent(
             """\
             Jobs running less than given time.
-            Time interval seperated by space.
+            Time interval separated by space.
             ex) 1w 5d 11h 50m 1s
             """
         )
@@ -134,8 +136,8 @@ def add_optional_start(parser: ArgumentParser) -> None:
         metavar="",
         help=textwrap.dedent(
             """\
-            Jobs started at specific time
-            Start time should exactly match with the result of 'spg job'
+            Jobs started at specific time.
+            Start time should exactly match.
             """
         )
     )
@@ -152,7 +154,7 @@ def get_args(user_input: str | list[str] | None = None) -> Namespace:
     main_parser.add_argument(
         "-s", "--silent",
         action="store_true",
-        help="when given, run spg without progress bar"
+        help="when given, run spg without progress bar."
     )
 
     # Generate sub-parser
@@ -160,12 +162,11 @@ def get_args(user_input: str | list[str] | None = None) -> Namespace:
         dest="option",
         title="SPG options",
         required=True,
-        metavar="Available options",
+        metavar="Available Options",
         description=textwrap.dedent(
             """\
-            Arguments inside square brackets [] are required aruments while parentheses () are optional
-            For more information of each [option],
-            type 'spg [option] -h' or 'spg [option] --help'
+            Arguments inside square brackets [] are required arguments while parentheses () are optional.
+            For more information of each [option], type 'spg [option] -h' or 'spg [option] --help'.
             """
         )
     )
@@ -173,12 +174,12 @@ def get_args(user_input: str | list[str] | None = None) -> Namespace:
     ####################################### List Parser #######################################
     parser_list = option_parser.add_parser(
         name="list",
-        help="Print information of machines registered in SPG",
+        help="Print information of machines registered in SPG.",
         formatter_class=RawTextHelpFormatter,
         usage=textwrap.dedent(
             """\
-            spg list (-g group list) (-m machine list)
-            When group/machine are both given, group is ignored
+            spg list (-g groups) (-m machines)
+            When group/machine are both given, the group is ignored.
             """
         )
     )
@@ -188,12 +189,12 @@ def get_args(user_input: str | list[str] | None = None) -> Namespace:
     ####################################### Free Parser #######################################
     parser_free = option_parser.add_parser(
         name="free",
-        help="Print free informations of available machines",
+        help="Print free information of available machines.",
         formatter_class=RawTextHelpFormatter,
         usage=textwrap.dedent(
             """\
-            spg free (-g group list) (-m machine list)
-            When group/machine are both given, group is ignored
+            spg free (-g groups) (-m machines)
+            When group/machine are both given, the group is ignored.
             """
         )
     )
@@ -203,14 +204,14 @@ def get_args(user_input: str | list[str] | None = None) -> Namespace:
     ####################################### Job Parser #######################################
     parser_job = option_parser.add_parser(
         name="job",
-        help="print current status of jobs",
+        help="print current status of jobs.",
         formatter_class=RawTextHelpFormatter,
         usage=textwrap.dedent(
             """\
-            spg job (-g group list) (-m machine list) (-u user) (-a) (-p pid) (-c command) (-t time) (-s start)
-            Counted jobs satisfy all the given options.
-            When group/machine are both given, group is ignored
-            When -a, --all flag is set, --user option is ignored
+            spg job (-g groups) (-m machines) (-u user) (-a) (-p pid) (-c command) (-t time) (-s start)
+            Listed jobs will satisfy all the given options.
+            When group/machine are both given, the group is ignored.
+            When -a, --all flag is set, --user option is ignored.
             """
         )
     )
@@ -226,12 +227,12 @@ def get_args(user_input: str | list[str] | None = None) -> Namespace:
     ####################################### User Parser #######################################
     parser_user = option_parser.add_parser(
         name="user",
-        help="Print job count of users per machine group",
+        help="Print job count of users per machine group.",
         formatter_class=RawTextHelpFormatter,
         usage=textwrap.dedent(
             """\
-            spg free (-g group list) (-m machine list)
-            When group/machine are both given, group is ignored
+            spg user (-g groups) (-m machines)
+            When group/machine are both given, the group is ignored.
             """
         )
     )
@@ -241,41 +242,44 @@ def get_args(user_input: str | list[str] | None = None) -> Namespace:
     ####################################### Run Parser #######################################
     parser_run = option_parser.add_parser(
         name="run",
-        help="Run a job",
+        help="Run a job.",
         formatter_class=RawTextHelpFormatter,
         usage=textwrap.dedent(
             """\
             spg run [machine] [program] (arguments)
 
             CAUTION!
-            1. Invoke the job in the directory where you want the program to run
+            1. Invoke the job in the directory where you want the program to run.
             2. If your program uses -, -- arguments or redirection symbols < or >,
-                wrap the program and arguments with quote: " or "
+                wrap the program and arguments with quote: ' or ".
             """
         )
     )
-    parser_run.add_argument("machine",
-                            help="target machine name")
-    parser_run.add_argument("command",
-                            nargs="+",
-                            action=CommandAction,
-                            help="command you want to run. [program] (arguments)")
+    parser_run.add_argument(
+        "machine",
+        help="target machine name."
+    )
+    parser_run.add_argument(
+        "command",
+        metavar="command",
+        nargs="+",
+        action=CommandAction,
+        help="command you want to run: [program] (arguments)"
+    )
 
     ####################################### Runs Parser #######################################
     parser_runs = option_parser.add_parser(
         name="runs",
-        help="Run several jobs",
+        help="Run several jobs.",
         formatter_class=RawTextHelpFormatter,
         usage=textwrap.dedent(
             """\
             spg runs [command file] [group] (start end)
 
             CAUTION!
-            1. Invoke the job in the directory where you want the program to run
-            2. If your program uses -, -- arguments or redirection symbols < or >,
-                wrap the program and arguments with quote: ' or "
-            3. You can assign maximum of 50 jobs at one time.
-            4. Executed commands will be erased from input command file
+            1. Invoke the job in the directory where you want the program to run.
+            2. You can assign maximum of 50 jobs at one time.
+            3. Executed commands will be erased from input command file.
             """
         )
     )
@@ -286,8 +290,8 @@ def get_args(user_input: str | list[str] | None = None) -> Namespace:
         nargs="+",
         help=textwrap.dedent(
             """\
-            Target machine group name with optinal start, end number
-            When start and end number is given, only use machines between them
+            Target machine group name with optinal start, end number.
+            When start and end number is given, only use machines between them.
             ex1) tenet: search every available tenet machines
             ex2) tenet 100 150: search tenet100 ~ tenet150
             """
@@ -297,17 +301,17 @@ def get_args(user_input: str | list[str] | None = None) -> Namespace:
     ####################################### KILL Parser #######################################
     parser_KILL = option_parser.add_parser(
         name="KILL",
-        help="kill job",
+        help="Kill jobs satisfying conditions.",
         formatter_class=RawTextHelpFormatter,
         usage=textwrap.dedent(
             """\
-            spg KILL (-g group list) (-m machine list) (-u user) (-a) (-p pid) (-c command) (-t time) (-s start)
+            spg KILL (-g groups) (-m machines) (-u user) (-a) (-p pid) (-c command) (-t time) (-s start)
+            When group/machine are both given, the group is ignored.
 
             CAUTION!!
             1. Jobs to be killed should satisfy all the given options.
             2. When pid is given, only single machine should be specified.
             3. When given a multi-process job, this command kills it's session leader.
-            4. When group/machine are both given, group is ignored.
             """
         )
     )
@@ -327,7 +331,7 @@ def get_args(user_input: str | list[str] | None = None) -> Namespace:
             Add positional argument "machine_name" to input parser
         """
         parser.add_argument("machine",
-                            help="target machine name")
+                            help="target machine name.")
         return None
 
     #################################### Deprecate machine ####################################
@@ -343,9 +347,9 @@ def get_args(user_input: str | list[str] | None = None) -> Namespace:
         formatter_class=RawTextHelpFormatter,
         usage=textwrap.dedent(
             """\
-            spg all (-g group list) (-m machine list)
-            When group/machine are both given, group is ignored
-            When machine is specified, there is no group summary
+            spg all (-g groups) (-m machines)
+            When group/machine are both given, the group is ignored.
+            When machine is specified, there is no group summary.
             """
         )
     )
@@ -359,8 +363,8 @@ def get_args(user_input: str | list[str] | None = None) -> Namespace:
         formatter_class=RawTextHelpFormatter,
         usage=textwrap.dedent(
             """\
-            spg me (-g group list) (-m machine list)
-            When group/machine are both given, group is ignored
+            spg me (-g groups) (-m machines)
+            When group/machine are both given, the group is ignored
             When machine is specified, there is no group summary
             """
         )
@@ -379,7 +383,7 @@ def get_args(user_input: str | list[str] | None = None) -> Namespace:
     parser_kill.add_argument(
         "pid",
         nargs="+",
-        help="List of pid of target job. Seperated by space"
+        help="List of pid of target job, separated by space."
     )
 
     #################################### Deprecate killall ####################################
@@ -389,8 +393,8 @@ def get_args(user_input: str | list[str] | None = None) -> Namespace:
         formatter_class=RawTextHelpFormatter,
         usage=textwrap.dedent(
             """\
-            spg killall (-g group list) (-m machine list) (-u user name)
-            When group/machine are both given, group is ignored
+            spg killall (-g groups) (-m machines) (-u user name)
+            When group/machine are both given, the group is ignored.
             """
         )
     )
@@ -416,7 +420,7 @@ def get_args(user_input: str | list[str] | None = None) -> Namespace:
         usage=textwrap.dedent(
             """\
             spg killthis [pattern] (-g group name) (-m machine name)
-            When group/machine names are both given, group name is ignored
+            When group/machine names are both given, group name is ignored.
             """
         )
     )
@@ -425,7 +429,7 @@ def get_args(user_input: str | list[str] | None = None) -> Namespace:
         metavar="command",
         nargs="+",
         action=CommandAction,
-        help="List of words to search. Target command should have exact pattern"
+        help="List of words to search. Target command should have exact pattern."
     )
     add_optional_group(parser_killthis)
     add_optional_machine(parser_killthis)
@@ -438,14 +442,14 @@ def get_args(user_input: str | list[str] | None = None) -> Namespace:
         usage=textwrap.dedent(
             """\
             spg killbefore [time] (-g group name) (-m machine name)
-            When group/machine names are both given, group name is ignored
+            When group/machine names are both given, group name is ignored.
             """
         )
     )
     parser_killbefore.add_argument(
         "time",
         nargs="+",
-        help="Time interval seperated by space. ex) 1w 5d 11h 50m 1s"
+        help="Time interval separated by space. ex) 1w 5d 11h 50m 1s"
     )
     add_optional_group(parser_killbefore)
     add_optional_machine(parser_killbefore)
@@ -520,7 +524,7 @@ class Argument:
             # Redirect to list
             case "machine":
                 message_handler.warning(
-                    "'spg machine' will be deprecated. Use 'spg list' instead"
+                    "'spg machine' will be Deprecated Use 'spg list' instead."
                 )
                 return Option.list
 
@@ -529,14 +533,14 @@ class Argument:
                 self.all = False
                 self.user = Default().user
                 message_handler.warning(
-                    "'spg me' will be deprecated. Use 'spg job' instead"
+                    "'spg me' will be Deprecated Use 'spg job' instead."
                 )
                 return Option.job
             case "all":
                 self.all = True
                 self.user = None
                 message_handler.warning(
-                    "'spg all' will be deprecated. Use 'spg job -a' instead"
+                    "'spg all' will be Deprecated Use 'spg job -a' instead."
                 )
                 return Option.job
 
@@ -546,8 +550,8 @@ class Argument:
                 self.machine = [self.machine]
                 self.pid = self.pid
                 message_handler.warning(
-                    "'spg kill' will be deprecated. "
-                    "Use 'spg KILL -m [machine] -p [pid]' instead"
+                    "'spg kill' will be Deprecated "
+                    "Use 'spg KILL -m [machine] -p [pid]' instead."
                 )
                 return Option.KILL
             case "killall":
@@ -555,7 +559,7 @@ class Argument:
                 self.command = None
                 self.time = None
                 message_handler.warning(
-                    "'spg killall' will be deprecated. Use 'spg KILL' instead"
+                    "'spg killall' will be Deprecated Use 'spg KILL' instead."
                 )
                 return Option.KILL
             case "killmachine":
@@ -565,7 +569,7 @@ class Argument:
                 assert isinstance(self.machine, str)
                 self.machine = [self.machine]
                 message_handler.warning(
-                    "'spg killmachine' will be deprecated. Use 'spg KILL -m [machine]' instead"
+                    "'spg killmachine' will be Deprecated Use 'spg KILL -m [machine]' instead."
                 )
                 return Option.KILL
             case "killthis":
@@ -573,17 +577,17 @@ class Argument:
                 self.command = self.command
                 self.time = None
                 message_handler.warning(
-                    "'spg killthis' will be deprecated. Use 'spg KILL -c [command]' instead"
+                    "'spg killthis' will be Deprecated Use 'spg KILL -c [command]' instead."
                 )
                 return Option.KILL
             case "killbefore":
                 self.pid = None
                 self.command = None
                 message_handler.warning(
-                    "'spg killbefore' will be deprecated. Use 'spg KILL -t [time]' instead"
+                    "'spg killbefore' will be Deprecated Use 'spg KILL -t [time]' instead."
                 )
                 return Option.KILL
-        raise RuntimeError(f"No such option: {self.option}")
+        raise RuntimeError(f"No such option: {self.option}.")
 
     def _overwrite_group(self) -> None:
         """ Overwrite group option by machine option if it exists """
@@ -599,7 +603,7 @@ class Argument:
         if self.group != group:
             if isinstance(self.group, list):
                 MessageHandler().warning(
-                    "Group option is suppressed by Machine option"
+                    "Group option is suppressed by Machine option."
                 )
             self.group = group
 
@@ -614,7 +618,7 @@ class Argument:
             if self.user in user_list:
                 return
 
-        MessageHandler().error(f"Invalid user name: {self.user}")
+        MessageHandler().error(f"Invalid user name: {self.user}.")
         exit()
 
     def _check_pid(self) -> None:
@@ -624,7 +628,7 @@ class Argument:
             if len(self.machine) != 1:
                 MessageHandler().error(
                     "When killing job with pid list, "
-                    "you should specify single machine name"
+                    "you should specify single machine name."
                 )
                 exit()
 
@@ -646,7 +650,7 @@ class Argument:
             case _:
                 MessageHandler().error(
                     "When using 'runs' option, "
-                    "you should specifiy machine group and optional start/end number"
+                    "you should specifiy machine group and optional start/end number."
                 )
                 exit()
 
@@ -656,7 +660,7 @@ class Argument:
         # When specifying user name, you should be root
         if (self.user != Default().user) and (Default().user != "root"):
             MessageHandler().error(
-                "When killing other user's job, you should be root"
+                "When killing other user's job, you should be root."
             )
             exit()
 

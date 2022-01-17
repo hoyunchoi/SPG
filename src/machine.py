@@ -6,7 +6,7 @@ from dataclasses import dataclass, field
 from . import command
 from .default import Default
 from .utils import get_mem_with_unit
-from .spgio import Printer, MessageHandler
+from .output import Printer, MessageHandler
 from .job import CPUJob, GPUJob, Job, JobCondition
 
 
@@ -164,6 +164,7 @@ class Machine:
     def kill(self, job: Job) -> None:
         """ Kill job and all the process until it's session leader """
         # Find cmd list for print result
+        owner = job.user_name
         cmd_list = self._find_cmd_from_pid(job.pid)
 
         # Open process for ssh
@@ -180,10 +181,12 @@ class Machine:
         # command to kill very processes until reaching session leader
         while pid != job.sid:
             # Update pid to it's ppid
-            pid = subprocess.check_output(self.cmd_ssh + command.pid_to_ppid(pid),
-                                          text=True).strip()
-            # When ppid is root process, do not touch
-            if pid == "1":
+            user, pid = subprocess.check_output(
+                self.cmd_ssh + command.pid_to_ppid(pid),
+                text=True
+            ).split()
+            # When parent job does not belongs to current user, do not touch
+            if user.strip() != owner:
                 break
             cmd_kill += command.kill_pid(pid)
 

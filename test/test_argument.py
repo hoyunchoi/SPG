@@ -2,7 +2,7 @@ import unittest
 from unittest.mock import patch
 
 from src.option import Option
-from src.spgio import MessageHandler
+from src.output import MessageHandler
 from src.argument import Argument
 from .test_item import TestItem
 

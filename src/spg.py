@@ -10,7 +10,7 @@ from .default import Default
 from .machine import Machine
 from .job import JobCondition
 from .argument import Argument
-from .spgio import Printer, MessageHandler
+from .output import Printer, MessageHandler
 from .utils import get_machine_group, get_machine_index
 
 
@@ -269,7 +269,11 @@ class SPG:
         assert self.args.command is not None
         cmd_file = Path(self.args.command).resolve()
         with open(cmd_file, "r") as f:
-            cmd_queue = deque(f.read().splitlines())
+            commands = f.read().splitlines()
+        cmd_queue = deque(
+            cmd for cmd in commands if not cmd.startswith(("#", "//", "%"))
+        )
+            # cmd_queue = deque(f.read().splitlines())
         num_cmd_before = len(cmd_queue)
 
         # Scanning

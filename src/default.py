@@ -22,6 +22,7 @@ class Default(metaclass=Singleton):
             "dotoa",
             "cookhyun",
             "ckj",
+            "ebi",
         ],
         "baek": [
             "yunsik",

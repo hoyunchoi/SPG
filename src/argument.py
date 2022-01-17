@@ -38,7 +38,7 @@ def add_optional_group(parser: ArgumentParser) -> None:
         metavar="",
         help=textwrap.dedent(
             f"""\
-            List of target machine group name, separated by space.
+            List of target machine group names, separated by space.
             Currently available: {Default.GROUP}
             """
         )
@@ -54,7 +54,7 @@ def add_optional_machine(parser: ArgumentParser) -> None:
         metavar="",
         help=textwrap.dedent(
             """\
-            List of target machine name, separated by space.
+            List of target machine names, separated by space.
             ex) tenet1 / tenet1 tenet2
             """
         )
@@ -89,8 +89,8 @@ def add_optional_pid(parser: ArgumentParser) -> None:
         nargs="+",
         help=textwrap.dedent(
             """\
-            Jobs with specific pid.
-            When this option is given, you should specifiy single machine name.
+            Jobs with specific PID.
+            When this option is given, you should specify a single machine name.
             List of pid of target job, separated by space.
             """
         )
@@ -106,8 +106,8 @@ def add_optional_command(parser: ArgumentParser) -> None:
         action=CommandAction,
         help=textwrap.dedent(
             """\
-            Jobs whose commands includes pattern.
-            List of words to search. Target command should have exact pattern.
+            Jobs whose commands include pattern.
+            List of words to search. The target command should have the exact pattern.
             """
         )
     )
@@ -121,7 +121,7 @@ def add_optional_time(parser: ArgumentParser) -> None:
         nargs="+",
         help=textwrap.dedent(
             """\
-            Jobs running less than given time.
+            Jobs running less than the given time.
             Time interval separated by space.
             ex) 1w 5d 11h 50m 1s
             """
@@ -136,8 +136,8 @@ def add_optional_start(parser: ArgumentParser) -> None:
         metavar="",
         help=textwrap.dedent(
             """\
-            Jobs started at specific time.
-            Start time should exactly match.
+            Jobs started at a specific time.
+            The start time should exactly match.
             """
         )
     )
@@ -251,7 +251,7 @@ def get_args(user_input: str | list[str] | None = None) -> Namespace:
             CAUTION!
             1. Invoke the job in the directory where you want the program to run.
             2. If your program uses -, -- arguments or redirection symbols < or >,
-                wrap the program and arguments with quote: ' or ".
+                wrap the program and arguments with a quote: ' or ".
             """
         )
     )
@@ -278,20 +278,20 @@ def get_args(user_input: str | list[str] | None = None) -> Namespace:
 
             CAUTION!
             1. Invoke the job in the directory where you want the program to run.
-            2. You can assign maximum of 50 jobs at one time.
-            3. Executed commands will be erased from input command file.
+            2. You can assign a maximum of 50 jobs at one time.
+            3. Executed commands will be erased from the input command file.
             """
         )
     )
     parser_runs.add_argument("command",
-                             help="Files containing commands. Sepearated by lines.")
+                             help="Files containing commands. Separated by lines.")
     parser_runs.add_argument(
         "group",
         nargs="+",
         help=textwrap.dedent(
             """\
-            Target machine group name with optinal start, end number.
-            When start and end number is given, only use machines between them.
+            Target machine group name with and optional start, end number.
+            When the start and end number is given, only use machines between them.
             ex1) tenet: search every available tenet machines
             ex2) tenet 100 150: search tenet100 ~ tenet150
             """
@@ -310,8 +310,8 @@ def get_args(user_input: str | list[str] | None = None) -> Namespace:
 
             CAUTION!!
             1. Jobs to be killed should satisfy all the given options.
-            2. When pid is given, only single machine should be specified.
-            3. When given a multi-process job, this command kills it's session leader.
+            2. When PID is given, only a single machine should be specified.
+            3. When given a multi-process job, this command kills its session leader.
             """
         )
     )

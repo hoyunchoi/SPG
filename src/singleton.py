@@ -4,7 +4,7 @@ from typing import Any
 class Singleton(type):
     """
         Singleton pattern
-        Not recommanded but use until find good alternatives
+        This is sub-optimal but used until finding a good alternative.
     """
     _instances: dict[Any, Any] = {}
 

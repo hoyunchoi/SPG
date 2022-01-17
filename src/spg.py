@@ -273,7 +273,6 @@ class SPG:
         cmd_queue = deque(
             cmd for cmd in commands if not cmd.startswith(("#", "//", "%"))
         )
-            # cmd_queue = deque(f.read().splitlines())
         num_cmd_before = len(cmd_queue)
 
         # Scanning

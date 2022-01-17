@@ -3,7 +3,7 @@
 
 SPG can monitor/run/kill processes on registered remote SSH servers.
 
-*WARNING: Scanning whole server is quite network intensive. Do not run `spg` several times in a short time.*
+*WARNING: Scanning the whole server is quite network-intensive. Do not run `spg` several times in a short time.*
 
 ## Requirements
 - Shell environment
@@ -59,7 +59,7 @@ Killing a process at a certain machine via `ssh` uses `kill -15`, or `SIGTERM`. 
 
 # How to use
 ## General usage
-User can specify which group/machine to monitor/run/kill process via `-g group` or `-m machine` arguments.
+You can specify which group/machine to monitor/run/kill process via `-g group` or `-m machine` arguments.
 `$ spg -h`
 ```
 usage: spg (-h) (-s) [option] ...
@@ -105,10 +105,10 @@ When group/machine are both given, the group is ignored.
 options:
   -h, --help            show this help message and exit
   -g  [ ...], --group  [ ...]
-                        List of target machine group name, separated by space.
+                        List of target machine group names, separated by space.
                         Currently available: ['tenet', 'xenet', 'kuda']
   -m  [ ...], --machine  [ ...]
-                        List of target machine name, separated by space.
+                        List of target machine names, separated by space.
                         ex) tenet1 / tenet1 tenet2
 ```
 
@@ -123,20 +123,20 @@ When group/machine are both given, the group is ignored.
 options:
   -h, --help            show this help message and exit
   -g  [ ...], --group  [ ...]
-                        List of target machine group name, separated by space.
+                        List of target machine group names, separated by space.
                         Currently available: ['tenet', 'xenet', 'kuda']
   -m  [ ...], --machine  [ ...]
-                        List of target machine name, separated by space.
+                        List of target machine names, separated by space.
                         ex) tenet1 / tenet1 tenet2
 ```
 ## spg job
-Print the list of jobs responsible for certain user. By default, the user is the one who is running the command. Job information is as follows. You can specify which job to scan by various arguments. For detailed arguments, see [KILL](#spg-kill) option.
+Print the list of jobs responsible for a certain user. By default, the user is the one who is running the command. Job information is as follows. You can specify which job to scan by various arguments. For detailed arguments, see [KILL](#spg-kill) option.
 - machine: Name of machine this job is running at
 - user: Name of the user who this job belongs to
 - ST: State of the job. Running(R), Sleep(S),... For detailed information, refer `ps` command.
 - PID: Process ID of the job.
-- CPU(%): CPU utilization in percentage. The CPU time used divided by the time the process has been running.
-- MEM(%): Memory utilization in percentage. Ratio of the process's resident set size to the physical memory.
+- CPU(%): CPU utilization in percentage. The CPU time used is divided by the time the process has been running.
+- MEM(%): Memory utilization in percentage. The ratio of the process's resident set the size to the physical memory.
 - Memory: Memory utilization in kilo/mega/giga byte unit.
 - Time: Elapsed time since the process was started, [[DD-]hh:]mm:ss format.
 - Start: Time when process was started.
@@ -152,26 +152,26 @@ When -a, --all flag is set, --user option is ignored.
 options:
   -h, --help            show this help message and exit
   -m  [ ...], --machine  [ ...]
-                        List of target machine name, separated by space.
+                        List of target machine names, separated by space.
                         ex) tenet1 / tenet1 tenet2
   -g  [ ...], --group  [ ...]
-                        List of target machine group name, separated by space.
+                        List of target machine group names, separated by space.
                         Currently available: ['tenet', 'xenet', 'kuda']
   -u , --user           Target user name.
   -a, --all             When given, print jobs of all users.
   -p  [ ...], --pid  [ ...]
-                        Jobs with specific pid.
-                        When this option is given, you should specifiy single machine name.
+                        Jobs with specific PID.
+                        When this option is given, you should specify a single machine name.
                         List of pid of target job, separated by space.
   -c  [ ...], --command  [ ...]
-                        Jobs whose commands includes pattern.
-                        List of words to search. Target command should have exact pattern.
+                        Jobs whose commands include pattern.
+                        List of words to search. The target command should have the exact pattern.
   -t  [ ...], --time  [ ...]
-                        Jobs running less than given time.
+                        Jobs running less than the given time.
                         Time interval separated by space.
                         ex) 1w 5d 11h 50m 1s
-  -s , --start          Jobs started at specific time.
-                        Start time should exactly match.
+  -s , --start          Jobs started at a specific time.
+                        The start time should exactly match.
 ```
 
 ## spg user
@@ -185,17 +185,17 @@ When group/machine are both given, the group is ignored.
 options:
   -h, --help            show this help message and exit
   -g  [ ...], --group  [ ...]
-                        List of target machine group name, separated by space.
+                        List of target machine group names, separated by space.
                         Currently available: ['tenet', 'xenet', 'kuda']
   -m  [ ...], --machine  [ ...]
-                        List of target machine name, separated by space.
+                        List of target machine names, separated by space.
                         ex) tenet1 / tenet1 tenet2
 ```
 
 ## spg run
-Run a single job at a given machine. When using relative path, be careful that the command will be run at the current path, where `spg` is executed. If the program need `-` or `--` arguments or redirection symbol `>` or `<`, you need to wrap the entire command with quote. Also, background symbol `&` is not required since `spg` will do it automatically.
+Run a single job at a given machine. When using a relative path, be careful that the command will be run at the current path, where `spg` is executed. If the program need `-` or `--` arguments or redirection symbol `>` or `<`, you need to wrap the entire command with a quote. Also, the background symbol `&` is not required since `spg` will do it for you.
 
-*The history of `spg run` is logged into `spg.log` file.*
+*The history of `spg run` is logged into the `spg.log` file.*
 
 * Valid Examples
   - `spg run tenet1 ./example_wo_arguments.out`
@@ -216,7 +216,7 @@ usage: spg run [machine] [program] (arguments)
 CAUTION!
 1. Invoke the job in the directory where you want the program to run.
 2. If your program uses -, -- arguments or redirection symbols < or >,
-    wrap the program and arguments with quote: ' or ".
+    wrap the program and arguments with a quote: ' or ".
 
 positional arguments:
   machine     target machine name.
@@ -227,9 +227,9 @@ options:
 ```
 
 ## spg runs
-Run several jobs at free machines automatically. The commands per each jobs should be stored in a single file. You should specify machine group and optionally, the range of machine index. Maximum of 50 jobs can be run and the executed commands will be dropped from the command file.
+Run several jobs at free machines automatically. The commands per each job should be stored in a single file. You should specify the machine group and optionally, the range of machine index. A maximum of 50 jobs can be run and the executed commands will be dropped from the command file.
 
-*The history of `spg runs` is logged into `spg.log` file.*
+*The history of `spg runs` is logged into the `spg.log` file.*
 
 ex1) `spg runs example.txt tenet`: run all codes at `example.txt` on free machines in group tenet.\
 ex2) `spg runs example.txt tenet 1 10`: run all codes at `example.txt` on free machines tenet1 ~ tenet10.
@@ -256,13 +256,13 @@ usage: spg runs [command file] [group] (start end)
 
 CAUTION!
 1. Invoke the job in the directory where you want the program to run.
-2. You can assign maximum of 50 jobs at one time.
-3. Executed commands will be erased from input command file.
+2. You can assign a maximum of 50 jobs at one time.
+3. Executed commands will be erased from the input command file.
 
 positional arguments:
-  command     Files containing commands. Sepearated by lines.
-  group       Target machine group name with optinal start, end number.
-              When start and end number is given, only use machines between them.
+  command     Files containing commands. Separated by lines.
+  group       Target machine group name with and optional start, end number.
+              When the start and end number is given, only use machines between them.
               ex1) tenet: search every available tenet machines
               ex2) tenet 100 150: search tenet100 ~ tenet150
 
@@ -271,15 +271,15 @@ options:
 ```
 
 ## spg KILL
-Kill target user's jobs satisfying conditions. It also kills parent process, which belongs to the target user.
-- user: Target user, who is registered at `spg`. When specifying other user than yourself, you should be a root.
+Kill target users' jobs satisfying conditions. It also kills the parent process, which belongs to the target user.
+- user: Target user, who is registered at SPG. When specifying another user than yourself, you should be a root.
 - all: When this flag is on, kill every user's job. You should be a root.
-- pid: List of pid for specifig job. If this option is given, you also have to specify a single machine.
-- command: String of commands. Target job should include the input command as substring.
+- pid: List of PID for a specific job. If this option is given, you also have to specify a single machine.
+- command: String of commands. The target job should include the input command as a substring.
 - time: A job executed for a shorter time than the input time interval.
-- start: Specific time when job started. Should exactly match with the result of `spg job`
+- start: Specific time when the job started. Should exactly match with the result of `spg job`
 
-*The history of `spg KILL` is logged into `spg.log` file.*
+*The history of `spg KILL` is logged into the `spg.log` file.*
 
 `$ spg KILL -h`
 ```
@@ -288,32 +288,32 @@ When group/machine are both given, the group is ignored.
 
 CAUTION!!
 1. Jobs to be killed should satisfy all the given options.
-2. When pid is given, only single machine should be specified.
-3. When given a multi-process job, this command kills it's session leader.
+2. When PID is given, only a single machine should be specified.
+3. When given a multi-process job, this command kills its session leader.
 
 options:
   -h, --help            show this help message and exit
   -g  [ ...], --group  [ ...]
-                        List of target machine group name, separated by space.
+                        List of target machine group names, separated by space.
                         Currently available: ['tenet', 'xenet', 'kuda']
   -m  [ ...], --machine  [ ...]
-                        List of target machine name, separated by space.
+                        List of target machine names, separated by space.
                         ex) tenet1 / tenet1 tenet2
   -u , --user           Target user name.
   -a, --all             When given, print jobs of all users.
   -p  [ ...], --pid  [ ...]
-                        Jobs with specific pid.
-                        When this option is given, you should specifiy single machine name.
+                        Jobs with specific PID.
+                        When this option is given, you should specify a single machine name.
                         List of pid of target job, separated by space.
   -c  [ ...], --command  [ ...]
-                        Jobs whose commands includes pattern.
-                        List of words to search. Target command should have exact pattern.
+                        Jobs whose commands include pattern.
+                        List of words to search. The target command should have the exact pattern.
   -t  [ ...], --time  [ ...]
-                        Jobs running less than given time.
+                        Jobs running less than the given time.
                         Time interval separated by space.
                         ex) 1w 5d 11h 50m 1s
-  -s , --start          Jobs started at specific time.
-                        Start time should exactly match.
+  -s , --start          Jobs started at a specific time.
+                        The start time should exactly match.
 ```
 
 # Code
@@ -321,13 +321,13 @@ options:
 The main script with shebang of default global python: /usr/bin/python
 
 ### Group Files
-The group files are separated by user group. Users at a user group can only access machines registerd at the group files.
+The group files are separated by user group. Users at a user group can only access machines registered at the group files.
 
 ### singleton
-Metaclass for singleton pattern. This is sub-optimal but used until find a good alternatives.
+Metaclass for singleton pattern. This is sub-optimal but used until finding a good alternative.
 
 ### default
-Store basic information of SPG. User group and root directory is specified here. You can register/remove user and group files here. Furthrmore, get the information of the user who is running the `spg` command.
+Store basic information of SPG. The user group and the root directory are specified here. You can register/remove user and group files here. Furthermore, get the information of the user who is running the `spg` command.
 
 ### argument
 Generate arguments and validate the user input. When something is wrong during validation, print the error message and exit the program. All options are stored into a single dataclass object: Argument
@@ -339,26 +339,26 @@ Enum class of SPG options.
 Do operation based on input arguments.
 
 ### group
-Store group information. Initialized by reading a group file and handles operation on machines belongs to the group. Also, `spg runs` is executed at here.
+Store group information. Initialized by reading a group file and it handles operation on machines belonging to the group. Also, `spg runs` is executed here.
 
 ### machine
 Store machine information. Initialized by a single element at a group file. Handles operation on a single machine: scanning/running/killing processes.
 
 ### job
-Store job information. Initialized by a result of `ps` or `nvidia-smi` commands. Handles opeartion on a single job: find matching jobs.
+Store job information. Initialized by a result of `ps` or `nvidia-smi` commands. Handles operation on a single job: find matching jobs.
 
 ### command
-Store all commands running at shell environment. Every commands includes detailed comments.
+Store all commands running at shell environment. Every command includes detailed comments.
 
 ### output
-Handles all outputs of SPG. This includes the followings.
+Handles all outputs of SPG. This includes the following.
 - ProgressBar: progress bar used when scanning machines. Uses `tqdm` package
-- Printer: Responsible of plain outputs and progress bar
-- MessageHandler: Responsible of colored outputs such as success, warning, error
-- logger: log the run/kill history. Uses rotating file handler with size of 100MB
+- Printer: Responsible for plain outputs and progress bar
+- MessageHandler: Responsible for colored outputs such as success, warning, error
+- logger: log the run/kill history. Uses rotating file handler with a size of 100MB
 
 ### utils
-Some string related operations.
+Some string-related operations.
 
 [^ssh]: https://man7.org/linux/man-pages/man1/ssh.1.html
 [^ps]: https://man7.org/linux/man-pages/man1/ps.1.html

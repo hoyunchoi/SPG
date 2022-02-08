@@ -181,14 +181,12 @@ class Machine:
         # command to kill very processes until reaching session leader
         while pid != job.sid:
             # Update pid to it's ppid
-            user, pid = subprocess.check_output(
+            ppid = subprocess.check_output(
                 self.cmd_ssh + command.pid_to_ppid(pid),
                 text=True
-            ).split()
-            # When parent job does not belongs to current user, do not touch
-            if user.strip() != owner:
-                break
-            cmd_kill += command.kill_pid(pid)
+            ).strip()
+            cmd_kill += command.kill_pid(ppid)
+            pid = ppid
 
         # Run kill cmd inside ssh target machine
         _, kill_err = ssh_process.communicate(" ".join(cmd_kill))

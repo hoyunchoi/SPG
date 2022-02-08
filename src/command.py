@@ -52,9 +52,9 @@ def ps_from_pid(pid: str) -> list[str]:
 def pid_to_ppid(pid: str) -> list[str]:
     """ ps command to find ppid(parent pid) of input process """
     return split(
-        "ps --no-headers "          # Do not print header
-        f"-q {pid} "                # Search by pid
-        "--format ruser:15,ppid"    # Only return paraent pid
+        "ps --no-headers "  # Do not print header
+        f"-q {pid} "        # Search by pid
+        "--format ppid"     # Only return paraent pid
     )
 
 def free_ram() -> list[str]:

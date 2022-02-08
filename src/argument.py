@@ -679,7 +679,7 @@ class Argument:
         # Kill by PID
         if self.pid is not None:
             assert isinstance(self.machine, list)
-            question += f" with pid {self.pid} at machine {self.machine[0]}"
+            question += f" with pid {self.pid}"
 
         # Kill by machine
         if self.machine is not None:

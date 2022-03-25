@@ -148,8 +148,8 @@ class CPUJob(Job):
 
 class GPUJob(Job):
     def __init__(self,
-     machine_name: str, 
-     info: str, 
+     machine_name: str,
+     info: str,
      gpu_percent: str,
      vram_percent: str,
      vram_use: str) -> None:

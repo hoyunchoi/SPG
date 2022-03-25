@@ -136,12 +136,12 @@
         "comment": ""
     },
     "tenet18": {
-        "use": "True",
+        "use": "False",
         "name": "tenet18",
         "cpu": "i7-6700",
         "num_cpu": "4",
         "ram": "8G",
-        "comment": ""
+        "comment": "Network issue(2022.01.21)"
     },
     "tenet19": {
         "use": "True",
@@ -168,12 +168,12 @@
         "comment": ""
     },
     "tenet22": {
-        "use": "True",
+        "use": "False",
         "name": "tenet22",
         "cpu": "i7-6700",
         "num_cpu": "4",
         "ram": "8G",
-        "comment": ""
+        "comment": "Power issue(2022.01.21)"
     },
     "tenet23": {
         "use": "True",
@@ -296,12 +296,12 @@
         "comment": ""
     },
     "tenet38": {
-        "use": "True",
+        "use": "False",
         "name": "tenet38",
         "cpu": "i7-860",
         "num_cpu": "4",
         "ram": "8G",
-        "comment": ""
+        "comment": "Power off(2022.03.25)"
     },
     "tenet39": {
         "use": "True",
@@ -328,12 +328,12 @@
         "comment": ""
     },
     "tenet42": {
-        "use": "True",
+        "use": "False",
         "name": "tenet42",
         "cpu": "i7-860",
         "num_cpu": "4",
         "ram": "8G",
-        "comment": ""
+        "comment": "Power off(2022.03.25)"
     },
     "tenet43": {
         "use": "True",
@@ -456,12 +456,12 @@
         "comment": ""
     },
     "tenet58": {
-        "use": "True",
+        "use": "False",
         "name": "tenet58",
         "cpu": "i7-2600",
         "num_cpu": "4",
         "ram": "16G",
-        "comment": ""
+        "comment": "NIC problem(2022.01.25)"
     },
     "tenet59": {
         "use": "True",
@@ -488,12 +488,12 @@
         "comment": ""
     },
     "tenet62": {
-        "use": "True",
+        "use": "False",
         "name": "tenet62",
         "cpu": "i7-2600",
         "num_cpu": "4",
         "ram": "16G",
-        "comment": ""
+        "comment": "NIC problem(2022.01.25)"
     },
     "tenet63": {
         "use": "True",
@@ -560,12 +560,12 @@
         "comment": "Power failed(2021.12.6)"
     },
     "tenet71": {
-        "use": "True",
+        "use": "False",
         "name": "tenet71",
         "cpu": "i7-2600",
         "num_cpu": "4",
         "ram": "32G",
-        "comment": ""
+        "comment": "Power failed(2022.01.25)"
     },
     "tenet72": {
         "use": "True",
@@ -632,12 +632,12 @@
         "comment": ""
     },
     "tenet80": {
-        "use": "True",
+        "use": "False",
         "name": "tenet80",
         "cpu": "i7-2600",
         "num_cpu": "4",
         "ram": "32G",
-        "comment": ""
+        "comment": "Power failed(2022.01.25)"
     },
     "tenet81": {
         "use": "True",
@@ -728,12 +728,12 @@
         "comment": ""
     },
     "tenet92": {
-        "use": "True",
+        "use": "False",
         "name": "tenet92",
         "cpu": "i7-4790",
         "num_cpu": "4",
         "ram": "32G",
-        "comment": ""
+        "comment": "NIC problem(2022.01.25)"
     },
     "tenet93": {
         "use": "True",
@@ -1245,7 +1245,7 @@
         "cpu": "i7-9700",
         "num_cpu": "8",
         "ram": "64G",
-        "comment": "Spontaneous reboot(2021.11.29)"
+        "comment": "Spontaneous reboot(2021.11.29) -> Return(2022.01.25) -> Can't handle full load(2022.02.11)"
     },
     "tenet157": {
         "use": "True",
@@ -1272,12 +1272,12 @@
         "comment": ""
     },
     "tenet160": {
-        "use": "True",
+        "use": "False",
         "name": "tenet160",
         "cpu": "i7-9700",
         "num_cpu": "8",
         "ram": "64G",
-        "comment": ""
+        "comment": "Can't handle full load(2022.02.11)"
     },
     "tenet161": {
         "use": "True",
@@ -1525,7 +1525,7 @@
         "cpu": "i7-9700K",
         "num_cpu": "8",
         "ram": "64G",
-        "comment": "Power off(2022.01.11)"
+        "comment": "Power off(2022.01.11) -> Return(2022.01.25) -> Can't handle full load(2022.02.11)"
     },
     "tenet192": {
         "use": "True",
@@ -1624,12 +1624,12 @@
         "comment": ""
     },
     "tenet204": {
-        "use": "True",
+        "use": "False",
         "name": "tenet204",
         "cpu": "i7-10700",
         "num_cpu": "8",
         "ram": "64G",
-        "comment": ""
+        "comment": "Can't handle full load(2022.02.11)"
     },
     "tenet205": {
         "use": "True",

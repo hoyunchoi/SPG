@@ -8,12 +8,12 @@
         "comment": ""
     },
     "xenet2": {
-        "use": "True",
+        "use": "False",
         "name": "xenet2",
         "cpu": "E7430x2",
         "num_cpu": "28",
         "ram": "56G",
-        "comment": ""
+        "comment": "NIC problem(2022.01.25)"
     },
     "xenet3": {
         "use": "True",

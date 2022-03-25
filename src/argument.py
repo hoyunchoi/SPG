@@ -524,7 +524,7 @@ class Argument:
             # Redirect to list
             case "machine":
                 message_handler.warning(
-                    "'spg machine' will be Deprecated Use 'spg list' instead."
+                    "'spg machine' will be Deprecated. Use 'spg list' instead."
                 )
                 return Option.list
 
@@ -533,14 +533,14 @@ class Argument:
                 self.all = False
                 self.user = Default().user
                 message_handler.warning(
-                    "'spg me' will be Deprecated Use 'spg job' instead."
+                    "'spg me' will be Deprecated. Use 'spg job' instead."
                 )
                 return Option.job
             case "all":
                 self.all = True
                 self.user = None
                 message_handler.warning(
-                    "'spg all' will be Deprecated Use 'spg job -a' instead."
+                    "'spg all' will be Deprecated. Use 'spg job -a' instead."
                 )
                 return Option.job
 
@@ -550,7 +550,7 @@ class Argument:
                 self.machine = [self.machine]
                 self.pid = self.pid
                 message_handler.warning(
-                    "'spg kill' will be Deprecated "
+                    "'spg kill' will be Deprecated. "
                     "Use 'spg KILL -m [machine] -p [pid]' instead."
                 )
                 return Option.KILL
@@ -559,7 +559,7 @@ class Argument:
                 self.command = None
                 self.time = None
                 message_handler.warning(
-                    "'spg killall' will be Deprecated Use 'spg KILL' instead."
+                    "'spg killall' will be Deprecated. Use 'spg KILL' instead."
                 )
                 return Option.KILL
             case "killmachine":
@@ -569,7 +569,7 @@ class Argument:
                 assert isinstance(self.machine, str)
                 self.machine = [self.machine]
                 message_handler.warning(
-                    "'spg killmachine' will be Deprecated Use 'spg KILL -m [machine]' instead."
+                    "'spg killmachine' will be Deprecated. Use 'spg KILL -m [machine]' instead."
                 )
                 return Option.KILL
             case "killthis":
@@ -577,14 +577,14 @@ class Argument:
                 self.command = self.command
                 self.time = None
                 message_handler.warning(
-                    "'spg killthis' will be Deprecated Use 'spg KILL -c [command]' instead."
+                    "'spg killthis' will be Deprecated. Use 'spg KILL -c [command]' instead."
                 )
                 return Option.KILL
             case "killbefore":
                 self.pid = None
                 self.command = None
                 message_handler.warning(
-                    "'spg killbefore' will be Deprecated Use 'spg KILL -t [time]' instead."
+                    "'spg killbefore' will be Deprecated. Use 'spg KILL -t [time]' instead."
                 )
                 return Option.KILL
         raise RuntimeError(f"No such option: {self.option}.")

@@ -10,5 +10,6 @@ class Option(Enum):
     runs = auto()
     KILL = auto()
 
+
 if __name__ == "__main__":
     print("This is module option at spg")

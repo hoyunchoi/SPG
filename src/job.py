@@ -1,7 +1,7 @@
-from dataclasses import dataclass
 from abc import ABC, abstractmethod
+from dataclasses import dataclass
 
-from .output import Printer, MessageHandler
+from .output import MessageHandler, Printer
 from .utils import get_mem_with_unit, ps_time_to_seconds
 
 
@@ -14,28 +14,28 @@ class JobCondition:
 
 
 class Job(ABC):
-    """ Abstract class for storing job informations """
+    """Abstract class for storing job informations"""
 
     def __init__(self, machine_name: str, info: str) -> None:
         """
-            Args
-                machine_name: Name of machine where this job is running
-                info: Contain information of job, as the result of 'ps'
-                      Refer Commands.getPSCmd for detailed format
-                gpu_info: GPU-specific informations: gpu_percent, vram_percent, vram_use
+        Args
+            machine_name: Name of machine where this job is running
+            info: Contain information of job, as the result of 'ps'
+                  Refer Commands.getPSCmd for detailed format
+            gpu_info: GPU-specific informations: gpu_percent, vram_percent, vram_use
         """
-        self.machine_name = machine_name    # Name of machine where this job is running
+        self.machine_name = machine_name  # Name of machine where this job is running
         (
-            self.user_name,                 # Name of user who is reponsible
-            self.state,                     # Current state Ex) R, S, D, ...
-            self.pid,                       # Process ID
-            self.sid,                       # Process ID of session leader
-            self.cpu_percent,               # Single core utilization percentage
-            self.ram_percent,               # Memory utilization percentage
-            self.ram_use,                   # Absolute value of ram utilization
-            self.time,                      # Cumulative CPU time from start
-            self.start,                     # Starting time or date of format [DD-]HH:MM:SS
-            *self.cmd                       # Running command
+            self.user_name,  # Name of user who is reponsible
+            self.state,  # Current state Ex) R, S, D, ...
+            self.pid,  # Process ID
+            self.sid,  # Process ID of session leader
+            self.cpu_percent,  # Single core utilization percentage
+            self.ram_percent,  # Memory utilization percentage
+            self.ram_use,  # Absolute value of ram utilization
+            self.time,  # Cumulative CPU time from start
+            self.start,  # Starting time or date of format [DD-]HH:MM:SS
+            *self.cmd,  # Running command
         ) = info.strip().split()
 
         # Change to proper unit
@@ -48,34 +48,34 @@ class Job(ABC):
     @abstractmethod
     def __format__(self, format_spec: str) -> str:
         """
-            Return job information according to format spec
-            - info: full information of job
-            - otherwise: job pid
+        Return job information according to format spec
+        - info: full information of job
+        - otherwise: job pid
         """
         pass
 
     ################################## Check job information ##################################
     def is_important(self) -> bool:
         """
-            Check if the job is important or not with following rules
-            1. Whether the state of job is 'R': Running or 'D': waiting for IO
-            1-1 when job state is 'R', it should have either 5(%)cpu usage or 1(sec) time
-            2. Whether the fraction of commands is in exception list
-            Args
-                job: target job to be determined
-                scan_level: level of exception list. 2: more strict
-            Return
-                True: It is important job. Should be counted
-                False: It is not important job. Should be skipped
+        Check if the job is important or not with following rules
+        1. Whether the state of job is 'R': Running or 'D': waiting for IO
+        1-1 when job state is 'R', it should have either 5(%)cpu usage or 1(sec) time
+        2. Whether the fraction of commands is in exception list
+        Args
+            job: target job to be determined
+            scan_level: level of exception list. 2: more strict
+        Return
+            True: It is important job. Should be counted
+            False: It is not important job. Should be skipped
         """
         scan_mode_exception = [
-            "kworker",                          # Kernel worker
-            "ps H --no-headers",                # From SPG scanning process
-            "sshd",                             # SSH daemon process
-            "@notty",                           # Login which does not require a terminal
-            "/usr/lib/systemd/systemd",         # User-specific systemd
-            "scala.tools.nsc.CompileServer",    # Not sure what this is
-            ".vscode-server"                    # Remote SSH of vscode
+            "kworker",  # Kernel worker
+            "ps H --no-headers",  # From SPG scanning process
+            "sshd",  # SSH daemon process
+            "@notty",  # Login which does not require a terminal
+            "/usr/lib/systemd/systemd",  # User-specific systemd
+            "scala.tools.nsc.CompileServer",  # Not sure what this is
+            ".vscode-server",  # Remote SSH of vscode
         ]
 
         # Filter job by exception
@@ -90,7 +90,9 @@ class Job(ABC):
         match list(self.state):
             case ["R", *_]:
                 # State is 'R': Filter job by cpu usage and running time
-                if (float(self.cpu_percent) > 5.0) or (ps_time_to_seconds(self.time) > 1):
+                if (float(self.cpu_percent) > 5.0) or (
+                    ps_time_to_seconds(self.time) > 1
+                ):
                     return True
                 else:
                     return False
@@ -108,7 +110,7 @@ class Job(ABC):
         return False
 
     def match(self, condition: JobCondition | None) -> bool:
-        """ Check if this job fulfills the given condition """
+        """Check if this job fulfills the given condition"""
         # When no condition is given, every job matchs to the condition
         if condition is None:
             return True
@@ -122,7 +124,9 @@ class Job(ABC):
             return False
 
         # When time is given, job's time should be less than the time
-        if (condition.time is not None) and (ps_time_to_seconds(self.time) >= condition.time):
+        if (condition.time is not None) and (
+            ps_time_to_seconds(self.time) >= condition.time
+        ):
             return False
 
         # When start is given, job's start should be same as the argument
@@ -139,20 +143,30 @@ class CPUJob(Job):
 
         if format_spec == "info":
             job_info = Printer.job_info_format.format(
-                self.machine_name, self.user_name, self.state, self.pid, self.cpu_percent,
-                self.ram_percent, self.ram_use, self.time, self.start, self.cmd
+                self.machine_name,
+                self.user_name,
+                self.state,
+                self.pid,
+                self.cpu_percent,
+                self.ram_percent,
+                self.ram_use,
+                self.time,
+                self.start,
+                self.cmd,
             )
 
         return job_info
 
 
 class GPUJob(Job):
-    def __init__(self,
-     machine_name: str,
-     info: str,
-     gpu_percent: str,
-     vram_percent: str,
-     vram_use: str) -> None:
+    def __init__(
+        self,
+        machine_name: str,
+        info: str,
+        gpu_percent: str,
+        vram_percent: str,
+        vram_use: str,
+    ) -> None:
         super().__init__(machine_name, info)
 
         # Add aditional information about GPU
@@ -165,8 +179,16 @@ class GPUJob(Job):
 
         if format_spec == "info":
             job_info = Printer.job_info_format.format(
-                self.machine_name, self.user_name, self.state, self.pid, self.gpu_percent,
-                self.vram_percent, self.vram_use, self.time, self.start, self.cmd
+                self.machine_name,
+                self.user_name,
+                self.state,
+                self.pid,
+                self.gpu_percent,
+                self.vram_percent,
+                self.vram_use,
+                self.time,
+                self.start,
+                self.cmd,
             )
 
         return job_info

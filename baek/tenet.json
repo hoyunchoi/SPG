@@ -104,12 +104,12 @@
         "comment": ""
     },
     "tenet14": {
-        "use": "True",
+        "use": "False",
         "name": "tenet14",
         "cpu": "Q9550",
         "num_cpu": "4",
         "ram": "8G",
-        "comment": ""
+        "comment": "Power off(2022.04.18)"
     },
     "tenet15": {
         "use": "True",
@@ -117,7 +117,7 @@
         "cpu": "Q9550",
         "num_cpu": "4",
         "ram": "8G",
-        "comment": ""
+        "comment": "Network issue(2022.03.26) -> Reboot(2022.03.28)"
     },
     "tenet16": {
         "use": "True",
@@ -272,12 +272,12 @@
         "comment": ""
     },
     "tenet35": {
-        "use": "True",
+        "use": "False",
         "name": "tenet35",
         "cpu": "i7-860",
         "num_cpu": "4",
         "ram": "8G",
-        "comment": ""
+        "comment": "Power off(2022.04.18)"
     },
     "tenet36": {
         "use": "True",

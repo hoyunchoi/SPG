@@ -1,55 +1,69 @@
 import textwrap
-from dataclasses import dataclass
-from collections.abc import Sequence
 from argparse import Action, ArgumentParser, Namespace, RawTextHelpFormatter
+from collections.abc import Sequence
+from dataclasses import dataclass
 
-from .option import Option
 from .default import Default
+from .option import Option
 from .output import MessageHandler
 from .utils import get_machine_group, input_time_to_seconds, yes_no
 
 
 class CommandAction(Action):
-    def __init__(self,
-                 option_strings: Sequence[str],
-                 dest: str,
-                 nargs: int | str,
-                 metavar: str | None = ...,
-                 required: bool = False,
-                 help: str | None = ...):
-        super().__init__(option_strings, dest, nargs=nargs, metavar=metavar, required=required, help=help)
+    def __init__(
+        self,
+        option_strings: Sequence[str],
+        dest: str,
+        nargs: int | str,
+        metavar: str | None = ...,
+        required: bool = False,
+        help: str | None = ...,
+    ):
+        super().__init__(
+            option_strings,
+            dest,
+            nargs=nargs,
+            metavar=metavar,
+            required=required,
+            help=help,
+        )
 
-    def __call__(self,
-                 parser: ArgumentParser,
-                 namespace: Namespace,
-                 values: Sequence[str] | None,
-                 option_string: str | None) -> None:
+    def __call__(
+        self,
+        parser: ArgumentParser,
+        namespace: Namespace,
+        values: Sequence[str] | None,
+        option_string: str | None,
+    ) -> None:
         if isinstance(values, Sequence):
             values = " ".join(values)
         setattr(namespace, self.dest, values)
 
 
 def add_optional_group(parser: ArgumentParser) -> None:
-    """ Add optional argument of "-g" or "--groupList" to input parser """
+    """Add optional argument of "-g" or "--groupList" to input parser"""
     parser.add_argument(
-        "-g", "--group",
+        "-g",
+        "--group",
         nargs="+",
         choices=Default.GROUP,
+        default=["tenet", "xenet"],
         metavar="",
         help=textwrap.dedent(
             f"""\
             List of target machine group names, separated by space.
             Currently available: {Default.GROUP}
             """
-        )
+        ),
     )
     return None
 
 
 def add_optional_machine(parser: ArgumentParser) -> None:
-    """ Add optional argument of "-m" or "--machineList" to input parser """
+    """Add optional argument of "-m" or "--machineList" to input parser"""
     parser.add_argument(
-        "-m", "--machine",
+        "-m",
+        "--machine",
         nargs="+",
         metavar="",
         help=textwrap.dedent(
@@ -57,34 +71,30 @@ def add_optional_machine(parser: ArgumentParser) -> None:
             List of target machine names, separated by space.
             ex) tenet1 / tenet1 tenet2
             """
-        )
+        ),
     )
     return None
 
 
 def add_optional_user(parser: ArgumentParser) -> None:
-    """ Add optional argument of "-u" or "--user" to input parser """
+    """Add optional argument of "-u" or "--user" to input parser"""
     parser.add_argument(
-        "-u", "--user",
-        metavar="",
-        default=Default().user,
-        help="Target user name."
+        "-u", "--user", metavar="", default=Default().user, help="Target user name."
     )
 
 
 def add_optional_all_user(parser: ArgumentParser) -> None:
-    """ Add optional argument of "-a" or "--all" to input parser """
+    """Add optional argument of "-a" or "--all" to input parser"""
     parser.add_argument(
-        "-a", "--all",
-        action="store_true",
-        help="When given, print jobs of all users."
+        "-a", "--all", action="store_true", help="When given, print jobs of all users."
     )
 
 
 def add_optional_pid(parser: ArgumentParser) -> None:
-    """ Add optional argument of "-p" or "--pid" to input parser """
+    """Add optional argument of "-p" or "--pid" to input parser"""
     parser.add_argument(
-        "-p", "--pid",
+        "-p",
+        "--pid",
         metavar="",
         nargs="+",
         help=textwrap.dedent(
@@ -93,14 +103,15 @@ def add_optional_pid(parser: ArgumentParser) -> None:
             When this option is given, you should specify a single machine name.
             List of pid of target job, separated by space.
             """
-        )
+        ),
     )
 
 
 def add_optional_command(parser: ArgumentParser) -> None:
-    """ Add optional argument of "-c" or "--command" to input parser """
+    """Add optional argument of "-c" or "--command" to input parser"""
     parser.add_argument(
-        "-c", "--command",
+        "-c",
+        "--command",
         metavar="",
         nargs="+",
         action=CommandAction,
@@ -109,14 +120,15 @@ def add_optional_command(parser: ArgumentParser) -> None:
             Jobs whose commands include pattern.
             List of words to search. The target command should have the exact pattern.
             """
-        )
+        ),
     )
 
 
 def add_optional_time(parser: ArgumentParser) -> None:
-    """ Add optional argument of "-t" or "--time" to input parser """
+    """Add optional argument of "-t" or "--time" to input parser"""
     parser.add_argument(
-        "-t", "--time",
+        "-t",
+        "--time",
         metavar="",
         nargs="+",
         help=textwrap.dedent(
@@ -125,21 +137,22 @@ def add_optional_time(parser: ArgumentParser) -> None:
             Time interval separated by space.
             ex) 1w 5d 11h 50m 1s
             """
-        )
+        ),
     )
 
 
 def add_optional_start(parser: ArgumentParser) -> None:
-    """ Add optional argument of "-s" or "--start" to input parser """
+    """Add optional argument of "-s" or "--start" to input parser"""
     parser.add_argument(
-        "-s", "--start",
+        "-s",
+        "--start",
         metavar="",
         help=textwrap.dedent(
             """\
             Jobs started at a specific time.
             The start time should exactly match.
             """
-        )
+        ),
     )
 
 
@@ -149,12 +162,13 @@ def get_args(user_input: str | list[str] | None = None) -> Namespace:
         prog="spg",
         formatter_class=RawTextHelpFormatter,
         description="Statistical Physics Group",
-        usage="spg (-h) (-s) [option] ..."
+        usage="spg (-h) (-s) [option] ...",
     )
     main_parser.add_argument(
-        "-s", "--silent",
+        "-s",
+        "--silent",
         action="store_true",
-        help="when given, run spg without progress bar."
+        help="when given, run spg without progress bar.",
     )
 
     # Generate sub-parser
@@ -168,7 +182,7 @@ def get_args(user_input: str | list[str] | None = None) -> Namespace:
             Arguments inside square brackets [] are required arguments while parentheses () are optional.
             For more information of each [option], type 'spg [option] -h' or 'spg [option] --help'.
             """
-        )
+        ),
     )
 
     ####################################### List Parser #######################################
@@ -181,7 +195,7 @@ def get_args(user_input: str | list[str] | None = None) -> Namespace:
             spg list (-g groups) (-m machines)
             When group/machine are both given, the group is ignored.
             """
-        )
+        ),
     )
     add_optional_group(parser_list)
     add_optional_machine(parser_list)
@@ -196,7 +210,7 @@ def get_args(user_input: str | list[str] | None = None) -> Namespace:
             spg free (-g groups) (-m machines)
             When group/machine are both given, the group is ignored.
             """
-        )
+        ),
     )
     add_optional_group(parser_free)
     add_optional_machine(parser_free)
@@ -213,7 +227,7 @@ def get_args(user_input: str | list[str] | None = None) -> Namespace:
             When group/machine are both given, the group is ignored.
             When -a, --all flag is set, --user option is ignored.
             """
-        )
+        ),
     )
     add_optional_machine(parser_job)
     add_optional_group(parser_job)
@@ -234,7 +248,7 @@ def get_args(user_input: str | list[str] | None = None) -> Namespace:
             spg user (-g groups) (-m machines)
             When group/machine are both given, the group is ignored.
             """
-        )
+        ),
     )
     add_optional_group(parser_user)
     add_optional_machine(parser_user)
@@ -253,18 +267,15 @@ def get_args(user_input: str | list[str] | None = None) -> Namespace:
             2. If your program uses -, -- arguments or redirection symbols < or >,
                 wrap the program and arguments with a quote: ' or ".
             """
-        )
+        ),
     )
-    parser_run.add_argument(
-        "machine",
-        help="target machine name."
-    )
+    parser_run.add_argument("machine", help="target machine name.")
     parser_run.add_argument(
         "command",
         metavar="command",
         nargs="+",
         action=CommandAction,
-        help="command you want to run: [program] (arguments)"
+        help="command you want to run: [program] (arguments)",
     )
 
     ####################################### Runs Parser #######################################
@@ -281,10 +292,11 @@ def get_args(user_input: str | list[str] | None = None) -> Namespace:
             2. You can assign a maximum of 50 jobs at one time.
             3. Executed commands will be erased from the input command file.
             """
-        )
+        ),
     )
-    parser_runs.add_argument("command",
-                             help="Files containing commands. Separated by lines.")
+    parser_runs.add_argument(
+        "command", help="Files containing commands. Separated by lines."
+    )
     parser_runs.add_argument(
         "group",
         nargs="+",
@@ -295,7 +307,13 @@ def get_args(user_input: str | list[str] | None = None) -> Namespace:
             ex1) tenet: search every available tenet machines
             ex2) tenet 100 150: search tenet100 ~ tenet150
             """
-        )
+        ),
+    )
+    parser_runs.add_argument(
+        "-f",
+        "--force",
+        action="store_true",
+        help="When given, force to run jobs at busy machines.",
     )
 
     ####################################### KILL Parser #######################################
@@ -313,7 +331,7 @@ def get_args(user_input: str | list[str] | None = None) -> Namespace:
             2. When PID is given, only a single machine should be specified.
             3. When given a multi-process job, this command kills its session leader.
             """
-        )
+        ),
     )
     add_optional_group(parser_KILL)
     add_optional_machine(parser_KILL)
@@ -328,15 +346,13 @@ def get_args(user_input: str | list[str] | None = None) -> Namespace:
     ################################## Deprecated subparsers ##################################
     def add_positional_machine(parser: ArgumentParser) -> None:
         """
-            Add positional argument "machine_name" to input parser
+        Add positional argument "machine_name" to input parser
         """
-        parser.add_argument("machine",
-                            help="target machine name.")
+        parser.add_argument("machine", help="target machine name.")
         return None
 
     #################################### Deprecate machine ####################################
-    parser_machine = option_parser.add_parser("machine",
-                                              help="Deprecated")
+    parser_machine = option_parser.add_parser("machine", help="Deprecated")
     add_optional_group(parser_machine)
     add_optional_machine(parser_machine)
 
@@ -351,7 +367,7 @@ def get_args(user_input: str | list[str] | None = None) -> Namespace:
             When group/machine are both given, the group is ignored.
             When machine is specified, there is no group summary.
             """
-        )
+        ),
     )
     add_optional_group(parser_all)
     add_optional_machine(parser_all)
@@ -367,7 +383,7 @@ def get_args(user_input: str | list[str] | None = None) -> Namespace:
             When group/machine are both given, the group is ignored
             When machine is specified, there is no group summary
             """
-        )
+        ),
     )
     add_optional_group(parser_me)
     add_optional_machine(parser_me)
@@ -377,13 +393,11 @@ def get_args(user_input: str | list[str] | None = None) -> Namespace:
         name="kill",
         help="Deprecated",
         formatter_class=RawTextHelpFormatter,
-        usage="spg kill [machine name] [pid list]"
+        usage="spg kill [machine name] [pid list]",
     )
     add_positional_machine(parser_kill)
     parser_kill.add_argument(
-        "pid",
-        nargs="+",
-        help="List of pid of target job, separated by space."
+        "pid", nargs="+", help="List of pid of target job, separated by space."
     )
 
     #################################### Deprecate killall ####################################
@@ -396,7 +410,7 @@ def get_args(user_input: str | list[str] | None = None) -> Namespace:
             spg killall (-g groups) (-m machines) (-u user name)
             When group/machine are both given, the group is ignored.
             """
-        )
+        ),
     )
     add_optional_group(parser_killall)
     add_optional_machine(parser_killall)
@@ -407,7 +421,7 @@ def get_args(user_input: str | list[str] | None = None) -> Namespace:
         name="killmachine",
         formatter_class=RawTextHelpFormatter,
         help="Deprecated",
-        usage="spg killmachine [machine name]"
+        usage="spg killmachine [machine name]",
     )
     add_positional_machine(parser_killmachine)
     add_optional_user(parser_killmachine)
@@ -422,14 +436,14 @@ def get_args(user_input: str | list[str] | None = None) -> Namespace:
             spg killthis [pattern] (-g group name) (-m machine name)
             When group/machine names are both given, group name is ignored.
             """
-        )
+        ),
     )
     parser_killthis.add_argument(
         "command",
         metavar="command",
         nargs="+",
         action=CommandAction,
-        help="List of words to search. Target command should have exact pattern."
+        help="List of words to search. Target command should have exact pattern.",
     )
     add_optional_group(parser_killthis)
     add_optional_machine(parser_killthis)
@@ -444,12 +458,10 @@ def get_args(user_input: str | list[str] | None = None) -> Namespace:
             spg killbefore [time] (-g group name) (-m machine name)
             When group/machine names are both given, group name is ignored.
             """
-        )
+        ),
     )
     parser_killbefore.add_argument(
-        "time",
-        nargs="+",
-        help="Time interval separated by space. ex) 1w 5d 11h 50m 1s"
+        "time", nargs="+", help="Time interval separated by space. ex) 1w 5d 11h 50m 1s"
     )
     add_optional_group(parser_killbefore)
     add_optional_machine(parser_killbefore)
@@ -459,6 +471,7 @@ def get_args(user_input: str | list[str] | None = None) -> Namespace:
         return main_parser.parse_args()
     elif isinstance(user_input, str):
         from shlex import split
+
         return main_parser.parse_args(split(user_input))
     else:
         return main_parser.parse_args(user_input)
@@ -466,21 +479,23 @@ def get_args(user_input: str | list[str] | None = None) -> Namespace:
 
 @dataclass
 class Argument:
-    """ Argument dataclass to store user input """
+    """Argument dataclass to store user input"""
+
     option: Option
     silent: bool = False
-    machine: str | list[str] | None = None      # Target machine. For run, it is str
-    group: str | list[str] | None = None        # Target group. For runs, it is str
-    start_end: tuple[int, int] | None = None    # Boundary of target group
-    all: bool = False                           # If true, overwrite user argument to None
-    user: str | None = Default().user           # Target user, default: current user
-    pid: list[str] | None = None                # Target pid
-    time: list[str] | None = None               # Target time window in string format
-    time_seconds: int | None = None             # Target time window in seconds
-    start: str | None = None                    # Target start time
+    machine: str | list[str] | None = None  # Target machine. For run, it is str
+    group: str | list[str] | None = None  # Target group. For runs, it is str
+    start_end: tuple[int, int] | None = None  # Boundary of target group
+    all: bool = False  # If true, overwrite user argument to None
+    user: str | None = Default().user  # Target user, default: current user
+    pid: list[str] | None = None  # Target pid
+    time: list[str] | None = None  # Target time window in string format
+    time_seconds: int | None = None  # Target time window in seconds
+    start: str | None = None  # Target start time
 
     # run: running command, runs: command file, job/KILL: target command
     command: str | None = None
+    force: bool = False
 
     def __post_init__(self) -> None:
         self.option = self._redirect_deprecated_options()
@@ -512,7 +527,7 @@ class Argument:
 
     ###################################### Basic Utility ######################################
     def _redirect_deprecated_options(self) -> Option:
-        """ Redirect deprecated options """
+        """Redirect deprecated options"""
         if self.option in list(Option):
             return self.option
         elif self.option in ["list", "free", "job", "user", "run", "runs", "KILL"]:
@@ -590,25 +605,23 @@ class Argument:
         raise RuntimeError(f"No such option: {self.option}.")
 
     def _overwrite_group(self) -> None:
-        """ Overwrite group option by machine option if it exists """
+        """Overwrite group option by machine option if it exists"""
         if self.machine is None:
             return
 
         # Group from machine
-        group = list(dict.fromkeys(
-            get_machine_group(machine_name) for machine_name in self.machine
-        ))
+        group = list(
+            dict.fromkeys(
+                get_machine_group(machine_name) for machine_name in self.machine
+            )
+        )
 
         # Overwrite if necessary
         if self.group != group:
-            if isinstance(self.group, list):
-                MessageHandler().warning(
-                    "Group option is suppressed by Machine option."
-                )
             self.group = group
 
     def _check_user(self) -> None:
-        """ Check if input user is registered """
+        """Check if input user is registered"""
         if self.all:
             self.user = None
             return
@@ -622,7 +635,7 @@ class Argument:
         exit()
 
     def _check_pid(self) -> None:
-        """ When pid list is given, you should specify machine name """
+        """When pid list is given, you should specify machine name"""
         if self.pid is not None:
             assert isinstance(self.machine, list)
             if len(self.machine) != 1:
@@ -633,13 +646,13 @@ class Argument:
                 exit()
 
     def _time_to_seconds(self) -> None:
-        """ Convert time window (str) to time window (seconds) """
+        """Convert time window (str) to time window (seconds)"""
         if self.time is None:
             return
         self.time_seconds = input_time_to_seconds(self.time)
 
     def _check_group_boundary(self) -> None:
-        """ Check args for option 'runs' """
+        """Check args for option 'runs'"""
         match self.group:
             case [group]:
                 self.group = group
@@ -655,17 +668,15 @@ class Argument:
                 exit()
 
     def _check_user_KILL(self) -> None:
-        """ Check argument user for option 'KILL' """
+        """Check argument user for option 'KILL'"""
 
         # When specifying user name, you should be root
         if (self.user != Default().user) and (Default().user != "root"):
-            MessageHandler().error(
-                "When killing other user's job, you should be root."
-            )
+            MessageHandler().error("When killing other user's job, you should be root.")
             exit()
 
     def _double_check_KILL(self) -> None:
-        """ Double check if you really want to kill job """
+        """Double check if you really want to kill job"""
         question = "Do you want to kill "
 
         # When user is specified

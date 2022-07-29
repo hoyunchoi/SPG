@@ -288,7 +288,7 @@ class SPG:
         num_cmd_before = len(cmd_queue)
 
         if self.args.force:
-            cmd_queue = group.force_runs(cmd_queue, max_calls)
+            cmd_queue = group.force_runs(cmd_queue, max_calls, self.args.limit)
             pass
         else:
             # Scanning
@@ -296,7 +296,7 @@ class SPG:
             if not self.printer.silent:
                 self.printer.print()
             # Run jobs
-            cmd_queue = group.runs(cmd_queue, max_calls)
+            cmd_queue = group.runs(cmd_queue, max_calls, self.args.limit)
 
         num_cmd_after = len(cmd_queue)
         # Remove the input file and re-write with remaining command queue

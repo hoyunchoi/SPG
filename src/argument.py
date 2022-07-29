@@ -1,3 +1,4 @@
+import sys
 import textwrap
 from argparse import Action, ArgumentParser, Namespace, RawTextHelpFormatter
 from collections.abc import Sequence
@@ -315,6 +316,18 @@ def get_args(user_input: str | list[str] | None = None) -> Namespace:
         action="store_true",
         help="When given, force to run jobs at busy machines.",
     )
+    parser_runs.add_argument(
+        "--limit",
+        help=textwrap.dedent(
+            """\
+            Limit number of jobs assigned to single machine.
+            Assign a small number of (free cores) and (limit)
+            This option can be useful when allocating jobs by number of free cores causes memory-overflow problem.
+            """
+        ),
+        type=int,
+        default=sys.maxsize
+    )
 
     ####################################### KILL Parser #######################################
     parser_KILL = option_parser.add_parser(
@@ -495,7 +508,10 @@ class Argument:
 
     # run: running command, runs: command file, job/KILL: target command
     command: str | None = None
-    force: bool = False
+
+    # additional options for runs
+    force: bool = False  # If true, assign jobs even to busy machine
+    limit: int = sys.maxsize  # Limit the number of jobs assigned to single machine
 
     def __post_init__(self) -> None:
         self.option = self._redirect_deprecated_options()

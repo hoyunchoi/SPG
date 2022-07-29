@@ -1,5 +1,6 @@
 #! /usr/bin/python
-from src import configure_logger, get_args, Argument, SPG
+from src import SPG, Argument, configure_logger, get_args
+
 
 def main():
     # Create logger

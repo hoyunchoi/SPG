@@ -210,7 +210,9 @@ class Group:
             self.num_free_machine = len(self.free_machine_list)
 
     ##################################### Run or Kill Job #####################################
-    def runs(self, cmd_queue: deque[str], max_calls: int) -> deque[str]:
+    def runs(
+        self, cmd_queue: deque[str], max_calls: int, limit: int
+    ) -> deque[str]:
         """
         Run jobs in cmd_queue
         Return
@@ -227,7 +229,7 @@ class Group:
                     available = min(machine.num_free_cpu, machine.num_free_gpu)
                 else:
                     available = machine.num_free_cpu
-                for _ in range(available):
+                for _ in range(min(available, limit)):
                     cmd = cmd_queue.popleft().strip()
                     executor.submit(machine.run, cmd)
                     num_executed += 1
@@ -241,7 +243,9 @@ class Group:
         # Return the remining command queue
         return cmd_queue
 
-    def force_runs(self, cmd_queue: deque[str], max_calls: int) -> deque[str]:
+    def force_runs(
+        self, cmd_queue: deque[str], max_calls: int, limit: int
+    ) -> deque[str]:
         """Force run jobs in cmd_queue"""
         num_threads = min(len(cmd_queue), max_calls)
         num_executed = 0
@@ -254,7 +258,7 @@ class Group:
                     if isinstance(machine, GPUMachine)
                     else machine.num_cpu
                 )
-                for _ in range(available):
+                for _ in range(min(available, limit)):
                     cmd = cmd_queue.popleft().strip()
                     executor.submit(machine.run, cmd)
                     num_executed += 1

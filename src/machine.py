@@ -6,7 +6,7 @@ from dataclasses import dataclass, field
 from . import command
 from .default import Default
 from .job import CPUJob, GPUJob, Job, JobCondition
-from .output import MessageHandler, Printer
+from .spgio import MessageHandler, Printer
 from .utils import get_mem_with_unit
 
 
@@ -137,6 +137,8 @@ class Machine:
 
         # Save scanned job informations
         for process in process_list:
+            if process == "":  # Skip empty string: no process
+                continue
             job = CPUJob(self.name, process)
             if job.is_important() and job.match(job_condition):
                 self.job_list.append(job)

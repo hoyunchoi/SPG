@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 
-from .output import MessageHandler, Printer
+from .spgio import MessageHandler, Printer
 from .utils import get_mem_with_unit, ps_time_to_seconds
 
 

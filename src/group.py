@@ -5,7 +5,7 @@ from pathlib import Path
 
 from .job import JobCondition
 from .machine import GPUMachine, Machine
-from .output import Printer, ProgressBar
+from .spgio import Printer, ProgressBar
 
 
 class Group:
@@ -210,9 +210,7 @@ class Group:
             self.num_free_machine = len(self.free_machine_list)
 
     ##################################### Run or Kill Job #####################################
-    def runs(
-        self, cmd_queue: deque[str], max_calls: int, limit: int
-    ) -> deque[str]:
+    def runs(self, cmd_queue: deque[str], max_calls: int, limit: int) -> deque[str]:
         """
         Run jobs in cmd_queue
         Return

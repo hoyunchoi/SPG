@@ -109,7 +109,7 @@
         "cpu": "Q9550",
         "num_cpu": "4",
         "ram": "8G",
-        "comment": "Power off(2022.04.18)"
+	"comment": "Power off(2022.04.18) -> Removed(2022.08.10)"
     },
     "tenet15": {
         "use": "True",
@@ -152,12 +152,12 @@
         "comment": ""
     },
     "tenet20": {
-        "use": "True",
+        "use": "False",
         "name": "tenet20",
         "cpu": "i7-860",
         "num_cpu": "4",
         "ram": "8G",
-        "comment": ""
+        "comment": "Can't boot(2022.08.10)"
     },
     "tenet21": {
         "use": "True",
@@ -176,12 +176,12 @@
         "comment": "Power issue(2022.01.21)"
     },
     "tenet23": {
-        "use": "True",
+        "use": "False",
         "name": "tenet23",
         "cpu": "i7-860",
         "num_cpu": "4",
         "ram": "8G",
-        "comment": ""
+        "comment": "Can't boot(2022.08.10)"
     },
     "tenet24": {
         "use": "True",
@@ -264,12 +264,12 @@
         "comment": ""
     },
     "tenet34": {
-        "use": "True",
+        "use": "False",
         "name": "tenet34",
         "cpu": "i7-860",
         "num_cpu": "4",
         "ram": "8G",
-        "comment": ""
+        "comment": "Power issue(2022.08.10)"
     },
     "tenet35": {
         "use": "False",
@@ -320,12 +320,12 @@
         "comment": ""
     },
     "tenet41": {
-        "use": "True",
+        "use": "False",
         "name": "tenet41",
         "cpu": "i7-860",
         "num_cpu": "4",
         "ram": "8G",
-        "comment": ""
+        "comment": "Power issue(2022.08.10)"
     },
     "tenet42": {
         "use": "False",
@@ -424,12 +424,12 @@
         "comment": "Power off(2021.01.08) -> Reboot(2022.01.09)"
     },
     "tenet54": {
-        "use": "True",
+        "use": "False",
         "name": "tenet54",
         "cpu": "i7-2600",
         "num_cpu": "4",
         "ram": "16G",
-        "comment": ""
+        "comment": "NIC issue(2022.08.10)"
     },
     "tenet55": {
         "use": "True",
@@ -488,12 +488,12 @@
         "comment": ""
     },
     "tenet62": {
-        "use": "False",
+        "use": "True",
         "name": "tenet62",
         "cpu": "i7-2600",
         "num_cpu": "4",
         "ram": "16G",
-        "comment": "NIC problem(2022.01.25)"
+        "comment": "NIC problem(2022.01.25) -> Reboot(2022.08.10)"
     },
     "tenet63": {
         "use": "True",
@@ -648,12 +648,12 @@
         "comment": ""
     },
     "tenet82": {
-        "use": "True",
+        "use": "False",
         "name": "tenet82",
         "cpu": "i7-2600",
         "num_cpu": "4",
         "ram": "32G",
-        "comment": ""
+        "comment": "Power issue(2022.08.10)"
     },
     "tenet83": {
         "use": "True",
@@ -1488,12 +1488,12 @@
         "comment": ""
     },
     "tenet187": {
-        "use": "True",
+        "use": "False",
         "name": "tenet187",
         "cpu": "i7-9700K",
         "num_cpu": "8",
         "ram": "64G",
-        "comment": ""
+        "comment": "Keep rebooting(2022.06.30)"
     },
     "tenet188": {
         "use": "True",

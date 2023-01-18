@@ -29,7 +29,7 @@ def get_mem_with_unit(mem: str | float, unit: str) -> str:
     try:
         idx = unit_list.index(unit)
     except ValueError:
-        from .output import MessageHandler
+        from .spgio import MessageHandler
 
         MessageHandler().error(f"Invalid memory unit: {unit}")
         exit()
@@ -48,7 +48,7 @@ def input_time_to_seconds(time: list[str]) -> int:
     try:
         return sum(int(t[:-1]) * unit_to_second[t[-1]] for t in time)
     except (KeyError, ValueError):
-        from .output import MessageHandler
+        from .spgio import MessageHandler
 
         MessageHandler().error(f"Invalid time window: {' '.join(time)}")
         MessageHandler().error("Run 'spg KILL -h' for more help")

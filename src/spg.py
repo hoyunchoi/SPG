@@ -10,7 +10,7 @@ from .group import Group
 from .job import JobCondition
 from .machine import Machine
 from .option import Option
-from .output import MessageHandler, Printer
+from .spgio import MessageHandler, Printer
 from .utils import get_machine_group, get_machine_index
 
 

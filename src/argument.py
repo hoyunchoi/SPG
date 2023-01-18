@@ -6,7 +6,7 @@ from dataclasses import dataclass
 
 from .default import Default
 from .option import Option
-from .output import MessageHandler
+from .spgio import MessageHandler
 from .utils import get_machine_group, input_time_to_seconds, yes_no
 
 
@@ -326,7 +326,7 @@ def get_args(user_input: str | list[str] | None = None) -> Namespace:
             """
         ),
         type=int,
-        default=sys.maxsize
+        default=sys.maxsize,
     )
 
     ####################################### KILL Parser #######################################
@@ -643,12 +643,9 @@ class Argument:
             return
 
         # Check if input user name is valid
-        for user_list in Default.USER.values():
-            if self.user in user_list:
-                return
-
-        MessageHandler().error(f"Invalid user name: {self.user}.")
-        exit()
+        if self.user not in Default.USERS:
+            MessageHandler().error(f"Invalid user name: {self.user}.")
+            exit()
 
     def _check_pid(self) -> None:
         """When pid list is given, you should specify machine name"""

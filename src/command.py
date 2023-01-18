@@ -34,7 +34,7 @@ def ps_from_user(user_name: str | None) -> list[str]:
     """
     if user_name is None:
         # When user name is none, take all users registered in SPG
-        user_name = ",".join(Default.USER["kahng"] + Default.USER["baek"])
+        user_name = ",".join(Default.USERS[1:])
     return split(
         "ps H "  # Show threads as if they were processes
         "--no-headers "  # Do not print header

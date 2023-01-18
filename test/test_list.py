@@ -1,10 +1,12 @@
 import inspect
 import unittest
 
-from src.spg import SPG
 from src.argument import Argument
-from src.output import MessageHandler
+from src.spg import SPG
+from src.spgio import MessageHandler, MessageType
+
 from .test_item import TestItem
+
 
 class TestList(unittest.TestCase):
     """ Test option list and machine/group restriction arguments """
@@ -48,7 +50,7 @@ class TestList(unittest.TestCase):
         args = Argument.from_input(TestItem.LIST_MACHINE_GROUP_SUPPRESS.value)
         spg = SPG(args)
         spg()
-        self.assertEqual(len(self.message_handler.warning_list), 1)
+        self.assertEqual(len(self.message_handler.msg[MessageType.WARNING]), 1)
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)

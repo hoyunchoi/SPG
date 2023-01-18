@@ -1,9 +1,10 @@
 import unittest
 from unittest.mock import patch
 
-from src.option import Option
-from src.output import MessageHandler
 from src.argument import Argument
+from src.option import Option
+from src.spgio import MessageHandler, MessageType
+
 from .test_item import TestItem
 
 
@@ -190,7 +191,7 @@ class TestArgument(unittest.TestCase):
     def test_job_user_err(self):
         with self.assertRaises(SystemExit):
             Argument.from_input(TestItem.JOB_USER_ERR.value)
-        self.assertEqual(len(MessageHandler().error_list), 1)
+        self.assertEqual(len(MessageHandler().msg[MessageType.ERROR]), 1)
 
     def test_job_all(self):
         args = Argument.from_input(TestItem.JOB_ALL.value)
@@ -214,7 +215,7 @@ class TestArgument(unittest.TestCase):
         with self.assertRaises(SystemExit) as cm:
             Argument.from_input(TestItem.JOB_PID_ERR.value)
             self.assertEqual(cm.exception, "Pid error")
-        self.assertEqual(len(MessageHandler().error_list), 1)
+        self.assertEqual(len(MessageHandler().msg[MessageType.ERROR]), 1)
 
     def test_job_cmd(self):
         args = Argument.from_input(TestItem.JOB_CMD.value)
@@ -239,7 +240,7 @@ class TestArgument(unittest.TestCase):
     def test_job_time_err(self):
         with self.assertRaises(SystemExit):
             Argument.from_input(TestItem.JOB_TIME_ERR.value)
-        self.assertEqual(len(MessageHandler().error_list), 2)
+        self.assertEqual(len(MessageHandler().msg[MessageType.ERROR]), 2)
 
     def test_job_start(self):
         args = Argument.from_input(TestItem.JOB_START.value)
@@ -409,13 +410,13 @@ class TestArgument(unittest.TestCase):
     def test_kill_user_err(self, mock_input):
         with self.assertRaises(SystemExit):
             Argument.from_input(TestItem.KILL_USER_ERR.value)
-        self.assertEqual(len(MessageHandler().error_list), 1)
+        self.assertEqual(len(MessageHandler().msg[MessageType.ERROR]), 1)
 
     @patch("builtins.input", return_value="y")
     def test_kill_all_err(self, mock_input):
         with self.assertRaises(SystemExit):
             Argument.from_input(TestItem.KILL_ALL_ERR.value)
-        self.assertEqual(len(MessageHandler().error_list), 1)
+        self.assertEqual(len(MessageHandler().msg[MessageType.ERROR]), 1)
 
     @patch("builtins.input", return_value="y")
     def test_kill_pid(self, mock_input):
@@ -432,7 +433,7 @@ class TestArgument(unittest.TestCase):
     def test_kill_pid_err(self, mock_input):
         with self.assertRaises(SystemExit):
             Argument.from_input(TestItem.JOB_PID_ERR.value)
-        self.assertEqual(len(MessageHandler().error_list), 1)
+        self.assertEqual(len(MessageHandler().msg[MessageType.ERROR]), 1)
 
     @patch("builtins.input", return_value="y")
     def test_kill_cmd(self, mock_input):
@@ -460,7 +461,7 @@ class TestArgument(unittest.TestCase):
     def test_kill_time_err(self, mock_input):
         with self.assertRaises(SystemExit):
             Argument.from_input(TestItem.JOB_TIME_ERR.value)
-        self.assertEqual(len(MessageHandler().error_list), 2)
+        self.assertEqual(len(MessageHandler().msg[MessageType.ERROR]), 2)
 
     @patch("builtins.input", return_value="y")
     def test_kill_start(self, mock_input):
@@ -480,7 +481,7 @@ class TestArgument(unittest.TestCase):
             option=Option.list
         )
         self.assertEqual(args, true_args)
-        self.assertEqual(len(MessageHandler().warning_list), 1)
+        self.assertEqual(len(MessageHandler().msg[MessageType.WARNING]), 1)
 
     def test_machine_machine(self):
         args = Argument.from_input(TestItem.MACHINE_MACHINE.value)
@@ -490,7 +491,7 @@ class TestArgument(unittest.TestCase):
             group=["tenet"]
         )
         self.assertEqual(args, true_args)
-        self.assertEqual(len(MessageHandler().warning_list), 1)
+        self.assertEqual(len(MessageHandler().msg[MessageType.WARNING]), 1)
 
     def test_machine_machines(self):
         args = Argument.from_input(TestItem.MACHINE_MACHINES.value)
@@ -500,7 +501,7 @@ class TestArgument(unittest.TestCase):
             group=["tenet", "kuda"]
         )
         self.assertEqual(args, true_args)
-        self.assertEqual(len(MessageHandler().warning_list), 1)
+        self.assertEqual(len(MessageHandler().msg[MessageType.WARNING]), 1)
 
     def test_machine_group(self):
         args = Argument.from_input(TestItem.MACHINE_GROUP.value)
@@ -509,7 +510,7 @@ class TestArgument(unittest.TestCase):
             group=["kuda"]
         )
         self.assertEqual(args, true_args)
-        self.assertEqual(len(MessageHandler().warning_list), 1)
+        self.assertEqual(len(MessageHandler().msg[MessageType.WARNING]), 1)
 
     def test_machine_machine_group(self):
         args = Argument.from_input(TestItem.MACHINE_MACHINE_GROUP.value)
@@ -519,7 +520,7 @@ class TestArgument(unittest.TestCase):
             group=["tenet"]
         )
         self.assertEqual(args, true_args)
-        self.assertEqual(len(MessageHandler().warning_list), 1)
+        self.assertEqual(len(MessageHandler().msg[MessageType.WARNING]), 1)
 
     def test_machine_machine_group_suppress(self):
         args = Argument.from_input(TestItem.MACHINE_MACHINE_GROUP_SUPPRESS.value)
@@ -529,7 +530,7 @@ class TestArgument(unittest.TestCase):
             group=["tenet", "xenet"]
         )
         self.assertEqual(args, true_args)
-        self.assertEqual(len(MessageHandler().warning_list), 2)
+        self.assertEqual(len(MessageHandler().msg[MessageType.WARNING]), 2)
 
     ####################################### Option all ########################################
     def test_all(self):
@@ -540,7 +541,7 @@ class TestArgument(unittest.TestCase):
             user=None
         )
         self.assertEqual(args, true_args)
-        self.assertEqual(len(MessageHandler().warning_list), 1)
+        self.assertEqual(len(MessageHandler().msg[MessageType.WARNING]), 1)
 
     def test_all_machine(self):
         args = Argument.from_input(TestItem.ALL_MACHINE.value)
@@ -552,7 +553,7 @@ class TestArgument(unittest.TestCase):
             group=["tenet"]
         )
         self.assertEqual(args, true_args)
-        self.assertEqual(len(MessageHandler().warning_list), 1)
+        self.assertEqual(len(MessageHandler().msg[MessageType.WARNING]), 1)
 
     def test_all_machines(self):
         args = Argument.from_input(TestItem.ALL_MACHINES.value)
@@ -564,7 +565,7 @@ class TestArgument(unittest.TestCase):
             group=["tenet", "kuda"]
         )
         self.assertEqual(args, true_args)
-        self.assertEqual(len(MessageHandler().warning_list), 1)
+        self.assertEqual(len(MessageHandler().msg[MessageType.WARNING]), 1)
 
     def test_all_group(self):
         args = Argument.from_input(TestItem.ALL_GROUP.value)
@@ -575,7 +576,7 @@ class TestArgument(unittest.TestCase):
             group=["kuda"]
         )
         self.assertEqual(args, true_args)
-        self.assertEqual(len(MessageHandler().warning_list), 1)
+        self.assertEqual(len(MessageHandler().msg[MessageType.WARNING]), 1)
 
     def test_all_machine_group(self):
         args = Argument.from_input(TestItem.ALL_MACHINE_GROUP.value)
@@ -587,7 +588,7 @@ class TestArgument(unittest.TestCase):
             group=["tenet"]
         )
         self.assertEqual(args, true_args)
-        self.assertEqual(len(MessageHandler().warning_list), 1)
+        self.assertEqual(len(MessageHandler().msg[MessageType.WARNING]), 1)
 
     def test_all_machine_group_suppress(self):
         args = Argument.from_input(TestItem.ALL_MACHINE_GROUP_SUPPRESS.value)
@@ -599,7 +600,7 @@ class TestArgument(unittest.TestCase):
             group=["tenet", "xenet"]
         )
         self.assertEqual(args, true_args)
-        self.assertEqual(len(MessageHandler().warning_list), 2)
+        self.assertEqual(len(MessageHandler().msg[MessageType.WARNING]), 2)
 
     ######################################## Option me ########################################
     def test_me(self):
@@ -608,7 +609,7 @@ class TestArgument(unittest.TestCase):
             option=Option.job
         )
         self.assertEqual(args, true_args)
-        self.assertEqual(len(MessageHandler().warning_list), 1)
+        self.assertEqual(len(MessageHandler().msg[MessageType.WARNING]), 1)
 
     def test_me_machine(self):
         args = Argument.from_input(TestItem.ME_MACHINE.value)
@@ -618,7 +619,7 @@ class TestArgument(unittest.TestCase):
             group=["tenet"]
         )
         self.assertEqual(args, true_args)
-        self.assertEqual(len(MessageHandler().warning_list), 1)
+        self.assertEqual(len(MessageHandler().msg[MessageType.WARNING]), 1)
 
     def test_me_machines(self):
         args = Argument.from_input(TestItem.ME_MACHINES.value)
@@ -628,7 +629,7 @@ class TestArgument(unittest.TestCase):
             group=["tenet", "kuda"]
         )
         self.assertEqual(args, true_args)
-        self.assertEqual(len(MessageHandler().warning_list), 1)
+        self.assertEqual(len(MessageHandler().msg[MessageType.WARNING]), 1)
 
     def test_me_group(self):
         args = Argument.from_input(TestItem.ME_GROUP.value)
@@ -637,7 +638,7 @@ class TestArgument(unittest.TestCase):
             group=["kuda"]
         )
         self.assertEqual(args, true_args)
-        self.assertEqual(len(MessageHandler().warning_list), 1)
+        self.assertEqual(len(MessageHandler().msg[MessageType.WARNING]), 1)
 
     def test_me_machine_group(self):
         args = Argument.from_input(TestItem.ME_MACHINE_GROUP.value)
@@ -647,7 +648,7 @@ class TestArgument(unittest.TestCase):
             group=["tenet"]
         )
         self.assertEqual(args, true_args)
-        self.assertEqual(len(MessageHandler().warning_list), 1)
+        self.assertEqual(len(MessageHandler().msg[MessageType.WARNING]), 1)
 
     def test_me_machine_group_suppress(self):
         args = Argument.from_input(TestItem.ME_MACHINE_GROUP_SUPPRESS.value)
@@ -657,7 +658,7 @@ class TestArgument(unittest.TestCase):
             group=["tenet", "xenet"]
         )
         self.assertEqual(args, true_args)
-        self.assertEqual(len(MessageHandler().warning_list), 2)
+        self.assertEqual(len(MessageHandler().msg[MessageType.WARNING]), 2)
 
     ####################################### Option kill #######################################
     @patch("builtins.input", return_value="y")
@@ -669,7 +670,7 @@ class TestArgument(unittest.TestCase):
             pid=["1234"]
         )
         self.assertEqual(args, true_args)
-        self.assertEqual(len(MessageHandler().warning_list), 1)
+        self.assertEqual(len(MessageHandler().msg[MessageType.WARNING]), 1)
 
     @patch("builtins.input", return_value="y")
     def test_kills(self, mock_input):
@@ -680,7 +681,7 @@ class TestArgument(unittest.TestCase):
             pid=["1234", "5678"]
         )
         self.assertEqual(args, true_args)
-        self.assertEqual(len(MessageHandler().warning_list), 1)
+        self.assertEqual(len(MessageHandler().msg[MessageType.WARNING]), 1)
 
     ##################################### Option killall ######################################
     @patch("builtins.input", return_value="y")
@@ -690,7 +691,7 @@ class TestArgument(unittest.TestCase):
             option=Option.KILL
         )
         self.assertEqual(args, true_args)
-        self.assertEqual(len(MessageHandler().warning_list), 1)
+        self.assertEqual(len(MessageHandler().msg[MessageType.WARNING]), 1)
 
     @patch("builtins.input", return_value="y")
     def test_killall_machine(self, mock_input):
@@ -701,7 +702,7 @@ class TestArgument(unittest.TestCase):
             group=["tenet"]
         )
         self.assertEqual(args, true_args)
-        self.assertEqual(len(MessageHandler().warning_list), 1)
+        self.assertEqual(len(MessageHandler().msg[MessageType.WARNING]), 1)
 
     @patch("builtins.input", return_value="y")
     def test_killall_machines(self, mock_input):
@@ -712,7 +713,7 @@ class TestArgument(unittest.TestCase):
             group=["tenet", "kuda"]
         )
         self.assertEqual(args, true_args)
-        self.assertEqual(len(MessageHandler().warning_list), 1)
+        self.assertEqual(len(MessageHandler().msg[MessageType.WARNING]), 1)
 
     @patch("builtins.input", return_value="y")
     def test_killall_group(self, mock_input):
@@ -722,7 +723,7 @@ class TestArgument(unittest.TestCase):
             group=["kuda"]
         )
         self.assertEqual(args, true_args)
-        self.assertEqual(len(MessageHandler().warning_list), 1)
+        self.assertEqual(len(MessageHandler().msg[MessageType.WARNING]), 1)
 
     @patch("builtins.input", return_value="y")
     def test_killall_machine_group(self, mock_input):
@@ -733,7 +734,7 @@ class TestArgument(unittest.TestCase):
             group=["tenet"]
         )
         self.assertEqual(args, true_args)
-        self.assertEqual(len(MessageHandler().warning_list), 1)
+        self.assertEqual(len(MessageHandler().msg[MessageType.WARNING]), 1)
 
     @patch("builtins.input", return_value="y")
     def test_killall_machine_group_suppress(self, mock_input):
@@ -744,13 +745,13 @@ class TestArgument(unittest.TestCase):
             group=["tenet", "xenet"]
         )
         self.assertEqual(args, true_args)
-        self.assertEqual(len(MessageHandler().warning_list), 2)
+        self.assertEqual(len(MessageHandler().msg[MessageType.WARNING]), 2)
 
     @patch("builtins.input", return_value="y")
     def test_killall_user_err(self, mock_input):
         with self.assertRaises(SystemExit):
             Argument.from_input(TestItem.KILLALL_USER_ERR.value)
-        self.assertEqual(len(MessageHandler().error_list), 1)
+        self.assertEqual(len(MessageHandler().msg[MessageType.ERROR]), 1)
 
     ################################### Option killmachine ####################################
     @patch("builtins.input", return_value="y")
@@ -761,7 +762,7 @@ class TestArgument(unittest.TestCase):
             machine=["tenet1"]
         )
         self.assertEqual(args, true_args)
-        self.assertEqual(len(MessageHandler().warning_list), 1)
+        self.assertEqual(len(MessageHandler().msg[MessageType.WARNING]), 1)
 
     ##################################### Option killthis #####################################
     @patch("builtins.input", return_value="y")
@@ -772,7 +773,7 @@ class TestArgument(unittest.TestCase):
             command="python test.py"
         )
         self.assertEqual(args, true_args)
-        self.assertEqual(len(MessageHandler().warning_list), 1)
+        self.assertEqual(len(MessageHandler().msg[MessageType.WARNING]), 1)
 
     @patch("builtins.input", return_value="y")
     def test_killthis_machine(self, mock_input):
@@ -784,7 +785,7 @@ class TestArgument(unittest.TestCase):
             command="python test.py"
         )
         self.assertEqual(args, true_args)
-        self.assertEqual(len(MessageHandler().warning_list), 1)
+        self.assertEqual(len(MessageHandler().msg[MessageType.WARNING]), 1)
 
     @patch("builtins.input", return_value="y")
     def test_killthis_machines(self, mock_input):
@@ -796,7 +797,7 @@ class TestArgument(unittest.TestCase):
             command="python test.py"
         )
         self.assertEqual(args, true_args)
-        self.assertEqual(len(MessageHandler().warning_list), 1)
+        self.assertEqual(len(MessageHandler().msg[MessageType.WARNING]), 1)
 
     @patch("builtins.input", return_value="y")
     def test_killthis_group(self, mock_input):
@@ -807,7 +808,7 @@ class TestArgument(unittest.TestCase):
             command="python test.py"
         )
         self.assertEqual(args, true_args)
-        self.assertEqual(len(MessageHandler().warning_list), 1)
+        self.assertEqual(len(MessageHandler().msg[MessageType.WARNING]), 1)
 
     @patch("builtins.input", return_value="y")
     def test_killthis_machine_group(self, mock_input):
@@ -819,7 +820,7 @@ class TestArgument(unittest.TestCase):
             command="python test.py"
         )
         self.assertEqual(args, true_args)
-        self.assertEqual(len(MessageHandler().warning_list), 1)
+        self.assertEqual(len(MessageHandler().msg[MessageType.WARNING]), 1)
 
     @patch("builtins.input", return_value="y")
     def test_killthis_machine_group_suppress(self, mock_input):
@@ -831,7 +832,7 @@ class TestArgument(unittest.TestCase):
             command="python test.py"
         )
         self.assertEqual(args, true_args)
-        self.assertEqual(len(MessageHandler().warning_list), 2)
+        self.assertEqual(len(MessageHandler().msg[MessageType.WARNING]), 2)
 
     #################################### Option killbefore ####################################
     @patch("builtins.input", return_value="y")
@@ -842,7 +843,7 @@ class TestArgument(unittest.TestCase):
             time=["1h", "30m"]
         )
         self.assertEqual(args, true_args)
-        self.assertEqual(len(MessageHandler().warning_list), 1)
+        self.assertEqual(len(MessageHandler().msg[MessageType.WARNING]), 1)
 
     @patch("builtins.input", return_value="y")
     def test_killbefore_machine(self, mock_input):
@@ -854,7 +855,7 @@ class TestArgument(unittest.TestCase):
             time=["1h", "30m"]
         )
         self.assertEqual(args, true_args)
-        self.assertEqual(len(MessageHandler().warning_list), 1)
+        self.assertEqual(len(MessageHandler().msg[MessageType.WARNING]), 1)
 
     @patch("builtins.input", return_value="y")
     def test_killbefore_machines(self, mock_input):
@@ -866,7 +867,7 @@ class TestArgument(unittest.TestCase):
             time=["1h", "30m"]
         )
         self.assertEqual(args, true_args)
-        self.assertEqual(len(MessageHandler().warning_list), 1)
+        self.assertEqual(len(MessageHandler().msg[MessageType.WARNING]), 1)
 
     @patch("builtins.input", return_value="y")
     def test_killbefore_group(self, mock_input):
@@ -877,7 +878,7 @@ class TestArgument(unittest.TestCase):
             time=["1h", "30m"]
         )
         self.assertEqual(args, true_args)
-        self.assertEqual(len(MessageHandler().warning_list), 1)
+        self.assertEqual(len(MessageHandler().msg[MessageType.WARNING]), 1)
 
     @patch("builtins.input", return_value="y")
     def test_killbefore_machine_group(self, mock_input):
@@ -889,7 +890,7 @@ class TestArgument(unittest.TestCase):
             time=["1h", "30m"]
         )
         self.assertEqual(args, true_args)
-        self.assertEqual(len(MessageHandler().warning_list), 1)
+        self.assertEqual(len(MessageHandler().msg[MessageType.WARNING]), 1)
 
     @patch("builtins.input", return_value="y")
     def test_killbefore_machine_group_suppress(self, mock_input):
@@ -901,7 +902,7 @@ class TestArgument(unittest.TestCase):
             time=["1h", "30m"]
         )
         self.assertEqual(args, true_args)
-        self.assertEqual(len(MessageHandler().warning_list), 2)
+        self.assertEqual(len(MessageHandler().msg[MessageType.WARNING]), 2)
 
 
 if __name__ == "__main__":

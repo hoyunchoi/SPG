@@ -1,5 +1,6 @@
 from enum import Enum
 
+
 class TestItem(Enum):
     # silent
     SILENT_USER = "-s user"

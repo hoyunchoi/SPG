@@ -291,31 +291,21 @@ class GPUMachine(Machine):
 
         # First two lines of process list are column names
         for process in process_list[2:]:
-            (
-                gpu_idx,
-                pid,
-                _,
-                gpu_percent,
-                vram_percent,
-                _,
-                _,
-                vram_use,
-                _,
-            ) = process.strip().split()
+            process_info = process.strip().split()
+            gpu_idx = process_info[0]
+            pid = process_info[1]
+            gpu_percent = process_info[3]
+            vram_use = process_info[7]
 
             # When no information is detected, nvidia-smi returns "-"
             if pid == "-":
-                self.num_free_gpu += (
-                    1  # num_free_gpu is updated regardless of user_name
-                )
+                # num_free_gpu is updated regardless of user_name
+                self.num_free_gpu += 1
                 continue
-            vram_use = get_mem_with_unit(vram_use, "MB")
             if gpu_percent == "-":
                 gpu_percent = "0"
-            if vram_percent == "-":
-                vram_percent = (
-                    f"{float(vram_use[:-2]) / float(self.vram[:-1]) * 100.0:.0f}"
-                )
+            vram_use = get_mem_with_unit(vram_use, "MB")
+            vram_percent = f"{float(vram_use[:-2]) / float(self.vram[:-1]) * 100.0:.0f}"
 
             # Get 'ps' information from PID of ns_info
             ps_info_list = (

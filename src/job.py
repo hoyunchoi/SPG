@@ -1,8 +1,9 @@
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 
+from .ram import Ram
 from .spgio import MessageHandler, Printer
-from .utils import get_mem_with_unit, ps_time_to_seconds
+from .utils import ps_time_to_seconds
 
 
 @dataclass
@@ -28,21 +29,25 @@ class Job(ABC):
         (
             self.user_name,  # Name of user who is reponsible
             self.state,  # Current state Ex) R, S, D, ...
-            self.pid,  # Process ID
-            self.sid,  # Process ID of session leader
-            self.cpu_percent,  # Single core utilization percentage
-            self.ram_percent,  # Memory utilization percentage
-            self.ram_use,  # Absolute value of ram utilization
+            pid,  # Process ID
+            sid,  # Process ID of session leader
+            cpu_percent,  # Single core utilization percentage
+            ram_percent,  # Memory utilization percentage
+            ram_use,  # Absolute value of ram utilization
             self.time,  # Cumulative CPU time from start
             self.start,  # Starting time or date of format [DD-]HH:MM:SS
-            *self.cmd,  # Running command
+            *cmd,  # Running command
         ) = info.strip().split()
 
-        # Change to proper unit
-        self.ram_use = get_mem_with_unit(self.ram_use, "KB")
+        # Change to proper data type
+        self.pid = int(pid)
+        self.sid = int(sid)
+        self.cpu_percent = float(cpu_percent)
+        self.ram_percent = float(ram_percent)
+        self.ram_use = Ram.from_string(f"{ram_use}KB")
 
         # Command to single line
-        self.cmd = " ".join(self.cmd)
+        self.cmd = " ".join(cmd)
 
     ########################## Get Line Format Information for Print ##########################
     @abstractmethod
@@ -79,23 +84,20 @@ class Job(ABC):
         ]
 
         # Filter job by exception
-        for exception in scan_mode_exception:
-            if exception in self.cmd:
-                return False
+        if any(map(lambda exception: exception in self.cmd, scan_mode_exception)):
+            return False
+        # for exception in scan_mode_exception:
+        #     if exception in self.cmd:
+        #         return False
 
         # If filterd job has 20+% cpu usage, count it as important regardless of it's state
-        if float(self.cpu_percent) > 20.0:
+        if self.cpu_percent > 20.0:
             return True
 
         match list(self.state):
             case ["R", *_]:
                 # State is 'R': Filter job by cpu usage and running time
-                if (float(self.cpu_percent) > 5.0) or (
-                    ps_time_to_seconds(self.time) > 1
-                ):
-                    return True
-                else:
-                    return False
+                return (self.cpu_percent > 5.0) or (ps_time_to_seconds(self.time) > 1)
             case ["D", *_]:
                 # State is 'D'
                 return True
@@ -109,7 +111,7 @@ class Job(ABC):
         # State is at S state with lower cpu usage
         return False
 
-    def match(self, condition: JobCondition | None) -> bool:
+    def match_condition(self, condition: JobCondition | None) -> bool:
         """Check if this job fulfills the given condition"""
         # When no condition is given, every job matchs to the condition
         if condition is None:
@@ -139,59 +141,55 @@ class Job(ABC):
 
 class CPUJob(Job):
     def __format__(self, format_spec: str) -> str:
-        job_info = self.pid
+        if format_spec != "info":
+            return f"{self.pid}"
 
-        if format_spec == "info":
-            job_info = Printer.job_info_format.format(
-                self.machine_name,
-                self.user_name,
-                self.state,
-                self.pid,
-                self.cpu_percent,
-                self.ram_percent,
-                self.ram_use,
-                self.time,
-                self.start,
-                self.cmd,
-            )
-
-        return job_info
+        return Printer.job_info_format.format(
+            self.machine_name,
+            self.user_name,
+            self.state,
+            self.pid,
+            f"{self.cpu_percent:.1f}",
+            f"{self.ram_percent:.1f}",
+            self.ram_use,
+            self.time,
+            self.start,
+            self.cmd,
+        )
 
 
 class GPUJob(Job):
     def __init__(
         self,
         machine_name: str,
-        info: str,
-        gpu_percent: str,
-        vram_percent: str,
-        vram_use: str,
+        ps_info: str,
+        gpu_percent: float,
+        vram_use: Ram,
+        vram_percent: float,
     ) -> None:
-        super().__init__(machine_name, info)
+        super().__init__(machine_name, ps_info)
 
         # Add aditional information about GPU
         self.gpu_percent = gpu_percent
-        self.vram_percent = vram_percent
         self.vram_use = vram_use
+        self.vram_percent = vram_percent
 
     def __format__(self, format_spec: str) -> str:
-        job_info = self.pid
+        if format_spec != "info":
+            return f"{self.pid}"
 
-        if format_spec == "info":
-            job_info = Printer.job_info_format.format(
-                self.machine_name,
-                self.user_name,
-                self.state,
-                self.pid,
-                self.gpu_percent,
-                self.vram_percent,
-                self.vram_use,
-                self.time,
-                self.start,
-                self.cmd,
-            )
-
-        return job_info
+        return Printer.job_info_format.format(
+            self.machine_name,
+            self.user_name,
+            self.state,
+            self.pid,
+            f"{self.gpu_percent:.1f}",
+            f"{self.vram_percent:.1f}",
+            self.vram_use,
+            self.time,
+            self.start,
+            self.cmd,
+        )
 
 
 if __name__ == "__main__":

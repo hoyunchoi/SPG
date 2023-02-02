@@ -33,7 +33,7 @@ def ps_from_user(user_name: str | None) -> list[str]:
                 args - command with all its arguments as a string
     """
     if user_name is None:
-        # When user name is none, take all users registered in SPG
+        # When user name is none, take all users registered in SPG except root
         user_name = ",".join(Default.USERS[1:])
     return split(
         "ps H "  # Show threads as if they were processes
@@ -43,7 +43,7 @@ def ps_from_user(user_name: str | None) -> list[str]:
     )
 
 
-def ps_from_pid(pid: str) -> list[str]:
+def ps_from_pid(pid: int) -> list[str]:
     """Same as ps_from_user but specified by pid"""
     return split(
         "ps H "  # Show threads as if they were processes
@@ -53,7 +53,7 @@ def ps_from_pid(pid: str) -> list[str]:
     )
 
 
-def pid_to_ppid(pid: str) -> list[str]:
+def pid_to_ppid(pid: int) -> list[str]:
     """ps command to find ppid(parent pid) of input process"""
     return split(
         "ps --no-headers "  # Do not print header
@@ -86,7 +86,7 @@ def free_vram() -> list[str]:
     return split(
         "nvidia-smi "
         "--query-gpu=memory.free "  # Query related to gpu: free vram in MiB
-        "--format=csv,noheader,nounits"  # Print format: csv format without header/unit(MiB)
+        "--format=csv,noheader"  # Print format: csv format without header
     )
 
 
@@ -99,7 +99,7 @@ def run_at_cwd(command: str) -> list[str]:
     )
 
 
-def kill_pid(pid: str) -> list[str]:
+def kill_pid(pid: int) -> list[str]:
     """Kill process with input pid"""
     return split(
         f"kill -15 {pid} "  # Safe kill

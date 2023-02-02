@@ -6,33 +6,37 @@ from dataclasses import dataclass, field
 from . import command
 from .default import Default
 from .job import CPUJob, GPUJob, Job, JobCondition
+from .ram import Ram
 from .spgio import MessageHandler, Printer
-from .utils import get_mem_with_unit
 
 
 @dataclass
 class Machine:
     """data class for storing machine informations"""
 
-    use: bool  # Whether to be used or not: True for use
+    use: str | bool  # Whether to be used or not: True for use
     name: str  # Name of machine. ex) tenet1
     cpu: str  # Name of cpu
     num_cpu: int  # Number of cpu cores
-    ram: str  # Size of RAM
+    ram: Ram  # Size of RAM
     comment: str  # comment of machine. Not used
     gpu: str = field(default="")  # Name of gpu (if exists)
     num_gpu: int = field(default=0)  # Number of gpus (if exists)
-    vram: str = field(default="")  # Size of VRAM per each gpu (if exists)
+    vram: Ram = field(default=Ram())  # Size of VRAM per each gpu (if exists)
 
     def __post_init__(self) -> None:
-        self.use = self.use == "True"  # Use to boolean
+        # Machine info
+        if self.use != "True":
+            self.use = False
+            return
         self.num_cpu = int(self.num_cpu)  # number of cpus to int
+        self.ram = Ram.from_string(f"{self.ram}B")
 
         # Current job/free information
         self.job_list: list[Job] = []  # List of running jobs
         self.num_job: int = 0  # Number of running jobs = len(jobList)
         self.num_free_cpu: int = 0  # Number of free cpu cores
-        self.free_ram: str = ""  # Size of free memory
+        self.free_ram = Ram()  # Size of free memory
 
         # KILL
         self.num_kill: int = 0  # Number of killed jobs
@@ -46,10 +50,10 @@ class Machine:
     ########################## Get Line Format Information for Print ##########################
     def __format__(self, format_spec: str) -> str:
         """
-            Return machine information according to format spec
-            - info: machine information
-        r    - free: machine free information
-            - otherwise: machine name
+        Return machine information according to format spec
+        - info: machine information
+        - free: machine free information
+        - otherwise: machine name
         """
         machine_info = self.name
         if format_spec.lower() == "info":
@@ -68,7 +72,7 @@ class Machine:
         return machine_info
 
     ###################################### Basic Utility ######################################
-    def _find_cmd_from_pid(self, pid: str) -> list[str]:
+    def _find_cmd_from_pid(self, pid: int) -> list[str]:
         """
         Find cmd line in job_list by pid
         There can be serveral dispatchable entities with same pid.
@@ -112,10 +116,14 @@ class Machine:
         # If there is no error return list of stdout
         return result.stdout.strip().split("\n")
 
-    def _get_free_ram(self) -> str:
+    def _get_free_ram(self) -> Ram:
         """Return absolute value of free RAM"""
-        free_ram = subprocess.check_output(self.cmd_ssh + command.free_ram(), text=True)
-        return free_ram.split("\n")[1].split()[-1]
+        free_ram = (
+            subprocess.check_output(self.cmd_ssh + command.free_ram(), text=True)
+            .split("\n")[1]
+            .split()[-1]
+        )
+        return Ram.from_string(f"{free_ram}B")  # KB, MB, GB unit
 
     def scan_job(
         self, user_name: str | None, job_condition: JobCondition | None = None
@@ -140,7 +148,7 @@ class Machine:
             if process == "":  # Skip empty string: no process
                 continue
             job = CPUJob(self.name, process)
-            if job.is_important() and job.match(job_condition):
+            if job.is_important() and job.match_condition(job_condition):
                 self.job_list.append(job)
         self.num_job = len(self.job_list)
 
@@ -157,7 +165,7 @@ class Machine:
     def run(self, cmd: str) -> None:
         """run input command at current directory"""
         # Run cmd on background
-        subprocess.Popen(self.cmd_ssh + command.run_at_cwd(cmd))
+        subprocess.run(self.cmd_ssh + command.run_at_cwd(cmd))
 
         # Print the result and save to logger
         self.message_handler.success(f"SUCCESS {self.name:<10}: run '{cmd}'")
@@ -167,10 +175,6 @@ class Machine:
 
     def kill(self, job: Job) -> None:
         """Kill job and all the process until it's session leader"""
-        # Find cmd list for print result
-        owner = job.user_name
-        cmd_list = self._find_cmd_from_pid(job.pid)
-
         # Open process for ssh
         ssh_process = subprocess.Popen(
             self.cmd_ssh,
@@ -187,9 +191,11 @@ class Machine:
         # command to kill very processes until reaching session leader
         while pid != job.sid:
             # Update pid to it's ppid
-            ppid = subprocess.check_output(
-                self.cmd_ssh + command.pid_to_ppid(pid), text=True
-            ).strip()
+            ppid = int(
+                subprocess.check_output(
+                    self.cmd_ssh + command.pid_to_ppid(pid), text=True
+                ).strip()
+            )
             cmd_kill += command.kill_pid(ppid)
             pid = ppid
 
@@ -205,6 +211,7 @@ class Machine:
             return
 
         # Print the result and log
+        cmd_list = self._find_cmd_from_pid(job.pid)
         for cmd in cmd_list:
             self.message_handler.success(f"SUCCESS {self.name:<10}: kill '{cmd}'")
             self.logger.info(f"spg kill {cmd}", extra=self.log_dict)
@@ -218,10 +225,11 @@ class GPUMachine(Machine):
         # Do same thing with normal (cpu) machine
         super().__post_init__()
         self.num_gpu = int(self.num_gpu)
+        self.vram = Ram.from_string(f"{self.vram}B")
 
         # GPU free information
         self.num_free_gpu = 0
-        self.free_vram = ""
+        self.free_vram = Ram()
 
     def __format__(self, format_spec: str) -> str:
         machine_info = super().__format__(format_spec)  # Format of (CPU) Machine
@@ -236,11 +244,11 @@ class GPUMachine(Machine):
             )
         return machine_info
 
-    def _get_free_vram(self) -> str:
+    def _get_free_vram(self) -> Ram:
         """
         Get free vram information
         When one or more gpus is free, print it's total vram
-        Otherwise, print largest available memory
+        Otherwise, print largest available vram
         """
         # When one or more gpu is free
         if self.num_free_gpu:
@@ -254,9 +262,7 @@ class GPUMachine(Machine):
         )
 
         # Get maximum free vram
-        max_free_vram = max(float(free_vram) for free_vram in free_vram_list)
-        max_free_vram *= 1.04858  # Mebibyte to Megabyte
-        return get_mem_with_unit(max_free_vram, "MB")[:-1]  # Drop byte character (B)
+        return max(map(Ram.from_string, free_vram_list))
 
     def scan_job(
         self, user_name: str | None, job_condition: JobCondition | None = None
@@ -292,20 +298,17 @@ class GPUMachine(Machine):
         # First two lines of process list are column names
         for process in process_list[2:]:
             process_info = process.strip().split()
-            gpu_idx = process_info[0]
-            pid = process_info[1]
-            gpu_percent = process_info[3]
-            vram_use = process_info[7]
+            gpu_idx = int(process_info[0])
 
             # When no information is detected, nvidia-smi returns "-"
-            if pid == "-":
+            pid = int(process_info[1].replace("-", "-1"))
+            if pid == -1:
                 # num_free_gpu is updated regardless of user_name
                 self.num_free_gpu += 1
                 continue
-            if gpu_percent == "-":
-                gpu_percent = "0"
-            vram_use = get_mem_with_unit(vram_use, "MB")
-            vram_percent = f"{float(vram_use[:-2]) / float(self.vram[:-1]) * 100.0:.0f}"
+            gpu_percent = float(process_info[3].replace("-", "0"))
+            vram_use = Ram.from_string(f"{process_info[7]}MB")
+            vram_percent = vram_use / self.vram * 100.0
 
             # Get 'ps' information from PID of ns_info
             ps_info_list = (
@@ -320,12 +323,12 @@ class GPUMachine(Machine):
             for ps_info in filter_by_user(ps_info_list):
                 job = GPUJob(
                     machine_name=f"{self.name}-GPU{gpu_idx}",
-                    info=ps_info,
+                    ps_info=ps_info,
                     gpu_percent=gpu_percent,
-                    vram_percent=vram_percent,
                     vram_use=vram_use,
+                    vram_percent=vram_percent,
                 )
-                if job.match(job_condition):
+                if job.match_condition(job_condition):
                     self.job_list.append(job)
                     break  # Single job per pid
         self.num_job = len(self.job_list)

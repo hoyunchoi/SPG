@@ -3,11 +3,13 @@ import textwrap
 from argparse import Action, ArgumentParser, Namespace, RawTextHelpFormatter
 from collections.abc import Sequence
 from dataclasses import dataclass
+from enum import Enum, auto
 
 from .default import Default
-from .option import Option
 from .spgio import MessageHandler
 from .utils import get_machine_group, input_time_to_seconds, yes_no
+from .option import Option
+
 
 
 class CommandAction(Action):

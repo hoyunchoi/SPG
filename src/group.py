@@ -41,9 +41,7 @@ class Group:
         self.num_free_gpu: int = 0  # Number of free gpu cors in the group
 
         # Current informations
-        self.busy_machine_list: list[
-            Machine
-        ] = []  # List of machines having running job
+        self.busy_machine_list: list[Machine] = []  # List of machines with running job
         self.num_job: int = 0  # Number of running jobs
 
         # KILL
@@ -60,12 +58,13 @@ class Group:
 
         # Initialize dictionary of machine
         for machine_name, machine_info in machine_dict.items():
-            if machine_info.get("gpu") is None:
-                # When no gpu keyword, machine is cpu machine
-                machine = Machine(**machine_info)
-            else:
-                # Otherwise, machine is gpu machine
-                machine = GPUMachine(**machine_info)
+            # When machine info has gpu as key, machine is gpu machine
+            # Otherwise, machine is cpu machine
+            machine = (
+                GPUMachine(**machine_info)
+                if "gpu" in machine_info
+                else Machine(**machine_info)
+            )
 
             # Only store machine explicitly marked as "use = True"
             if machine.use:
@@ -144,9 +143,9 @@ class Group:
         def filter_free(machine_list: abc.Iterable[Machine]) -> abc.Iterable[Machine]:
             """Return iterable of free machine"""
             for machine in machine_list:
-                if (type(machine) == Machine and machine.num_free_cpu) or (
-                    isinstance(machine, GPUMachine) and machine.num_free_gpu
-                ):
+                if isinstance(machine, GPUMachine) and machine.num_free_gpu:
+                    yield machine
+                elif machine.num_free_cpu:
                     yield machine
 
         free_machine_list = [
@@ -209,7 +208,7 @@ class Group:
             ) = self._get_free_info()
             self.num_free_machine = len(self.free_machine_list)
 
-    ##################################### Run or Kill Job #####################################
+    ##################################### Run Jobs #####################################
     def runs(self, cmd_queue: deque[str], max_calls: int, limit: int) -> deque[str]:
         """
         Run jobs in cmd_queue
@@ -222,11 +221,11 @@ class Group:
         stop = False
         with cf.ThreadPoolExecutor(max_workers=50) as executor:
             for machine in self.free_machine_list:
-                if isinstance(machine, GPUMachine):
-                    # For gpu machine, number of free gpu should be counted
-                    available = min(machine.num_free_cpu, machine.num_free_gpu)
-                else:
-                    available = machine.num_free_cpu
+                available = (
+                    machine.num_free_gpu
+                    if isinstance(machine, GPUMachine)
+                    else machine.num_free_cpu
+                )
                 for _ in range(min(available, limit)):
                     cmd = cmd_queue.popleft().strip()
                     executor.submit(machine.run, cmd)

@@ -14,34 +14,6 @@ def get_machine_index(name: str) -> int:
     return int(re.sub("[^0-9]", "", name))
 
 
-def get_mem_with_unit(mem: str | float, unit: str) -> str:
-    """
-    Change memory in KB unit to MB or GB
-    Args
-        mem: memory utilization in KB unit
-        unit: Unit of input mem
-    Return
-        memory utilization in MB or GB unit
-    """
-    if isinstance(mem, str):
-        mem = float(mem)
-    unit_list = ["KB", "MB", "GB", "TB"]
-    try:
-        idx = unit_list.index(unit)
-    except ValueError:
-        from .spgio import MessageHandler
-
-        MessageHandler().error(f"Invalid memory unit: {unit}")
-        exit()
-
-    for unit in unit_list[idx:]:
-        if mem < 1000.0:
-            break
-        mem /= 1000.0
-
-    return f"{mem:.1f}{unit}"
-
-
 def input_time_to_seconds(time: list[str]) -> int:
     """Input time format to seconds"""
     unit_to_second = {"s": 1, "m": 60, "h": 3600, "d": 86400, "w": 604800}

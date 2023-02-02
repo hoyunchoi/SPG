@@ -1,15 +1,13 @@
-#! /usr/bin/python
-
 import concurrent.futures as cf
 from collections import Counter, abc, deque
 from pathlib import Path
+from typing import cast
 
-from .argument import Argument
+from .argument import Argument, Option
 from .default import Default
 from .group import Group
 from .job import JobCondition
 from .machine import Machine
-from .option import Option
 from .spgio import MessageHandler, Printer
 from .utils import get_machine_group, get_machine_index
 
@@ -32,7 +30,7 @@ class SPG:
         # Prune group dictionary and corresponding machine dictionary
         if args.option is Option.runs:
             # args.group is str and has 'start_end' attribute
-            assert isinstance(args.group, str)
+            args.group = cast(str, args.group)
             self.group_dict = {args.group: self.group_dict[args.group]}
             if args.start_end is not None:
                 start, end = args.start_end
@@ -40,13 +38,13 @@ class SPG:
                 group.machine_dict = {
                     machine.name: machine
                     for machine in group.machine_dict.values()
-                    if (start <= get_machine_index(machine.name) <= end)
+                    if start <= get_machine_index(machine.name) <= end
                 }
                 group.update_summary()
 
         elif isinstance(args.machine, list):
             # args.machine is specified, so as args.group
-            assert isinstance(args.group, list)
+            args.group = cast(list[str], args.group)
             self.group_dict = {
                 group_name: self.group_dict[group_name] for group_name in args.group
             }
@@ -66,8 +64,9 @@ class SPG:
 
         # printer and message handlers
         if args.option is Option.user:
-            assert not isinstance(args.group, str)
-            self.printer = Printer(args.option, args.silent, args.group)
+            self.printer = Printer(
+                args.option, args.silent, cast(list[str] | None, args.group)
+            )
         else:
             self.printer = Printer(args.option, args.silent)
 
@@ -256,8 +255,7 @@ class SPG:
     def run(self) -> None:
         """Run a job"""
         # Find machine
-        assert isinstance(self.args.machine, str)
-        machine = self._find_machine_from_name(self.args.machine)
+        machine = self._find_machine_from_name(cast(str, self.args.machine))
 
         # Scanning
         machine.scan_job(user_name=None)
@@ -269,8 +267,7 @@ class SPG:
             )
 
         # Run a job
-        assert self.args.command is not None
-        machine.run(self.args.command)
+        machine.run(cast(str, self.args.command))
 
     def runs(self, max_calls: int = 50) -> None:
         """Run several jobs"""
@@ -278,8 +275,7 @@ class SPG:
         group = next(iter(self.group_dict.values()))
 
         # Read command file
-        assert self.args.command is not None
-        cmd_file = Path(self.args.command).resolve()
+        cmd_file = Path(cast(str, self.args.command)).resolve()
         with open(cmd_file, "r") as f:
             commands = f.read().splitlines()
         cmd_queue = deque(
@@ -289,7 +285,6 @@ class SPG:
 
         if self.args.force:
             cmd_queue = group.force_runs(cmd_queue, max_calls, self.args.limit)
-            pass
         else:
             # Scanning
             self.scan_job([group], user_name=None)
@@ -302,7 +297,7 @@ class SPG:
         # Remove the input file and re-write with remaining command queue
         cmd_file.unlink()
         with open(cmd_file, "w") as f:
-            f.write("\n".join(str(cmd) for cmd in cmd_queue))
+            f.write("\n".join(cmd for cmd in cmd_queue))
 
         self.message_handler.sort()
         self.message_handler.success(f"\nRun {num_cmd_before - num_cmd_after} jobs")

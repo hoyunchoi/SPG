@@ -36,10 +36,10 @@ class Default(metaclass=Singleton):
     ]
 
     # Machine group names
-    GROUP: list[str] = ["tenet", "xenet", "kuda"]
+    GROUP = ["tenet", "xenet", "kuda"]
 
     # Root directory for SPG
-    ROOT_DIR = Path("/root/spg")
+    SPG_DIR = Path(__file__).parents[1]
     ###########################################################################################
 
     def __init__(self) -> None:
@@ -65,7 +65,7 @@ class Default(metaclass=Singleton):
         Machine group files of each user group is at directory named after user group
         """
         return {
-            group: Default.ROOT_DIR / f"machine/{group}.json" for group in Default.GROUP
+            group: Default.SPG_DIR / f"machine/{group}.json" for group in Default.GROUP
         }
 
 

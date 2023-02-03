@@ -314,13 +314,17 @@ class SPG:
         self.scan_job(self.group_dict.values(), self.args.user, job_condition)
         if not self.printer.silent:
             self.printer.print()
+        # Scan pids to be kill inlcuding parents process of target job
+        with cf.ThreadPoolExecutor(max_workers=61) as executor:
+            for group in self.group_dict.values():
+                for machine in group.busy_machine_list:
+                    executor.map(machine.scan_killed_pids, machine.job_list)
 
         # Kill jobs
         with cf.ThreadPoolExecutor(max_workers=61) as executor:
             for group in self.group_dict.values():
                 for machine in group.busy_machine_list:
-                    for job in machine.job_list:
-                        executor.submit(machine.kill, job)
+                    executor.submit(machine.kill)
 
         # Summarize the kill result
         num_kill = 0

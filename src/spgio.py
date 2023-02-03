@@ -237,7 +237,7 @@ def configure_logger() -> None:
 
     # Define handler of logger: Limit maximum log file size as 100MB
     handler = UserWritableRotatingFileHandler(
-        Default.ROOT_DIR / "spg.log", maxBytes=100 * 1024 * 1024, backupCount=1
+        Default.SPG_DIR / "spg.log", maxBytes=100 * 1024 * 1024, backupCount=1
     )
     handler.setFormatter(formatter)
 

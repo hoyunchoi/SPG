@@ -39,6 +39,8 @@ class Machine:
         self.free_ram = Ram()  # Size of free memory
 
         # KILL
+        # pid of jobs to be killed, max depth is 10
+        self.kill_pid_tree: dict[int, set[int]] = {i: set() for i in range(10)}
         self.num_kill: int = 0  # Number of killed jobs
 
         # Default variables
@@ -72,7 +74,7 @@ class Machine:
         return machine_info
 
     ###################################### Basic Utility ######################################
-    def _find_cmd_from_pid(self, pid: int) -> list[str]:
+    def _find_cmd_from_pid(self, pid: int) -> str:
         """
         Find cmd line in job_list by pid
         There can be serveral dispatchable entities with same pid.
@@ -83,14 +85,14 @@ class Machine:
             cmd: list of commands having target pid
         """
         # Find list of cmd sharing same pid
-        cmd_list = [job.cmd for job in self.job_list if job.pid == pid]
+        cmds = [job.cmd for job in self.job_list if job.pid == pid]
 
         # Job with input pid is not registered
-        if not cmd_list:
-            self.message_handler.error(f"ERROR: No such process in {self.name}: {pid}")
+        if len(cmds) != 1:
+            self.message_handler.error(f"ERROR: Problem at identifying process in {self.name}: {pid=}")
             exit()
 
-        return cmd_list
+        return cmds[0]
 
     ########################### Get Information of Machine Instance ###########################
     def _get_process_list(self, get_process_cmd: list[str]) -> list[str]:
@@ -173,20 +175,10 @@ class Machine:
         # Log
         self.logger.info(f"spg run {cmd}", extra=self.log_dict)
 
-    def kill(self, job: Job) -> None:
+    def scan_killed_pids(self, job: Job) -> None:
         """Kill job and all the process until it's session leader"""
-        # Open process for ssh
-        ssh_process = subprocess.Popen(
-            self.cmd_ssh,
-            stdin=subprocess.PIPE,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            text=True,
-        )
-
-        # list of kill commands that should be run at machine
-        cmd_kill = command.kill_pid(job.pid)
-        pid = job.pid
+        depth, pid = 0, job.pid
+        self.kill_pid_tree[depth].add(pid)
 
         # command to kill very processes until reaching session leader
         while pid != job.sid:
@@ -196,28 +188,42 @@ class Machine:
                     self.cmd_ssh + command.pid_to_ppid(pid), text=True
                 ).strip()
             )
-            cmd_kill += command.kill_pid(ppid)
             pid = ppid
+            depth += 1
+            self.kill_pid_tree[depth].add(pid)
+
+        # Update number of kills
+        self.num_kill += 1
+
+    def kill(self) -> None:
+        # Filter machine who has nothing to kill
+        if not self.kill_pid_tree[0]:
+            return
+
+        # stack kill command from depth=0 to higher depth
+        cmd_kill = []
+        for pids in self.kill_pid_tree.values():
+            for pid in pids:
+                cmd_kill.extend(command.kill_pid(pid))
 
         # Run kill cmd inside ssh target machine
-        _, kill_err = ssh_process.communicate(" ".join(cmd_kill))
+        kill_result = subprocess.run(
+            self.cmd_ssh + cmd_kill, capture_output=True, text=True
+        )
 
         # When error occurs, save it
-        if kill_err:
-            kill_err_list = kill_err.strip().split("\n")
+        if kill_result.stderr:
+            kill_errs = kill_result.stderr.strip().split("\n")
             self.message_handler.error(
-                "\n".join(f"ERROR from {self.name}: {err}" for err in kill_err_list)
+                "\n".join(f"ERROR from {self.name}: {err}" for err in kill_errs)
             )
             return
 
         # Print the result and log
-        cmd_list = self._find_cmd_from_pid(job.pid)
-        for cmd in cmd_list:
+        for pid in self.kill_pid_tree[0]:
+            cmd = self._find_cmd_from_pid(pid)
             self.message_handler.success(f"SUCCESS {self.name:<10}: kill '{cmd}'")
             self.logger.info(f"spg kill {cmd}", extra=self.log_dict)
-
-        # Update number of kills
-        self.num_kill += 1
 
 
 class GPUMachine(Machine):

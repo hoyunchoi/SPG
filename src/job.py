@@ -2,15 +2,15 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass
 
 from .ram import Ram
+from .seconds import Seconds
 from .spgio import MessageHandler, Printer
-from .utils import ps_time_to_seconds
 
 
 @dataclass
 class JobCondition:
-    pid: list[str] | None
+    pid: list[int] | None
     command: str | None
-    time: int | None
+    time: Seconds | None
     start: str | None
 
 
@@ -34,20 +34,19 @@ class Job(ABC):
             cpu_percent,  # Single core utilization percentage
             ram_percent,  # Memory utilization percentage
             ram_use,  # Absolute value of ram utilization
-            self.time,  # Cumulative CPU time from start
+            time,  # Cumulative CPU time from start
             self.start,  # Starting time or date of format [DD-]HH:MM:SS
-            *cmd,  # Running command
+            *command,  # Running command
         ) = info.strip().split()
 
-        # Change to proper data type
+        # Change to proper type
         self.pid = int(pid)
         self.sid = int(sid)
         self.cpu_percent = float(cpu_percent)
         self.ram_percent = float(ram_percent)
         self.ram_use = Ram.from_string(f"{ram_use}KB")
-
-        # Command to single line
-        self.cmd = " ".join(cmd)
+        self.time = Seconds.from_ps(time)
+        self.command = " ".join(command)
 
     ########################## Get Line Format Information for Print ##########################
     @abstractmethod
@@ -84,11 +83,8 @@ class Job(ABC):
         ]
 
         # Filter job by exception
-        if any(map(lambda exception: exception in self.cmd, scan_mode_exception)):
+        if any(map(lambda exception: exception in self.command, scan_mode_exception)):
             return False
-        # for exception in scan_mode_exception:
-        #     if exception in self.cmd:
-        #         return False
 
         # If filterd job has 20+% cpu usage, count it as important regardless of it's state
         if self.cpu_percent > 20.0:
@@ -97,7 +93,7 @@ class Job(ABC):
         match list(self.state):
             case ["R", *_]:
                 # State is 'R': Filter job by cpu usage and running time
-                return (self.cpu_percent > 5.0) or (ps_time_to_seconds(self.time) > 1)
+                return (self.cpu_percent > 5.0) or (self.time.value > 1)
             case ["D", *_]:
                 # State is 'D'
                 return True
@@ -112,7 +108,7 @@ class Job(ABC):
         return False
 
     def match_condition(self, condition: JobCondition | None) -> bool:
-        """Check if this job fulfills the given condition"""
+        """Check if this job meets the given condition"""
         # When no condition is given, every job matchs to the condition
         if condition is None:
             return True
@@ -122,13 +118,11 @@ class Job(ABC):
             return False
 
         # When command pattern is given, job's command should include the pattern
-        if (condition.command is not None) and (condition.command not in self.cmd):
+        if (condition.command is not None) and (condition.command not in self.command):
             return False
 
         # When time is given, job's time should be less than the time
-        if (condition.time is not None) and (
-            ps_time_to_seconds(self.time) >= condition.time
-        ):
+        if (condition.time is not None) and (self.time >= condition.time):
             return False
 
         # When start is given, job's start should be same as the argument
@@ -141,21 +135,23 @@ class Job(ABC):
 
 class CPUJob(Job):
     def __format__(self, format_spec: str) -> str:
-        if format_spec != "info":
-            return f"{self.pid}"
+        job_info = f"{self.pid}"
 
-        return Printer.job_info_format.format(
-            self.machine_name,
-            self.user_name,
-            self.state,
-            self.pid,
-            f"{self.cpu_percent:.1f}",
-            f"{self.ram_percent:.1f}",
-            self.ram_use,
-            self.time,
-            self.start,
-            self.cmd,
-        )
+        if format_spec == "info":
+            job_info = Printer.job_info_format.format(
+                self.machine_name,
+                self.user_name,
+                self.state,
+                self.pid,
+                f"{self.cpu_percent:.1f}",
+                f"{self.ram_percent:.1f}",
+                f"{self.ram_use}",
+                f"{self.time:ps}",
+                self.start,
+                self.command,
+            )
+
+        return job_info
 
 
 class GPUJob(Job):
@@ -175,22 +171,20 @@ class GPUJob(Job):
         self.vram_percent = vram_percent
 
     def __format__(self, format_spec: str) -> str:
-        if format_spec != "info":
-            return f"{self.pid}"
+        job_info = f"{self.pid}"
 
-        return Printer.job_info_format.format(
-            self.machine_name,
-            self.user_name,
-            self.state,
-            self.pid,
-            f"{self.gpu_percent:.1f}",
-            f"{self.vram_percent:.1f}",
-            self.vram_use,
-            self.time,
-            self.start,
-            self.cmd,
-        )
+        if format_spec == "info":
+            job_info = Printer.job_info_format.format(
+                self.machine_name,
+                self.user_name,
+                self.state,
+                self.pid,
+                f"{self.gpu_percent:.1f}",
+                f"{self.vram_percent:.1f}",
+                f"{self.vram_use}",
+                f"{self.time:ps}",
+                self.start,
+                self.command,
+            )
 
-
-if __name__ == "__main__":
-    print("This is module Job from SPG")
+        return job_info

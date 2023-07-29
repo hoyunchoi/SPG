@@ -1,5 +1,5 @@
 import concurrent.futures as cf
-from collections import Counter, abc, deque
+from collections import Counter, deque
 from pathlib import Path
 from typing import cast
 
@@ -8,8 +8,8 @@ from .default import Default
 from .group import Group
 from .job import JobCondition
 from .machine import Machine
+from .name import extract_alphabet
 from .spgio import MessageHandler, Printer
-from .utils import get_machine_group, get_machine_index
 
 
 class SPG:
@@ -21,131 +21,103 @@ class SPG:
         self.message_handler = MessageHandler()
 
         # Dictionary of machine group
-        group_file_dict = Default().get_group_file_dict()
-        self.group_dict: dict[str, Group] = {
-            group_name: Group(group_name, group_file)
-            for group_name, group_file in group_file_dict.items()
+        self.groups = {
+            name: Group(name, file) for name, file in Default().group_files.items()
         }
 
         # Prune group dictionary and corresponding machine dictionary
-        if args.option is Option.runs:
-            # args.group is str and has 'start_end' attribute
-            args.group = cast(str, args.group)
-            self.group_dict = {args.group: self.group_dict[args.group]}
-            if args.start_end is not None:
-                start, end = args.start_end
-                group = self.group_dict[args.group]
-                group.machine_dict = {
-                    machine.name: machine
-                    for machine in group.machine_dict.values()
-                    if start <= get_machine_index(machine.name) <= end
-                }
-                group.update_summary()
+        if args.machine is not None:
+            args.group = cast(list[str], args.group)  # Already handled in Argument
 
-        elif isinstance(args.machine, list):
-            # args.machine is specified, so as args.group
-            args.group = cast(list[str], args.group)
-            self.group_dict = {
-                group_name: self.group_dict[group_name] for group_name in args.group
+            # Match machines at pruned groups
+            machines_by_group = self._sort_machines_by_group(args.machine, args.group)
+            self.groups = {
+                name: self.groups[name].match_machines(machine_names=machines)
+                for name, machines in machines_by_group.items()
             }
-            machine_per_group = self._find_machine_per_group(args.machine, args.group)
-            # Prune machine dictionary per each groups
-            for group_name, group in self.group_dict.items():
-                group.machine_dict = {
-                    machine.name: machine for machine in machine_per_group[group_name]
-                }
-                group.update_summary()
 
-        elif isinstance(args.group, list):
+        elif args.group is not None:
             # args.machine is not specified but args.group is specified
-            self.group_dict = {
-                group_name: self.group_dict[group_name] for group_name in args.group
+            self.groups = {
+                name: self.groups[name].match_machines(start_end=args.start_end)
+                for name in args.group
             }
 
         # printer and message handlers
-        if args.option is Option.user:
-            self.printer = Printer(
-                args.option, args.silent, cast(list[str] | None, args.group)
-            )
-        else:
-            self.printer = Printer(args.option, args.silent)
+        self.printer = Printer(args.option, args.silent, args.group)
 
-    def __call__(self) -> None:
+    def __call__(self, option: Option) -> None:
         # Run SPG
-        getattr(self, self.args.option.name)()
+        getattr(self, option.name)()
 
     ###################################### Basic Utility ######################################
     def _find_group_from_name(self, group_name: str) -> Group:
         """Find group instance with it's name"""
-        try:
-            return self.group_dict[group_name]
-        except KeyError:
-            # group with input name is not registered in spg
-            self.message_handler.error(f"ERROR: No such machine group: {group_name}")
-            exit()
+        if group_name in self.groups:
+            return self.groups[group_name]
+
+        # group with input name is not registered in spg
+        self.message_handler.error(f"ERROR: No such machine group: {group_name}")
+        exit()
 
     def _find_machine_from_name(self, machine_name: str) -> Machine:
         """Find machine instance with it's name"""
         # Find group
-        group_name = get_machine_group(machine_name)
+        group_name = extract_alphabet(machine_name)
         group = self._find_group_from_name(group_name)
 
         # Find machine inside the group
-        try:
-            return group.machine_dict[machine_name]
-        except KeyError:
-            # machine with input name is not registered in the group
-            self.message_handler.error(f"ERROR: No such machine: {machine_name}")
-            exit()
+        if machine_name in group.machines:
+            return group.machines[machine_name]
 
-    def _find_machine_per_group(
-        self, machine_name_list: list[str], group_name_list: list[str]
-    ) -> dict[str, list[Machine]]:
+        # machine with input name is not registered in the group
+        self.message_handler.error(f"ERROR: No such machine: {machine_name}")
+        exit()
+
+    def _sort_machines_by_group(
+        self, machine_names: list[str], group_names: list[str]
+    ) -> dict[str, list[str]]:
         """Find list of machines per each group"""
-        machine_per_group: dict[str, list[Machine]] = {
-            group_name: [] for group_name in group_name_list
+        machines_by_group: dict[str, list[str]] = {
+            group_name: [] for group_name in group_names
         }
-        for machine_name in machine_name_list:
-            machine = self._find_machine_from_name(machine_name)
-            group_name = get_machine_group(machine_name)
-            machine_per_group[group_name].append(machine)
 
-        return machine_per_group
+        for machine_name in machine_names:
+            group_name = extract_alphabet(machine_name)
+            machines_by_group[group_name].append(machine_name)
+
+        return machines_by_group
 
     ############################## Scan Job Information and Save ##############################
-    def scan_job(
+    def scan(
         self,
-        group_list: abc.Iterable[Group],
-        user_name: str | None,
         job_condition: JobCondition | None = None,
+        include_parents: bool = False,
     ) -> None:
         """
         Scan running jobs
         Args
-            group_list: target of groups to scan
-            user_name: whose job to scan
             scan_level: refer Job.isImportant
+            include_parents: If true, also scan parents of running processes
         """
 
         def scan_group(group: Group) -> None:
-            bar = self.printer.bar_dict.get(group.name)
-            group.scan_job(user_name, bar, job_condition)
+            bar = self.printer.bars.get(group.name)
+            group.scan(self.args.user, bar, job_condition, include_parents)
 
-        if not self.printer.silent:
-            # Decorate tqdm bar when using tqdm
-            self.printer.print()
+        # Decorate tqdm bar if necessary
+        self.printer.print_line(follow_silent=True)
 
         # Define progressbar
-        for group in group_list:
-            self.printer.add_progress_bar(group.name, set(group.machine_dict))
+        for group_name, group in self.groups.items():
+            self.printer.register_progress_bar(group_name, set(group.machines))
 
         # Scan job for every groups in group list
-        with cf.ThreadPoolExecutor(max_workers=5) as executor:
-            executor.map(scan_group, group_list)
+        with cf.ThreadPoolExecutor(max_workers=len(self.groups)) as executor:
+            executor.map(scan_group, self.groups.values())
 
         # Close progressbar
-        for group in group_list:
-            self.printer.close_progress_bar(group.name)
+        self.printer.close_progress_bars()
 
     ####################################### SPG command #######################################
     def list(self) -> None:
@@ -154,111 +126,113 @@ class SPG:
         self.printer.print_first_section()
 
         # Main section
-        for group in self.group_dict.values():
-            for machine in group.machine_dict.values():
+        for group in self.groups.values():
+            for machine in group.machines.values():
                 self.printer.print(f"{machine:info}")
-            self.printer.print()
+            self.printer.print_line()
 
         # Summary
-        for group in self.group_dict.values():
+        for group in self.groups.values():
             self.printer.print(f"{group:info}")
-        self.printer.print()
+        self.printer.print_line()
 
     def free(self) -> None:
         """Print list of machine free information"""
         # Scanning
-        self.scan_job(self.group_dict.values(), user_name=None)
+        self.scan()
 
         # First section
         self.printer.print_first_section()
 
         # Main section
-        for group in self.group_dict.values():
-            for machine in group.free_machine_list:
+        for group in self.groups.values():
+            for machine in group.free_machines:
                 self.printer.print(f"{machine:free}")
             if group.num_free_machine:
-                self.printer.print()
+                self.printer.print_line()
 
         # Summary
-        for group in self.group_dict.values():
+        for group in self.groups.values():
             self.printer.print(f"{group:free}")
-        self.printer.print()
+        self.printer.print_line()
 
     def job(self) -> None:
         """Print current state of jobs"""
         job_condition = JobCondition(
             pid=self.args.pid,
             command=self.args.command,
-            time=self.args.time_seconds,
+            time=self.args.time,
             start=self.args.start,
         )
 
         # Scanning
-        self.scan_job(self.group_dict.values(), self.args.user, job_condition)
+        self.scan(job_condition)
 
         # First section
         self.printer.print_first_section()
 
         # Main section
-        for group in self.group_dict.values():
-            for machine in group.busy_machine_list:
-                for job in machine.job_list:
+        for group in self.groups.values():
+            for machine in group.busy_machines:
+                for job in machine.jobs:
                     self.printer.print(f"{job:info}")
-                self.printer.print()
+                self.printer.print_line()
 
         # Summary
-        for group in self.group_dict.values():
+        for group in self.groups.values():
             self.printer.print(f"{group:job}")
-        self.printer.print()
+        self.printer.print_line()
 
     def user(self) -> None:
         """Print job count of users per machine group"""
-        # Scanning
-        self.scan_job(self.group_dict.values(), user_name=None)
+        # Scan job for all users
+        self.scan()
 
         # Get user count
         num_job_per_user = Counter()
         num_job_per_user_per_group: dict[str, Counter[str]] = {}
-        for group in self.group_dict.values():
-            group_user_count = group.get_user_count()
-            num_job_per_user_per_group[group.name] = group_user_count
-            num_job_per_user.update(group_user_count)
+        for group in self.groups.values():
+            user_count = group.get_user_count()
+            num_job_per_user_per_group[group.name] = user_count
+            num_job_per_user.update(user_count)
 
         # First section
         self.printer.print_first_section()
 
         # Main section
-        user_format = self.printer.user_format
         for user, tot_count in num_job_per_user.items():
             self.printer.print(
-                user_format.format(
+                self.printer.user_format.format(
                     user,
                     tot_count,
-                    *tuple(
+                    *(
                         num_job_per_user_per_group[group.name].get(user, 0)
-                        for group in self.group_dict.values()
+                        for group in self.groups.values()
                     ),
                 )
             )
-        self.printer.print()
+        self.printer.print_line()
 
         # Summary
         self.printer.print(
-            user_format.format(
+            self.printer.user_format.format(
                 "total",
                 sum(num_job_per_user.values()),
-                *tuple(group.num_job for group in self.group_dict.values()),
+                *(group.num_job for group in self.groups.values()),
             )
         )
-        self.printer.print()
+        self.printer.print_line()
 
     def run(self) -> None:
         """Run a job"""
+        machine_name = cast(list[str], self.args.machine)[0]  # Already handled
+        command = cast(str, self.args.command)  # Already handled
+
         # Find machine
-        machine = self._find_machine_from_name(cast(str, self.args.machine))
+        machine = self._find_machine_from_name(machine_name)
 
         # Scanning
-        machine.scan_job(user_name=None)
+        machine.scan(user_name=None)
 
         # When no free core is detected, doule check the run command
         if not machine.num_free_cpu:
@@ -267,73 +241,66 @@ class SPG:
             )
 
         # Run a job
-        machine.run(cast(str, self.args.command))
+        machine.run(command)
 
-    def runs(self, max_calls: int = 50) -> None:
+    def runs(self, max_calls: int = Default().MAX_RUNS) -> None:
         """Run several jobs"""
-        # Find group
-        group = next(iter(self.group_dict.values()))
+        command_file = cast(str, self.args.command)  # Already handled
+        group = list(self.groups.values())[0]  # Already handled
 
         # Read command file
-        cmd_file = Path(cast(str, self.args.command)).resolve()
-        with open(cmd_file, "r") as f:
-            commands = f.read().splitlines()
-        cmd_queue = deque(
-            cmd for cmd in commands if not cmd.startswith(("#", "//", "%"))
-        )
-        num_cmd_before = len(cmd_queue)
+        with open(Path(command_file).resolve(), "r") as f:
+            cmds = f.read().splitlines()
+        commands = deque(cmd for cmd in cmds if not cmd.startswith(("#", "//", "%")))
+        num_commands_before = len(commands)
 
         if self.args.force:
-            cmd_queue = group.force_runs(cmd_queue, max_calls, self.args.limit)
+            # Force run
+            commands = group.force_runs(commands, max_calls, self.args.limit)
         else:
-            # Scanning
-            self.scan_job([group], user_name=None)
-            if not self.printer.silent:
-                self.printer.print()
-            # Run jobs
-            cmd_queue = group.runs(cmd_queue, max_calls, self.args.limit)
+            # Scan first
+            self.scan()
+            self.printer.print_line(follow_silent=True)
 
-        num_cmd_after = len(cmd_queue)
-        # Remove the input file and re-write with remaining command queue
-        cmd_file.unlink()
-        with open(cmd_file, "w") as f:
-            f.write("\n".join(cmd for cmd in cmd_queue))
+            # Run several jobs
+            commands = group.runs(commands, max_calls, self.args.limit)
+        num_commands_after = len(commands)
 
+        # Overwrite the remaining command queue
+        with open(command_file, "w") as f:
+            f.write("\n".join(command for command in commands))
+
+        # Report summary
         self.message_handler.sort()
-        self.message_handler.success(f"\nRun {num_cmd_before - num_cmd_after} jobs")
+        self.message_handler.success(
+            f"\nRun {num_commands_before - num_commands_after} jobs"
+        )
 
     def KILL(self) -> None:
         """kill all matching jobs"""
         job_condition = JobCondition(
             pid=self.args.pid,
             command=self.args.command,
-            time=self.args.time_seconds,
+            time=self.args.time,
             start=self.args.start,
         )
-        # Scanning
-        self.scan_job(self.group_dict.values(), self.args.user, job_condition)
-        if not self.printer.silent:
-            self.printer.print()
-        # Scan pids to be kill inlcuding parents process of target job
-        with cf.ThreadPoolExecutor(max_workers=61) as executor:
-            for group in self.group_dict.values():
-                for machine in group.busy_machine_list:
-                    executor.map(machine.scan_killed_pids, machine.job_list)
+        print(job_condition)
 
-        # Kill jobs
+        # Scanning with all parent jobs
+        self.scan(job_condition, include_parents=True)
+        self.printer.print_line(follow_silent=True)
+
+        # Kill jobs: maximum worker w.r.t Windows (61)
         with cf.ThreadPoolExecutor(max_workers=61) as executor:
-            for group in self.group_dict.values():
-                for machine in group.busy_machine_list:
+            for group in self.groups.values():
+                for machine in group.busy_machines:
                     executor.submit(machine.kill)
 
         # Summarize the kill result
         num_kill = 0
-        for group in self.group_dict.values():
-            num_kill += sum(machine.num_kill for machine in group.busy_machine_list)
+        for group in self.groups.values():
+            num_kill += sum(machine.num_kill for machine in group.busy_machines)
 
+        # Report summary
         self.message_handler.sort()
         self.message_handler.success(f"\nKilled {num_kill} jobs")
-
-
-if __name__ == "__main__":
-    print("This is module spg from SPG")

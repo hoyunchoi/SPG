@@ -11,7 +11,7 @@ def main():
 
     # Run SPG according to arguments
     spg = SPG(args)
-    spg()
+    spg(args.option)
 
 
 if __name__ == "__main__":

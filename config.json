@@ -1,0 +1,38 @@
+{
+    "users": [
+        "root",
+        "hoyun",
+        "jongshin",
+        "ysl",
+        "jmj",
+        "bkjhun",
+        "esudoz2",
+        "arinaswing",
+        "dotoa",
+        "cookhyun",
+        "ckj",
+        "ebi",
+        "yunsik",
+        "yongjae",
+        "hojun",
+        "sanghoon",
+        "euijoon",
+        "kiwon",
+        "ybaek",
+        "leorigon",
+        "jack2219",
+        "joonsung",
+        "juyeon",
+        "sangjoon",
+        "woojin",
+        "sungbinlee",
+        "hyunwook"
+    ],
+    "group": [
+        "tenet",
+        "xenet",
+        "kuda"
+    ],
+    "max_runs": 50,
+    "width": 50
+}

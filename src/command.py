@@ -1,23 +1,22 @@
 from pathlib import Path
-from shlex import split
 
 from .default import Default
 
 
 ####################################### ssh command #######################################
-def ssh_to_machine(machineName: str) -> list[str]:
+def ssh_to_machine(machine_name: str) -> str:
     """SSH to input machine"""
-    return split(
+    return (
         "ssh -T "  # Disable pseudo-tty allocation: Do not need terminal
         "-o StrictHostKeyChecking=no "  # SSH without checking host key(fingerprint) at known_hosts
         "-o ConnectTimeout=4 "  # Timeout in seconds for connecting ssh
         "-o UpdateHostKeys=no "  # Do not update know_hosts if it already exists
-        f"{machineName}"  # Target machine to ssh
+        f"{machine_name}"  # Target machine to ssh
     )
 
 
 ################################ ps & free memory commands ################################
-def ps_from_user(user_name: str | None) -> list[str]:
+def ps_from_user(user_name: str | None) -> str:
     """
     ps command to find job information w.r.t input user
     --format: format to be printed
@@ -34,8 +33,8 @@ def ps_from_user(user_name: str | None) -> list[str]:
     """
     if user_name is None:
         # When user name is none, take all users registered in SPG except root
-        user_name = ",".join(Default.USERS[1:])
-    return split(
+        user_name = ",".join(Default().USERS[1:])
+    return (
         "ps H "  # Show threads as if they were processes
         "--no-headers "  # Do not print header
         f"--user {user_name} "  # Only select effective user ID.
@@ -43,9 +42,9 @@ def ps_from_user(user_name: str | None) -> list[str]:
     )
 
 
-def ps_from_pid(pid: int) -> list[str]:
+def ps_from_pid(pid: int) -> str:
     """Same as ps_from_user but specified by pid"""
-    return split(
+    return (
         "ps H "  # Show threads as if they were processes
         "--no-headers "  # Do not print header
         f"-q {pid} "  # Only select job with input pid
@@ -53,37 +52,39 @@ def ps_from_pid(pid: int) -> list[str]:
     )
 
 
-def pid_to_ppid(pid: int) -> list[str]:
+def pid_to_ppid(pid: int) -> str:
     """ps command to find ppid(parent pid) of input process"""
-    return split(
+    return (
         "ps --no-headers "  # Do not print header
         f"-q {pid} "  # Search by pid
         "--format ppid"  # Only return paraent pid
     )
 
 
-def free_ram() -> list[str]:
+def free_ram() -> str:
     """free command to get free ram"""
-    return split(
-        "free -h "  # Show output fieds in human-readable unit
-        "--si "  # Use unit of kilo, mega, giga byte instead of kibi, mebi, gibi byte
+    return (
+        "free --bytes "  # Show memory in unit of byte
+        "| grep Mem "  # Grep only a line of memory values
+        "| awk '{print $NF}'"  # return last value: available memory in bytes
     )
 
 
 ################################### nvidia-smi commands ###################################
-def ns_process() -> list[str]:
+def ns_process() -> str:
     """nvidia-smi command to get process running at gpu"""
-    return split(
+    return (
         "nvidia-smi pmon "  # nvidia-smi process monitor mode
         "--count 1 "  # Only sample single result
         "--select um "  # Monitor both utilization and memory usage
         "--delay 10 "  # Collect within 10 seconds interval
+        "| tail -n +3"  # Omit first two lines: column names
     )
 
 
-def free_vram() -> list[str]:
+def free_vram() -> str:
     """nvidia-smi command to get free vram"""
-    return split(
+    return (
         "nvidia-smi "
         "--query-gpu=memory.free "  # Query related to gpu: free vram in MiB
         "--format=csv,noheader"  # Print format: csv format without header
@@ -91,22 +92,18 @@ def free_vram() -> list[str]:
 
 
 ################################### run & kill commands ###################################
-def run_at_cwd(command: str) -> list[str]:
+def run_at_cwd(command: str) -> str:
     """Run input command at current path"""
-    return split(
+    return (
         f"cd {Path.cwd()}; "  # Change pwd to current directory
         f"{command}"  # run command
     )
 
 
-def kill_pid(pid: int) -> list[str]:
+def kill_pid(pid: int) -> str:
     """Kill process with input pid"""
-    return split(
+    return (
         f"kill -15 {pid} "  # Safe kill
         # f"kill -9 {pid} "      # Force kill
         "2> /dev/null;"  # Ignore stderr of killing
     )
-
-
-if __name__ == "__main__":
-    print("This is module Commands from SPG")

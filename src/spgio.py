@@ -4,22 +4,24 @@ import shutil
 import sys
 from enum import Enum
 from logging.handlers import RotatingFileHandler
+from pathlib import Path
+from typing import Callable, cast
 
 import colorama
 from tqdm import tqdm
 
 from .default import Default
+from .name import extract_alphabet
 from .option import Option
 from .singleton import Singleton
-from .utils import get_machine_group
 
 
 class ProgressBar:
-    """Progress bar per machine groups using tqdm"""
+    """A tqdm wrapper per machine groups"""
 
     def __init__(self, pool: set[str], bar_width: int) -> None:
         self.pool = pool
-        self.name = get_machine_group(next(iter(pool)))
+        self.name = extract_alphabet(next(iter(pool)))
         self.bar = tqdm(
             total=len(self.pool),
             bar_format="{desc}{bar}|{percentage:3.1f}%|",
@@ -29,14 +31,11 @@ class ProgressBar:
             miniters=1,
         )
 
-    def update(self, target: str | None) -> None:
+    def update(self, target: str | None = None) -> None:
         """Update state of bar with erasing target from pool"""
-        # Remove target from pool
         if target is not None:
-            self.pool.remove(target)
-
-            # Update state of bar
-            self.bar.update(1)
+            self.pool.remove(target)  # Remove target from pool
+            self.bar.update(1)  # Update state of bar
 
         try:
             # Description of bar: print any remaining in pool
@@ -51,34 +50,34 @@ class ProgressBar:
 
 
 class Printer:
-    """Handles progress bar and plain output of SPG"""
+    """Handles progress bar and plain output text of SPG"""
 
     job_info_format = "| {:<10} | {:<15} | {:<3} | {:>7} | {:>6} | {:>6} | {:>7} | {:>11} | {:>5} | {}"
-    machine_info_format = "| {:<10} | {:<11} | {:>4} {:<4} | {:>5}"
-    machine_free_info_format = "| {:<10} | {:<11} | {:>4} {:<4} | {:>10}"
-    group_info_format = "| {:<10} | total {:>4} machines & {:>4} core"
-    group_gpu_info_format = "| {:<10} | {:>26} gpus"
+    machine_info_format = "| {:<10} | {:<11} | {:>4} {:<4} | {:>7}"
+    machine_free_info_format = "| {:<10} | {:<11} | {:>4} {:<4} | {:>12}"
+    group_info_format = "| {:<10} | total {:>5} machines & {:>5} core"
+    group_gpu_info_format = "| {:<10} | {:>28} gpus"
     group_job_info_format = "| {:<10} | total {:>4} machines & {:>4} jobs"
+    user_format = "| {:<15} | {:>8} |"  # To be updated after initialization
 
     def __init__(
-        self, option: Option, silent: bool, group_list: list[str] | None = None
+        self, option: Option, silent: bool, groups: list[str] | None = None
     ) -> None:
         """
-        Args
-            option: main option
-            silent: If true, do not print process bar
-            group_list: Only used when option is user.h
+        option: main option
+        silent: If true, do not print process bar
+        groups: Only used when option is Option.user
         """
-        self.print_fn = tqdm.write  # Function to use at printing
+        self.print_fn: Callable[[str], None] = tqdm.write  # Function to use at printing
 
         # Progress bar
         self.silent = silent  # If true, skip progress bar
-        self.bar_dict: dict[str, ProgressBar] = {}  # Container of progess bar
+        self.bars: dict[str, ProgressBar] = {}  # Container of progess bar
 
         # Column names for each options
         if option is Option.list:
             self.column_line = Printer.machine_info_format.format(
-                "Machine", "ComputeUnit", "tot", "unit", "mem"
+                "Machine", "ComputeUnit", "tot", "unit", "Memory"
             )
         elif option is Option.free:
             self.column_line = Printer.machine_free_info_format.format(
@@ -99,12 +98,12 @@ class Printer:
             )
         elif option is Option.user:
             # Print format should be dynamically changed depending on input group list
-            if group_list is None:
-                group_list = Default.GROUP
-            self.user_format = "| {:<15} | {:>8} |" + "{:>8} |" * len(group_list)
-            self.column_line = self.user_format.format("User", "total", *group_list)
+            if groups is None:
+                groups = cast(list[str], Default().GROUP)
+            self.user_format += "{:>8} |" * len(groups)
+            self.column_line = self.user_format.format("User", "total", *groups)
         else:
-            self.column_line = " " * 40  # Default width is 40
+            self.column_line = " " * Default().WIDTH  # Default width is 40
 
         # Progress bar width should be minimum of column line length and terminal width.
         terminal_width, _ = shutil.get_terminal_size(fallback=(sys.maxsize, 1))
@@ -112,38 +111,46 @@ class Printer:
         self.str_line = "+" + "=" * (self.bar_width - 1)
 
     ###################################### tqdm handling ######################################
-    def add_progress_bar(self, group_name: str, pool: set[str]) -> None:
-        """Add progress bar to bar dict"""
+    def register_progress_bar(self, group_name: str, pool: set[str]) -> None:
+        """Create new progress bar assigned to group"""
+        # When silent, do nothing
         if self.silent:
-            # When silent, do nothing
             return
-        self.bar_dict[group_name] = ProgressBar(pool, self.bar_width)
-        self.bar_dict[group_name].update(None)
+
+        self.bars[group_name] = ProgressBar(pool, self.bar_width)
+        self.bars[group_name].update()
 
     def update_progress_bar(self, group_name: str, target: str) -> None:
         """Update state of tqdm bar with description"""
+        # When silent, do nothing
         if self.silent:
-            # When silent, do nothing
             return
-        self.bar_dict[group_name].update(target)
 
-    def close_progress_bar(self, group_name: str) -> None:
-        """Close tqdm bar"""
+        self.bars[group_name].update(target)
+
+    def close_progress_bars(self) -> None:
+        """Close all progress bars registerd in printer"""
+        # When silent, do nothing
         if self.silent:
-            # When silent, do nothing
             return
-        self.bar_dict[group_name].close()
+
+        for bars in self.bars.values():
+            bars.close()
 
     ########################################## Print ##########################################
-    def print(self, msg: str | None = None) -> None:
+    def print_line(self, follow_silent: bool = False) -> None:
         """
-        Print input msg
-        When msg is None, print default value: string line
+        print default line: self.str_line
+        If follow_silent, follow silentness of printer
         """
-        if msg is None:
-            self.print_fn(self.str_line)
-        else:
-            self.print_fn(msg)
+        # When silent and directly called to follow self.silent, do nothing
+        if follow_silent and self.silent:
+            return
+        self.print_fn(self.str_line)
+
+    def print(self, message: str) -> None:
+        """Print input message"""
+        self.print_fn(message)
 
     def print_first_section(self) -> None:
         """
@@ -166,10 +173,10 @@ class MessageType(Enum):
 
 
 class MessageHandler(metaclass=Singleton):
-    """Store message from spg and print before exit"""
+    """Handles colored output of SPG"""
 
     def __init__(self) -> None:
-        self.msg: dict[MessageType, list[str]] = {
+        self.message: dict[MessageType, list[str]] = {
             message_type: [] for message_type in MessageType
         }
 
@@ -181,28 +188,29 @@ class MessageHandler(metaclass=Singleton):
         colorama.init()
 
         # Print message with corresponding color
-        for message_type, message in self.msg.items():
-            if message:
-                print(message_type.value + "\n".join(message))
+        for message_type, message in self.message.items():
+            if not message:
+                continue
+            print(message_type.value + "\n".join(message))
         print(colorama.Style.RESET_ALL)
 
-    def success(self, msg: str) -> None:
-        self.msg[MessageType.SUCCESS].append(msg)
+    def success(self, message: str) -> None:
+        self.message[MessageType.SUCCESS].append(message)
 
-    def warning(self, msg: str) -> None:
-        self.msg[MessageType.WARNING].append(msg)
+    def warning(self, message: str) -> None:
+        self.message[MessageType.WARNING].append(message)
 
-    def error(self, msg: str) -> None:
-        self.msg[MessageType.ERROR].append(msg)
+    def error(self, message: str) -> None:
+        self.message[MessageType.ERROR].append(message)
 
     def sort(self) -> None:
-        """Sort messages inside msg"""
-        for message in self.msg.values():
+        """Sort messages inside message"""
+        for message in self.message.values():
             message.sort()
 
     def clear(self) -> None:
         """Only used for test"""
-        for message in self.msg.values():
+        for message in self.message.values():
             message.clear()
 
 
@@ -211,8 +219,6 @@ def configure_logger() -> None:
 
     class UserWritableRotatingFileHandler(RotatingFileHandler):
         def doRollover(self) -> None:
-            from pathlib import Path
-
             # Rotate the file
             super().doRollover()
 
@@ -222,7 +228,7 @@ def configure_logger() -> None:
             # Warning log and log backup file still belongs to spg executor, not root
             MessageHandler().warning(
                 "Log file is rotated.\n"
-                "Contact to server administrator for changing log file ownership"
+                "Contact to server administrator for checking log file ownership"
             )
 
     # Define logger instance
@@ -232,10 +238,10 @@ def configure_logger() -> None:
     formatter = logging.Formatter(
         fmt="{asctime} {machine:<10} {user:<15}: {message}",
         style="{",
-        datefmt="%Y-%m-%d %H:%M",
+        datefmt=r"%Y-%m-%d %H:%M",
     )
 
-    # Define handler of logger: Limit maximum log file size as 100MB
+    # Define handler of logger: Limit maximum log file size as 100MiB
     handler = UserWritableRotatingFileHandler(
         Default.SPG_DIR / "spg.log", maxBytes=100 * 1024 * 1024, backupCount=1
     )
@@ -244,7 +250,3 @@ def configure_logger() -> None:
     # Return logger
     logger.addHandler(handler)
     logger.setLevel(logging.INFO)  # log over INFO level
-
-
-if __name__ == "__main__":
-    print("This is module spgio from SPG")

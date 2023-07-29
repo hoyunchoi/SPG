@@ -3,13 +3,35 @@ import textwrap
 from argparse import Action, ArgumentParser, Namespace, RawTextHelpFormatter
 from collections.abc import Sequence
 from dataclasses import dataclass
-from enum import Enum, auto
+from typing import cast
 
 from .default import Default
-from .spgio import MessageHandler
-from .utils import get_machine_group, input_time_to_seconds, yes_no
+from .name import extract_alphabet
 from .option import Option
+from .seconds import Seconds
+from .spgio import MessageHandler
 
+
+def yes_no(message: str | None = None) -> bool:
+    """
+    Get input yes or no
+    If other input is given, ask again for 5 times
+    'yes', 'y', 'Y', ... : pass
+    'no', 'n', 'No', ... : fail
+    """
+    # Print message first if given
+    if message is not None:
+        print(message)
+
+    # Ask 5 times
+    for _ in range(5):
+        reply = str(input("(y/n): ")).strip().lower()
+        if reply[0] == "y":
+            return True
+        elif reply[0] == "n":
+            return False
+        print("You should provied either 'y' or 'n'", end=" ")
+    return False
 
 
 class CommandAction(Action):
@@ -49,13 +71,13 @@ def add_optional_group(parser: ArgumentParser) -> None:
         "-g",
         "--group",
         nargs="+",
-        choices=Default.GROUP,
+        choices=Default().GROUP,
         default=["tenet", "xenet"],
         metavar="",
         help=textwrap.dedent(
             f"""\
             List of target machine group names, separated by space.
-            Currently available: {Default.GROUP}
+            Currently available: {Default().GROUP}
             """
         ),
     )
@@ -498,14 +520,13 @@ class Argument:
 
     option: Option
     silent: bool = False
-    machine: str | list[str] | None = None  # Target machine. For run, it is str
-    group: str | list[str] | None = None  # Target group. For runs, it is str
+    machine: list[str] | None = None  # Target machine
+    group: list[str] | None = None  # Target group
     start_end: tuple[int, int] | None = None  # Boundary of target group
     all: bool = False  # If true, overwrite user argument to None
     user: str | None = Default().user  # Target user, default: current user
-    pid: list[str] | None = None  # Target pid
-    time: list[str] | None = None  # Target time window in string format
-    time_seconds: int | None = None  # Target time window in seconds
+    pid: list[int] | None = None  # Target pid
+    time: Seconds | None = None  # Target time window
     start: str | None = None  # Target start time
 
     # run: running command, runs: command file, job/KILL: target command
@@ -516,27 +537,48 @@ class Argument:
     limit: int = sys.maxsize  # Limit the number of jobs assigned to single machine
 
     def __post_init__(self) -> None:
-        self.option = self._redirect_deprecated_options()
+        self.option = self._redirect_option(cast(str, self.option))
 
         match self.option:
             case Option.list | Option.free | Option.user:
-                self._overwrite_group()
+                user = cast(str, self.user)
+
+                self.all = True
+                self.group = self._overwrite_group(self.machine)
+                self.user = self._check_user(self.all, user)
+
             case Option.job:
-                self._check_user()
-                self._check_pid()
-                self._overwrite_group()
-                self._time_to_seconds()
+                user = cast(str, self.user)
+                pids = cast(list[str] | None, self.pid)
+                time = cast(list[str] | None, self.time)
+
+                self.user = self._check_user(self.all, user)
+                self.pid = self._check_pid(pids, self.machine)
+                self.group = self._overwrite_group(self.machine)
+                self.time = self._check_time(time)
+
             case Option.run:
-                self.group = None
+                machine_name = cast(str, self.machine)
+
+                self.machine = [machine_name]
+                self.group = [extract_alphabet(machine_name)]
+
             case Option.runs:
-                self._check_group_boundary()
+                group = cast(list[str], self.group)
+
+                self.group, self.start_end = self._check_group_boundary(group)
                 self.machine = None
+
             case Option.KILL:
-                self._check_user()
-                self._check_user_KILL()
-                self._check_pid()
-                self._overwrite_group()
-                self._time_to_seconds()
+                user = cast(str, self.user)
+                pids = cast(list[str] | None, self.pid)
+                time = cast(list[str] | None, self.time)
+
+                self.user = self._check_user(self.all, user)
+                self._check_permission(self.user)
+                self.pid = self._check_pid(pids, self.machine)
+                self.group = self._overwrite_group(self.machine)
+                self.time = self._check_time(time)
                 self._double_check_KILL()
 
     @classmethod
@@ -544,137 +586,99 @@ class Argument:
         return cls(**vars(get_args(user_input)))
 
     ###################################### Basic Utility ######################################
-    def _redirect_deprecated_options(self) -> Option:
-        """Redirect deprecated options"""
-        if self.option in list(Option):
-            return self.option
-        elif self.option in ["list", "free", "job", "user", "run", "runs", "KILL"]:
-            # When given option is proper, do nothing and return
-            return Option[self.option]
+    def _redirect_option(self, option: str) -> Option:
+        """Redirect option to Option class or check deprecated options"""
+        if option in Option.__members__:
+            # When given option is proper, return it's counterpart
+            return Option[option]
 
         message_handler = MessageHandler()
-        match self.option:
+        match option:
             # Redirect to list
             case "machine":
-                message_handler.warning(
-                    "'spg machine' will be Deprecated. Use 'spg list' instead."
+                message_handler.error(
+                    "'spg machine' is Deprecated. Use 'spg list' instead."
                 )
-                return Option.list
 
             # Redirect to job
             case "me":
-                self.all = False
-                self.user = Default().user
-                message_handler.warning(
-                    "'spg me' will be Deprecated. Use 'spg job' instead."
-                )
-                return Option.job
+                message_handler.error("'spg me' is Deprecated. Use 'spg job' instead.")
             case "all":
-                self.all = True
-                self.user = None
-                message_handler.warning(
-                    "'spg all' will be Deprecated. Use 'spg job -a' instead."
+                message_handler.error(
+                    "'spg all' is Deprecated. Use 'spg job -a' instead."
                 )
-                return Option.job
 
             # Redirect to KILL
             case "kill":
-                assert isinstance(self.machine, str)
-                self.machine = [self.machine]
-                self.pid = self.pid
-                message_handler.warning(
-                    "'spg kill' will be Deprecated. "
+                message_handler.error(
+                    "'spg kill' is Deprecated. "
                     "Use 'spg KILL -m [machine] -p [pid]' instead."
                 )
-                return Option.KILL
             case "killall":
-                self.pid = None
-                self.command = None
-                self.time = None
-                message_handler.warning(
-                    "'spg killall' will be Deprecated. Use 'spg KILL' instead."
+                message_handler.error(
+                    "'spg killall' is Deprecated. Use 'spg KILL' instead."
                 )
-                return Option.KILL
             case "killmachine":
-                self.pid = None
-                self.command = None
-                self.time = None
-                assert isinstance(self.machine, str)
-                self.machine = [self.machine]
-                message_handler.warning(
-                    "'spg killmachine' will be Deprecated. Use 'spg KILL -m [machine]' instead."
+                message_handler.error(
+                    "'spg killmachine' is Deprecated. Use 'spg KILL -m [machine]' instead."
                 )
-                return Option.KILL
             case "killthis":
-                self.pid = None
-                self.command = self.command
-                self.time = None
-                message_handler.warning(
-                    "'spg killthis' will be Deprecated. Use 'spg KILL -c [command]' instead."
+                message_handler.error(
+                    "'spg killthis' is Deprecated. Use 'spg KILL -c [command]' instead."
                 )
-                return Option.KILL
             case "killbefore":
-                self.pid = None
-                self.command = None
-                message_handler.warning(
-                    "'spg killbefore' will be Deprecated. Use 'spg KILL -t [time]' instead."
+                message_handler.error(
+                    "'spg killbefore' is Deprecated. Use 'spg KILL -t [time]' instead."
                 )
-                return Option.KILL
-        raise RuntimeError(f"No such option: {self.option}.")
+        exit()
 
-    def _overwrite_group(self) -> None:
+    def _overwrite_group(self, machines: list[str] | None) -> list[str] | None:
         """Overwrite group option by machine option if it exists"""
-        if self.machine is None:
-            return
+        if machines is None:
+            return self.group
 
         # Group from machine
-        group = list(
-            dict.fromkeys(
-                get_machine_group(machine_name) for machine_name in self.machine
-            )
+        return list(
+            dict.fromkeys(extract_alphabet(machine_name) for machine_name in machines)
         )
 
-        # Overwrite if necessary
-        if self.group != group:
-            self.group = group
-
-    def _check_user(self) -> None:
-        """Check if input user is registered"""
-        if self.all:
-            self.user = None
-            return
+    def _check_user(self, all_user: bool, user: str) -> str | None:
+        """Check if input user is registered. """
+        if all_user:
+            return None
 
         # Check if input user name is valid
-        if self.user not in Default.USERS:
-            MessageHandler().error(f"Invalid user name: {self.user}.")
+        if user in Default().USERS:
+            return user
+
+        MessageHandler().error(f"Invalid user name: {self.user}.")
+        exit()
+
+    def _check_pid(
+        self, pids: list[str] | None, machines: list[str] | None
+    ) -> list[int] | None:
+        """When pid list is given, you should specify machine name"""
+        if pids is None:
+            return pids
+
+        if machines is None or len(machines) != 1:
+            MessageHandler().error(
+                "When killing job with pid, "
+                "you should specify single machine name."
+            )
             exit()
 
-    def _check_pid(self) -> None:
-        """When pid list is given, you should specify machine name"""
-        if self.pid is not None:
-            assert isinstance(self.machine, list)
-            if len(self.machine) != 1:
-                MessageHandler().error(
-                    "When killing job with pid list, "
-                    "you should specify single machine name."
-                )
-                exit()
+        return [int(pid) for pid in pids]
 
-    def _time_to_seconds(self) -> None:
-        """Convert time window (str) to time window (seconds)"""
-        if self.time is None:
-            return
-        self.time_seconds = input_time_to_seconds(self.time)
-
-    def _check_group_boundary(self) -> None:
+    def _check_group_boundary(
+        self, group: list[str]
+    ) -> tuple[list[str], tuple[int, int] | None]:
         """Check args for option 'runs'"""
-        match self.group:
-            case [group]:
-                self.group = group
-                self.start_end = None
-            case [group, start, end]:
-                self.group = group
-                self.start_end = (int(start), int(end))
+        match group:
+            case [group_name]:
+                return [group_name], None
+            case [group_name, start, end]:
+                return [group_name], (int(start), int(end))
             case _:
                 MessageHandler().error(
                     "When using 'runs' option, "
@@ -682,11 +686,22 @@ class Argument:
                 )
                 exit()
 
-    def _check_user_KILL(self) -> None:
+    def _check_time(self, time: list[str] | None) -> Seconds | None:
+        if time is None:
+            return None
+
+        try:
+            return Seconds.from_input(time)
+        except (KeyError, ValueError):
+            MessageHandler().error(f"Invalid time window: {' '.join(time)}")
+            MessageHandler().error("Run 'spg KILL -h' for more help")
+            exit()
+
+    def _check_permission(self, user: str | None) -> None:
         """Check argument user for option 'KILL'"""
 
-        # When specifying user name, you should be root
-        if (self.user != Default().user) and (Default().user != "root"):
+        # When killing other user, you should be root
+        if (user != Default().user) and (Default().user != "root"):
             MessageHandler().error("When killing other user's job, you should be root.")
             exit()
 
@@ -704,7 +719,6 @@ class Argument:
 
         # Kill by PID
         if self.pid is not None:
-            assert isinstance(self.machine, list)
             question += f" with pid {self.pid}"
 
         # Kill by machine
@@ -715,7 +729,7 @@ class Argument:
             question += f" at group {self.group}"
         # Kill without restriction
         else:
-            question += f" at all machines"
+            question += " at all machines"
 
         # Kill condition of command
         if self.command is not None:
@@ -723,7 +737,7 @@ class Argument:
 
         # Kill condition of time
         if self.time is not None:
-            question += f" with running less than '{' '.join(self.time)}'"
+            question += f" with running less than '{self.time:human}'"
 
         # Kill condition of start
         if self.start is not None:
@@ -731,8 +745,5 @@ class Argument:
 
         # Get user input
         if not yes_no(question + "?"):
-            exit("Aborting...")
-
-
-if __name__ == "__main__":
-    print("This is moduel Argument from SPG")
+            MessageHandler().success("\nAborting...")
+            exit()

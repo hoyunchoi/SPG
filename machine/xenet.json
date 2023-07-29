@@ -13,7 +13,7 @@
         "cpu": "E7430x2",
         "num_cpu": "28",
         "ram": "56G",
-        "comment": "NIC problem(2022.01.25)"
+        "comment": "NIC problem(2022.01.25) -> Reboot(2022.12.19)-> cannot boot(2023.05.02)"
     },
     "xenet3": {
         "use": "True",

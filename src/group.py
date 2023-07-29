@@ -1,10 +1,14 @@
+from __future__ import annotations
+
 import concurrent.futures as cf
 import json
-from collections import Counter, abc, deque
+from collections import Counter, deque
 from pathlib import Path
+from typing import Any
 
 from .job import JobCondition
 from .machine import GPUMachine, Machine
+from .name import get_machine_index
 from .spgio import Printer, ProgressBar
 
 
@@ -12,74 +16,113 @@ class Group:
     """
     Save the information of group of machines
     By default, machines are read from group file
-    When SPG gets specific machine list from argument, machines will be changed
     """
 
     def __init__(self, group_name: str, group_file: Path) -> None:
         """
-        Initialize machine group information from group File
-        Args:
-            group_name: name of machine group
-            group_file: Full path of machine file.
-            First line should be comment
+        group_name: name of machine group
+        group_file: Full path of json-formatted machine file.
         """
-        # Default informations
-        self.name: str = group_name  # Name of machine group. Ex) tenet
-        self.machine_dict: dict[str, Machine] = {}  # Dictionary of machines
+        # Name of machine group. Ex) tenet
+        self.name = group_name
 
-        # Summary informations
-        self.num_machine: int = 0  # Number of machines in the group
-        self.num_cpu: int = 0  # Number of cpu cores in the group
-        self.num_gpu: int = 0  # Number of gpu in the group
+        # Read machine informations from group file
+        self.machines = self.load_file(group_file)  # Dictionary of name: machine
 
-        # Free informations
-        self.free_machine_list: list[
-            Machine
-        ] = []  # List of machines with at least one free core
-        self.num_free_machine: int = 0  # Number of machines with free core
-        self.num_free_cpu: int = 0  # Number of free cpu cores in the group
-        self.num_free_gpu: int = 0  # Number of free gpu cors in the group
-
-        # Current informations
-        self.busy_machine_list: list[Machine] = []  # List of machines with running job
-        self.num_job: int = 0  # Number of running jobs
-
-        # KILL
-        self.num_kill: int = 0  # Number of killed jobs
-
-        # Initialize group and corresponding machines
-        self._read_group_file(group_file)
-        self.update_summary()
-
-    def _read_group_file(self, group_file: Path) -> None:
-        """Read group file and store machine information to machine_dict"""
+    def load_file(self, group_file: Path) -> dict[str, Machine]:
+        """Read group file and store machine information to machines"""
+        machines: dict[str, Machine] = {}
         with open(group_file, "r") as file:
-            machine_dict = json.load(file)
+            machine_infos: dict[str, dict[str, Any]] = json.load(file)
 
         # Initialize dictionary of machine
-        for machine_name, machine_info in machine_dict.items():
-            # When machine info has gpu as key, machine is gpu machine
-            # Otherwise, machine is cpu machine
-            machine = (
-                GPUMachine(**machine_info)
-                if "gpu" in machine_info
-                else Machine(**machine_info)
-            )
-
+        for name, info in machine_infos.items():
             # Only store machine explicitly marked as "use = True"
-            if machine.use:
-                self.machine_dict[machine_name] = machine
+            if info.pop("use") != "True":
+                continue
 
-    def update_summary(self) -> None:
-        """
-        Update summary information of group
-        number of machines / cpu cores / gpus
-        """
-        self.num_machine = len(self.machine_dict)
-        self.num_cpu = sum(machine.num_cpu for machine in self.machine_dict.values())
-        self.num_gpu = sum(machine.num_gpu for machine in self.machine_dict.values())
+            # When machine info has gpu as key, machine is gpu machine
+            if "gpu" in info:
+                machines[name] = GPUMachine(**info)
+            # Otherwise, machine is cpu machine
+            else:
+                machines[name] = Machine(**info)
+        return machines
 
-    ########################## Get Line Format Information for Print ##########################
+    def match_machines(
+        self,
+        *_,
+        machine_names: list[str] | None = None,
+        start_end: tuple[int, int] | None = None,
+    ) -> Group:
+        """
+        Only store machines that matches the condition
+        machine_names: list of machine names inside the group
+        start_end: machines with index between input start/end
+        """
+        if machine_names is not None:
+            self.machines = {name: self.machines[name] for name in machine_names}
+
+        if start_end is not None:
+            self.machines = {
+                name: machine
+                for name, machine in self.machines.items()
+                if start_end[0] <= get_machine_index(name) <= start_end[1]
+            }
+        return self
+
+    ####################### Basic informations, regardless of scanning #######################
+    @property
+    def num_machine(self) -> int:
+        """Number of machines in the group"""
+        return len(self.machines)
+
+    @property
+    def num_cpu(self) -> int:
+        """Number of cpu cores in the group"""
+        return sum(machine.num_cpu for machine in self.machines.values())
+
+    @property
+    def num_gpu(self) -> int:
+        """Number of gpu in the group"""
+        return sum(machine.num_gpu for machine in self.machines.values())
+
+    ##################### Busy, free informations, valid after scanning #####################
+    @property
+    def busy_machines(self) -> list[Machine]:
+        """List of busy machines, which has more than one job"""
+        return [machine for machine in self.machines.values() if machine.num_job]
+
+    @property
+    def num_job(self) -> int:
+        """Number of running jobs inside group"""
+        return sum(machine.num_job for machine in self.busy_machines)
+
+    @property
+    def free_machines(self) -> list[Machine]:
+        """List of machines with at least one free core"""
+        return [machine for machine in self.machines.values() if machine.num_available]
+
+    @property
+    def num_free_machine(self) -> int:
+        """Number of free machines, which has more than one free core (either cpu or gpu)"""
+        return len(self.free_machines)
+
+    @property
+    def num_free_cpu(self) -> int:
+        """Number of free cpu cores in the group"""
+        return sum(machine.num_free_cpu for machine in self.free_machines)
+
+    @property
+    def num_free_gpu(self) -> int:
+        """Number of free gpu cores in the group"""
+        return sum(
+            machine.num_free_gpu
+            for machine in self.free_machines
+            if isinstance(machine, GPUMachine)
+        )
+
+    ############################# Line Format Information for Print #############################
     def __format__(self, format_spec: str) -> str:
         """
         Return group information according to format spec
@@ -88,7 +131,6 @@ class Group:
         - job: group information of running jobs
         """
         # group summary of machine information
-        group_info = self.name
         if format_spec == "info":
             group_info = Printer.group_info_format.format(
                 self.name, self.num_machine, self.num_cpu
@@ -111,164 +153,105 @@ class Group:
         # group summary of every jobs at group
         elif format_spec == "job":
             group_info = Printer.group_job_info_format.format(
-                self.name, len(self.busy_machine_list), self.num_job
+                self.name, len(self.busy_machines), self.num_job
             )
+        else:
+            group_info = self.name
 
         return group_info
 
     ############################ Get Information of Group Instance ############################
-    def _get_job_info(self) -> tuple[int, list[Machine]]:
-        """
-        Get running job informations
-        Return
-            num_job: number of running jobs
-            busy_machine_list: list of machines who is running one or more jobs
-        """
-        busy_machine_list = [
-            machine for machine in self.machine_dict.values() if machine.num_job
-        ]
-        num_job = sum(busy_machine.num_job for busy_machine in busy_machine_list)
-
-        return num_job, busy_machine_list
-
-    def _get_free_info(self) -> tuple[int, int, list[Machine]]:
-        """
-        Get free information
-        Return
-            num_free_cpu: number of free cpu cores
-            num_free_gpu: number of free gpus
-            free_machine_list: list of machine who has one or more free cores / gpus
-        """
-
-        def filter_free(machine_list: abc.Iterable[Machine]) -> abc.Iterable[Machine]:
-            """Return iterable of free machine"""
-            for machine in machine_list:
-                if isinstance(machine, GPUMachine) and machine.num_free_gpu:
-                    yield machine
-                elif machine.num_free_cpu:
-                    yield machine
-
-        free_machine_list = [
-            machine for machine in filter_free(self.machine_dict.values())
-        ]
-        num_free_cpu = sum(machine.num_free_cpu for machine in free_machine_list)
-        num_free_gpu = sum(
-            machine.num_free_gpu
-            for machine in free_machine_list
-            if isinstance(machine, GPUMachine)
-        )
-
-        return num_free_cpu, num_free_gpu, free_machine_list
-
     def get_user_count(self) -> Counter[str]:
         """Return the dictionary of {user name: number of jobs}"""
         user_count = Counter()
-        for machine in self.machine_dict.values():
+        for machine in self.machines.values():
             user_count.update(machine.get_user_count())
         return user_count
 
     ############################## Scan Job Information and Save ##############################
-    def scan_job(
+    def scan(
         self,
         user_name: str | None,
         progress_bar: ProgressBar | None,
         job_condition: JobCondition | None = None,
+        include_parents: bool = False,
     ) -> None:
         """
-        Scan job of every machines in machineList
-        num_job, busy_machine_list will be updated
-        If user Name is not given, free informations will also be updated
+        scan all machines in machines.
         Args
-            user_name: Refer command.ps_from_user for more description
-            scan_level: Refer Job.is_important for more description
+            user_name: Refer command.ps_from_user
+            progress_bar: If given, update it's status per every machine scanning
+            job_condition: Refer Job.match_condition
+            include_parents: Refer machine.scan
         """
         if progress_bar is None:
 
             def scan_machine(machine: Machine) -> None:
-                machine.scan_job(user_name, job_condition)
+                machine.scan(user_name, job_condition, include_parents)
 
         else:
 
             def scan_machine(machine: Machine) -> None:
-                machine.scan_job(user_name, job_condition)
+                machine.scan(user_name, job_condition, include_parents)
                 progress_bar.update(machine.name)
 
         # Multi-threaded scanning: maximum worker w.r.t Windows (61)
         with cf.ThreadPoolExecutor(max_workers=61) as executor:
-            executor.map(scan_machine, self.machine_dict.values())
-
-        # Save the scanned information
-        self.num_job, self.busy_machine_list = self._get_job_info()
-        if user_name is None:
-            # When user_name is None, also need to update free information
-            (
-                self.num_free_cpu,
-                self.num_free_gpu,
-                self.free_machine_list,
-            ) = self._get_free_info()
-            self.num_free_machine = len(self.free_machine_list)
+            executor.map(scan_machine, self.machines.values())
 
     ##################################### Run Jobs #####################################
-    def runs(self, cmd_queue: deque[str], max_calls: int, limit: int) -> deque[str]:
+    def runs(
+        self, commands: deque[str], max_calls: int, single_machine_limit: int
+    ) -> deque[str]:
         """
-        Run jobs in cmd_queue
+        Run jobs in commands
+        Args
+            commands: commands to be run
+            max_calls: maximum number of jobs that group can run in a single execution
+            single_machine_limit: Maximum number of jobs that a machine can run
         Return
-            cmd_queue: Remaining commands after run
+            Remaining commands after run
         """
-        # Run commands
-        num_threads = min(len(cmd_queue), max_calls)
-        num_executed = 0
-        stop = False
+        num_executed, num_threads = 0, min(len(commands), max_calls)
+
+        # Run commands on free machines
         with cf.ThreadPoolExecutor(max_workers=50) as executor:
-            for machine in self.free_machine_list:
-                available = (
-                    machine.num_free_gpu
-                    if isinstance(machine, GPUMachine)
-                    else machine.num_free_cpu
-                )
-                for _ in range(min(available, limit)):
-                    cmd = cmd_queue.popleft().strip()
-                    executor.submit(machine.run, cmd)
+            for machine in self.free_machines:
+                for _ in range(min(machine.num_available, single_machine_limit)):
+                    executor.submit(machine.run, commands.popleft().strip())
                     num_executed += 1
 
                     if num_executed >= num_threads:
-                        stop = True
-                        break
-                if stop:
-                    break
+                        # number of executed reached it's limit
+                        return commands
 
         # Return the remining command queue
-        return cmd_queue
+        return commands
 
     def force_runs(
-        self, cmd_queue: deque[str], max_calls: int, limit: int
+        self, commands: deque[str], max_calls: int, single_machine_limit: int
     ) -> deque[str]:
-        """Force run jobs in cmd_queue"""
-        num_threads = min(len(cmd_queue), max_calls)
-        num_executed = 0
-        stop = False
+        """
+        Forece run jobs in commands: Run job not only in free machine, but also in busy machines
+        Args
+            commands: commands to be run
+            max_calls: maximum number of jobs that group can run in a single execution
+            single_machine_limit: Maximum number of jobs that a machine can run
+        Return
+            Remaining commands after run
+        """
+        num_executed, num_threads = 0, min(len(commands), max_calls)
 
+        # Run commands on every machines
         with cf.ThreadPoolExecutor(max_workers=50) as executor:
-            for machine in self.machine_dict.values():
-                available = (
-                    machine.num_gpu
-                    if isinstance(machine, GPUMachine)
-                    else machine.num_cpu
-                )
-                for _ in range(min(available, limit)):
-                    cmd = cmd_queue.popleft().strip()
-                    executor.submit(machine.run, cmd)
+            for machine in self.machines.values():
+                for _ in range(min(machine.num_core, single_machine_limit)):
+                    executor.submit(machine.run, commands.popleft().strip())
                     num_executed += 1
 
                     if num_executed >= num_threads:
-                        stop = True
-                        break
-                if stop:
-                    break
+                        # number of executed reached it's limit
+                        return commands
 
         # Return the remining command queue
-        return cmd_queue
-
-
-if __name__ == "__main__":
-    print("This is module Group from SPG")
+        return commands

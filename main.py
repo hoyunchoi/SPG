@@ -1,17 +1,14 @@
 #! /usr/bin/python
-from src import SPG, Argument, configure_logger, get_args
+from src import SPG, Argument, get_arguments
 
 
 def main():
-    # Create logger
-    configure_logger()
-
     # Get arguments
-    args = Argument(**vars(get_args()))
+    args = Argument(**vars(get_arguments()))
 
     # Run SPG according to arguments
     spg = SPG(args)
-    spg(args.option)
+    spg()
 
 
 if __name__ == "__main__":

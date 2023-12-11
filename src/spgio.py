@@ -5,19 +5,20 @@ import sys
 from enum import Enum
 from logging.handlers import RotatingFileHandler
 from pathlib import Path
-from typing import Callable, cast
+from typing import Callable
 
 import colorama
 from tqdm import tqdm
 
-from .default import Default
+from .default import DEFAULT, SPG_DIR
 from .name import extract_alphabet
 from .option import Option
-from .singleton import Singleton
 
 
 class ProgressBar:
     """A tqdm wrapper per machine groups"""
+
+    __slots__ = ["pool", "name", "bar"]
 
     def __init__(self, pool: set[str], bar_width: int) -> None:
         self.pool = pool
@@ -51,8 +52,10 @@ class ProgressBar:
 
 class Printer:
     """Handles progress bar and plain output text of SPG"""
-
-    job_info_format = "| {:<10} | {:<15} | {:<3} | {:>7} | {:>6} | {:>6} | {:>7} | {:>11} | {:>5} | {}"
+    job_info_format = (
+        "| {:<10} | {:<15} | {:<3} | {:>7} | {:>6} | {:>6} | {:>7} | {:>11} | {:>5}"
+        " | {}"
+    )
     machine_info_format = "| {:<10} | {:<11} | {:>4} {:<4} | {:>7}"
     machine_free_info_format = "| {:<10} | {:<11} | {:>4} {:<4} | {:>12}"
     group_info_format = "| {:<10} | total {:>5} machines & {:>5} core"
@@ -61,49 +64,49 @@ class Printer:
     user_format = "| {:<15} | {:>8} |"  # To be updated after initialization
 
     def __init__(
-        self, option: Option, silent: bool, groups: list[str] | None = None
+        self, option: Option, silent: bool, groups: list[str] = DEFAULT.GROUPS
     ) -> None:
         """
         option: main option
         silent: If true, do not print process bar
         groups: Only used when option is Option.user
         """
-        self.print_fn: Callable[[str], None] = tqdm.write  # Function to use at printing
+        self.print_fn: Callable[[str], None] = print if silent else tqdm.write
 
         # Progress bar
         self.silent = silent  # If true, skip progress bar
         self.bars: dict[str, ProgressBar] = {}  # Container of progess bar
 
         # Column names for each options
-        if option is Option.list:
-            self.column_line = Printer.machine_info_format.format(
-                "Machine", "ComputeUnit", "tot", "unit", "Memory"
-            )
-        elif option is Option.free:
-            self.column_line = Printer.machine_free_info_format.format(
-                "Machine", "ComputeUnit", "free", "unit", "free mem"
-            )
-        elif option is Option.job:
-            self.column_line = Printer.job_info_format.format(
-                "Machine",
-                "User",
-                "ST",
-                "PID",
-                "CPU(%)",
-                "MEM(%)",
-                "Memory",
-                "Time",
-                "Start",
-                "Command",
-            )
-        elif option is Option.user:
-            # Print format should be dynamically changed depending on input group list
-            if groups is None:
-                groups = cast(list[str], Default().GROUP)
-            self.user_format += "{:>8} |" * len(groups)
-            self.column_line = self.user_format.format("User", "total", *groups)
-        else:
-            self.column_line = " " * Default().WIDTH  # Default width is 40
+        match option:
+            case "list":
+                self.column_line = self.machine_info_format.format(
+                    "Machine", "ComputeUnit", "tot", "unit", "Memory"
+                )
+
+            case "free":
+                self.column_line = self.machine_free_info_format.format(
+                    "Machine", "ComputeUnit", "free", "unit", "free mem"
+                )
+            case "job":
+                self.column_line = self.job_info_format.format(
+                    "Machine",
+                    "User",
+                    "ST",
+                    "PID",
+                    "CPU(%)",
+                    "MEM(%)",
+                    "Memory",
+                    "Time",
+                    "Start",
+                    "Command",
+                )
+            case "user":
+                # Print format should be dynamically changed depending on input group list
+                self.user_format += "{:>8} |" * len(groups)
+                self.column_line = self.user_format.format("User", "total", *groups)
+            case _:
+                self.column_line = " " * DEFAULT.WIDTH
 
         # Progress bar width should be minimum of column line length and terminal width.
         terminal_width, _ = shutil.get_terminal_size(fallback=(sys.maxsize, 1))
@@ -172,7 +175,7 @@ class MessageType(Enum):
     ERROR = colorama.Fore.RED
 
 
-class MessageHandler(metaclass=Singleton):
+class MessageHandler:
     """Handles colored output of SPG"""
 
     def __init__(self) -> None:
@@ -191,7 +194,10 @@ class MessageHandler(metaclass=Singleton):
         for message_type, message in self.message.items():
             if not message:
                 continue
-            print(message_type.value + "\n".join(message))
+            print(
+                message_type.value + "\n".join(message),
+                file=sys.stderr if message_type is MessageType.ERROR else sys.stdout,
+            )
         print(colorama.Style.RESET_ALL)
 
     def success(self, message: str) -> None:
@@ -214,7 +220,7 @@ class MessageHandler(metaclass=Singleton):
             message.clear()
 
 
-def configure_logger() -> None:
+def configure_logger() -> logging.Logger:
     """Create logger instance for SPG"""
 
     class UserWritableRotatingFileHandler(RotatingFileHandler):
@@ -243,10 +249,16 @@ def configure_logger() -> None:
 
     # Define handler of logger: Limit maximum log file size as 100MiB
     handler = UserWritableRotatingFileHandler(
-        Default.SPG_DIR / "spg.log", maxBytes=100 * 1024 * 1024, backupCount=1
+        SPG_DIR / "spg.log", maxBytes=100 * 1024 * 1024, backupCount=1
     )
     handler.setFormatter(formatter)
 
     # Return logger
     logger.addHandler(handler)
     logger.setLevel(logging.INFO)  # log over INFO level
+
+    return logger
+
+
+MESSAGE_HANDLER = MessageHandler()
+LOGGER = configure_logger()

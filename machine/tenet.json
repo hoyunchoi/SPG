@@ -240,12 +240,12 @@
         "comment": ""
     },
     "tenet31": {
-        "use": "True",
+        "use": "False",
         "name": "tenet31",
         "cpu": "i7-860",
         "num_cpu": "4",
         "ram": "8G",
-        "comment": ""
+        "comment": "231103 power"
     },
     "tenet32": {
         "use": "True",
@@ -464,12 +464,12 @@
         "comment": "NIC problem(2022.01.25)"
     },
     "tenet59": {
-        "use": "True",
+        "use": "False",
         "name": "tenet59",
         "cpu": "i7-2600",
         "num_cpu": "4",
         "ram": "16G",
-        "comment": ""
+        "comment": "231103 power"
     },
     "tenet60": {
         "use": "True",
@@ -1432,12 +1432,12 @@
         "comment": ""
     },
     "tenet180": {
-        "use": "True",
+        "use": "False",
         "name": "tenet180",
         "cpu": "i7-9700K",
         "num_cpu": "8",
         "ram": "64G",
-        "comment": ""
+        "comment": "231103 power"
     },
     "tenet181": {
         "use": "True",
@@ -1464,12 +1464,12 @@
         "comment": ""
     },
     "tenet184": {
-        "use": "True",
+        "use": "False",
         "name": "tenet184",
         "cpu": "i7-9700K",
         "num_cpu": "8",
         "ram": "64G",
-        "comment": ""
+        "comment": "231103 power"
     },
     "tenet185": {
         "use": "True",
@@ -1752,12 +1752,12 @@
         "comment": ""
     },
     "tenet220": {
-        "use": "True",
+        "use": "False",
         "name": "tenet220",
         "cpu": "i7-10700K",
         "num_cpu": "8",
         "ram": "64G",
-        "comment": ""
+        "comment": "231103 power"
     },
     "tenet221": {
         "use": "True",

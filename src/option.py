@@ -1,15 +1,3 @@
-from enum import Enum, auto
+from typing import Literal
 
-
-class Option(Enum):
-    list = auto()
-    free = auto()
-    job = auto()
-    user = auto()
-    run = auto()
-    runs = auto()
-    KILL = auto()
-
-
-if __name__ == "__main__":
-    print("This is module option at spg")
+Option = Literal["list", "free", "job", "user", "run", "runs", "KILL"]

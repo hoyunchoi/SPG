@@ -3,13 +3,13 @@ from collections import Counter, deque
 from pathlib import Path
 from typing import cast
 
-from .argument import Argument, Option
-from .default import Default
+from .argument import Argument
+from .default import DEFAULT
 from .group import Group
 from .job import JobCondition
 from .machine import Machine
 from .name import extract_alphabet
-from .spgio import MessageHandler, Printer
+from .spgio import MESSAGE_HANDLER, Printer
 
 
 class SPG:
@@ -18,17 +18,14 @@ class SPG:
     def __init__(self, args: Argument) -> None:
         # Save arguments
         self.args = args
-        self.message_handler = MessageHandler()
 
         # Dictionary of machine group
         self.groups = {
-            name: Group(name, file) for name, file in Default().group_files.items()
+            name: Group(name, file) for name, file in DEFAULT.group_files.items()
         }
 
         # Prune group dictionary and corresponding machine dictionary
-        if args.machine is not None:
-            args.group = cast(list[str], args.group)  # Already handled in Argument
-
+        if args.machine:
             # Match machines at pruned groups
             machines_by_group = self._sort_machines_by_group(args.machine, args.group)
             self.groups = {
@@ -36,7 +33,7 @@ class SPG:
                 for name, machines in machines_by_group.items()
             }
 
-        elif args.group is not None:
+        elif args.group:
             # args.machine is not specified but args.group is specified
             self.groups = {
                 name: self.groups[name].match_machines(start_end=args.start_end)
@@ -46,9 +43,9 @@ class SPG:
         # printer and message handlers
         self.printer = Printer(args.option, args.silent, args.group)
 
-    def __call__(self, option: Option) -> None:
+    def __call__(self) -> None:
         # Run SPG
-        getattr(self, option.name)()
+        getattr(self, self.args.option)()
 
     ###################################### Basic Utility ######################################
     def _find_group_from_name(self, group_name: str) -> Group:
@@ -57,7 +54,7 @@ class SPG:
             return self.groups[group_name]
 
         # group with input name is not registered in spg
-        self.message_handler.error(f"ERROR: No such machine group: {group_name}")
+        MESSAGE_HANDLER.error(f"ERROR: No such machine group: {group_name}")
         exit()
 
     def _find_machine_from_name(self, machine_name: str) -> Machine:
@@ -71,7 +68,7 @@ class SPG:
             return group.machines[machine_name]
 
         # machine with input name is not registered in the group
-        self.message_handler.error(f"ERROR: No such machine: {machine_name}")
+        MESSAGE_HANDLER.error(f"ERROR: No such machine: {machine_name}")
         exit()
 
     def _sort_machines_by_group(
@@ -236,14 +233,12 @@ class SPG:
 
         # When no free core is detected, doule check the run command
         if not machine.num_free_cpu:
-            self.message_handler.warning(
-                f"WARNING: {self.args.machine} has no free core!"
-            )
+            MESSAGE_HANDLER.warning(f"WARNING: {self.args.machine} has no free core!")
 
         # Run a job
         machine.run(command)
 
-    def runs(self, max_calls: int = Default().MAX_RUNS) -> None:
+    def runs(self, max_calls: int = DEFAULT.MAX_RUNS) -> None:
         """Run several jobs"""
         command_file = cast(str, self.args.command)  # Already handled
         group = list(self.groups.values())[0]  # Already handled
@@ -271,8 +266,8 @@ class SPG:
             f.write("\n".join(command for command in commands))
 
         # Report summary
-        self.message_handler.sort()
-        self.message_handler.success(
+        MESSAGE_HANDLER.sort()
+        MESSAGE_HANDLER.success(
             f"\nRun {num_commands_before - num_commands_after} jobs"
         )
 
@@ -284,7 +279,6 @@ class SPG:
             time=self.args.time,
             start=self.args.start,
         )
-        print(job_condition)
 
         # Scanning with all parent jobs
         self.scan(job_condition, include_parents=True)
@@ -302,5 +296,5 @@ class SPG:
             num_kill += sum(machine.num_kill for machine in group.busy_machines)
 
         # Report summary
-        self.message_handler.sort()
-        self.message_handler.success(f"\nKilled {num_kill} jobs")
+        MESSAGE_HANDLER.sort()
+        MESSAGE_HANDLER.success(f"\nKilled {num_kill} jobs")

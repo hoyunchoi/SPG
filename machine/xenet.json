@@ -48,12 +48,12 @@
         "comment": ""
     },
     "xenet7": {
-        "use": "True",
+        "use": "False",
         "name": "xenet7",
         "cpu": "E5-2687Wx2",
         "num_cpu": "16",
         "ram": "64G",
-        "comment": ""
+        "comment": "231103 booting"
     },
     "xenet8": {
         "use": "True",

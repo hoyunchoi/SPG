@@ -1,50 +1,62 @@
-import logging
 import subprocess
 from collections import Counter, abc
-from dataclasses import dataclass, field
+from functools import cache
 from shlex import split
 
 from . import command as Command
-from .default import Default
+from .default import DEFAULT
 from .job import CPUJob, GPUJob, Job, JobCondition
 from .ram import Ram
-from .spgio import MessageHandler, Printer
+from .spgio import LOGGER, MESSAGE_HANDLER, Printer
 
 
-@dataclass
 class Machine:
-    """data class for storing machine informations"""
+    __slots__ = [
+        "name",
+        "cpu",
+        "num_cpu",
+        "ram",
+        "comment",
+        "jobs",
+        "pid_tree",
+        "free_ram",
+        "error",
+    ]
 
-    name: str  # Name of machine. ex) tenet1
-    cpu: str  # Name of cpu
-    num_cpu: int  # Number of cpu cores
-    ram: Ram  # Size of RAM
-    comment: str  # comment of machine. Not used
-    gpu: str = ""  # Name of gpu (if exists)
-    num_gpu: int = 0  # Number of gpus (if exists)
-    vram: Ram = field(default_factory=Ram)  # Size of VRAM per each gpu (if exists)
-
-    def __post_init__(self) -> None:
-        self.num_cpu = int(self.num_cpu)  # number of cpus to int
-        self.ram = Ram.from_string(f"{self.ram}B")  # Registered ram on json
+    def __init__(
+        self, name: str, cpu: str, num_cpu: str, ram: str, comment: str
+    ) -> None:
+        # Machine spec
+        self.name = name  # Name of machine. ex) tenet1
+        self.cpu = cpu  # Name of cpu
+        self.num_cpu = int(num_cpu)  # Number of cpu cores
+        self.ram = Ram.from_string(f"{ram}B")  # Size of RAM
+        self.comment = comment  # comment of machine. Not used
 
         # Current job/free information
+        self.error: bool = False  # If error occurs during scanning, set True
         self.jobs: list[Job] = []  # List of running jobs
         self.pid_tree: dict[int, set[int]] = {}  # pid of running jobs with parents
-
-        # Command for SSH to machine
-        self.command_ssh = Command.ssh_to_machine(self.name)
-
-        # Default variables
-        self.message_handler = MessageHandler()
-        self.logger = logging.getLogger("SPG")
-        self.log_info = {"machine": self.name, "user": Default().user}
+        self.free_ram: Ram
 
     ####################### Basic informations, regardless of scanning #######################
     @property
+    @cache
     def num_core(self) -> int:
         """Number of compute units inside machine"""
         return self.num_cpu
+
+    @property
+    @cache
+    def log_info(self) -> dict[str, str]:
+        """# Information to be logged"""
+        return {"machine": self.name, "user": DEFAULT.user}
+
+    @property
+    @cache
+    def command_ssh(self) -> str:
+        """Command to ssh to machine"""
+        return Command.ssh_to_machine(self.name)
 
     ##################### Busy, free informations, valid after scanning #####################
     @property
@@ -55,15 +67,9 @@ class Machine:
     @property
     def num_free_cpu(self) -> int:
         """Number of free cpu cores"""
+        if self.error:
+            return 0
         return max(0, self.num_cpu - self.num_job)
-
-    @property
-    def free_ram(self) -> Ram:
-        """Absolute value of free RAM"""
-        free_ram = subprocess.check_output(
-            split(f'{self.command_ssh} "{Command.free_ram()}"'), text=True
-        )  # free ram in unit of "Byte"
-        return Ram.from_string(f"{free_ram.strip()}B")
 
     @property
     def num_available(self) -> int:
@@ -101,6 +107,13 @@ class Machine:
             return self.name
 
     ###################################### Basic Utility ######################################
+    def _get_free_ram(self) -> Ram:
+        """Absolute value of free RAM"""
+        free_ram = subprocess.check_output(
+            split(f'{self.command_ssh} "{Command.free_ram()}"'), text=True
+        )  # free ram in unit of "Byte"
+        return Ram.from_string(f"{free_ram.strip()}B")
+
     def _get_command_from_pid(self, pid: int) -> str:
         """Find command of job having input pid"""
         # Find list of command sharing same pid
@@ -108,7 +121,7 @@ class Machine:
 
         # Job with input pid is not registered or multiple jobs are registered
         if len(commands) != 1:
-            self.message_handler.error(
+            MESSAGE_HANDLER.error(
                 f"ERROR: Problem at identifying process in {self.name}: {pid=}"
             )
             exit()
@@ -157,9 +170,7 @@ class Machine:
         )
         # Check scan error
         if result.stderr:
-            self.message_handler.error(
-                f"ERROR from {self.name}: {result.stderr.strip()}"
-            )
+            MESSAGE_HANDLER.error(f"ERROR from {self.name}: {result.stderr.strip()}")
             raise RuntimeError
 
         # If there is no error return list of stdout
@@ -182,6 +193,7 @@ class Machine:
             ps_infos = self._get_process_infos(Command.ps_from_user(user_name))
         except RuntimeError:
             # When error occurs, Do nothing and return since error is already reported
+            self.error = True
             return
 
         for ps_info in ps_infos:
@@ -190,14 +202,17 @@ class Machine:
                 continue
 
             # Create job and filter out not important
-            job = CPUJob(self.name, ps_info)
-            if not job.is_important() or not job.match_condition(job_condition):
+            job = CPUJob.from_info(self.name, ps_info)
+            if not job.is_important or not job.match_condition(job_condition):
                 continue
 
             # Store scanned information
             self.jobs.append(job)
             if include_parents:
                 self._track_pid_tree(job.pid, job.sid)
+
+        # Update free ram
+        self.free_ram = self._get_free_ram()
 
     def get_user_count(self) -> Counter[str]:
         """Return the Counter of {user name: number of jobs}"""
@@ -210,10 +225,10 @@ class Machine:
         subprocess.Popen(split(f"{self.command_ssh} '{Command.run_at_cwd(command)}'"))
 
         # Print the result and save to logger
-        self.message_handler.success(f"SUCCESS {self.name:<10}: run '{command}'")
+        MESSAGE_HANDLER.success(f"SUCCESS {self.name:<10}: run '{command}'")
 
         # Log
-        self.logger.info(f"spg run {command}", extra=self.log_info)
+        LOGGER.info(f"spg run {command}", extra=self.log_info)
 
     def kill(self) -> None:
         """Kill all jobs registered during scanning session"""
@@ -236,7 +251,7 @@ class Machine:
         # When error occurs, save it
         if kill_result.stderr:
             kill_errs = kill_result.stderr.strip().split("\n")
-            self.message_handler.error(
+            MESSAGE_HANDLER.error(
                 "\n".join(f"ERROR from {self.name}: {err}" for err in kill_errs)
             )
             return
@@ -244,24 +259,35 @@ class Machine:
         # Print the result and log
         for pid in self.pid_tree[0]:
             command = self._get_command_from_pid(pid)
-            self.message_handler.success(f"SUCCESS {self.name:<10}: kill '{command}'")
-            self.logger.info(f"spg kill {command}", extra=self.log_info)
+            MESSAGE_HANDLER.success(f"SUCCESS {self.name:<10}: kill '{command}'")
+            LOGGER.info(f"spg kill {command}", extra=self.log_info)
 
 
 class GPUMachine(Machine):
-    def __post_init__(self) -> None:
-        # Do same thing with normal (cpu) machine
-        super().__post_init__()
+    __slots__ = ["gpu", "num_gpu", "vram", "free_gpus"]
 
-        # Store additional informations about gpu
-        self.num_gpu = int(self.num_gpu)
-        self.vram = Ram.from_string(f"{self.vram}B")
+    def __init__(
+        self,
+        name: str,
+        cpu: str,
+        num_cpu: str,
+        ram: str,
+        gpu: str,
+        num_gpu: str,
+        vram: str,
+        comment: str,
+    ) -> None:
+        super().__init__(name, cpu, num_cpu, ram, comment)
+        self.gpu = gpu
+        self.num_gpu = int(num_gpu)
+        self.vram = Ram.from_string(f"{vram}B")
 
-        # GPU free information
+        # Current state of machine
         self.free_gpus: set[int] = set()  # free gpu index
 
     ####################### Basic informations, regardless of scanning #######################
     @property
+    @cache
     def num_core(self) -> int:
         """Number of compute units inside machine"""
         return self.num_gpu
@@ -270,6 +296,8 @@ class GPUMachine(Machine):
     @property
     def num_free_gpu(self) -> int:
         """Number of free gpus"""
+        if self.error:
+            return 0
         return len(self.free_gpus)
 
     @property
@@ -284,6 +312,8 @@ class GPUMachine(Machine):
         Otherwise, print largest available vram
         """
         # When one or more gpu is free
+        if self.error:
+            return Ram()
         if self.num_free_gpu:
             return self.vram
 
@@ -353,6 +383,7 @@ class GPUMachine(Machine):
             ns_infos = self._get_process_infos(Command.ns_process())
         except RuntimeError:
             # When error occurs, Do nothing and return since error is already reported
+            self.error = True
             return
 
         for ns_info in ns_infos:
@@ -374,14 +405,14 @@ class GPUMachine(Machine):
             ps_infos = self._get_ps_infos_from_pid(pid)  # Multiple ps info per pid
 
             for ps_info in filter_by_user(ps_infos):
-                # Create job and filter out not important
-                job = GPUJob(
+                job = GPUJob.from_info(
                     machine_name=f"{self.name}-GPU{gpu_idx}",
                     ps_info=ps_info,
                     gpu_percent=gpu_percent,
                     vram_use=vram_use,
                     vram_percent=vram_percent,
                 )
+
                 if not job.match_condition(job_condition):
                     continue
 

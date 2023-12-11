@@ -40,7 +40,6 @@ class Group:
             # Only store machine explicitly marked as "use = True"
             if info.pop("use") != "True":
                 continue
-
             # When machine info has gpu as key, machine is gpu machine
             if "gpu" in info:
                 machines[name] = GPUMachine(**info)
@@ -52,18 +51,18 @@ class Group:
     def match_machines(
         self,
         *_,
-        machine_names: list[str] | None = None,
-        start_end: tuple[int, int] | None = None,
+        machine_names: list[str] = [],
+        start_end: tuple[int, int] = (-1, -1),
     ) -> Group:
         """
         Only store machines that matches the condition
         machine_names: list of machine names inside the group
         start_end: machines with index between input start/end
         """
-        if machine_names is not None:
+        if machine_names:
             self.machines = {name: self.machines[name] for name in machine_names}
 
-        if start_end is not None:
+        if start_end != (-1, -1):
             self.machines = {
                 name: machine
                 for name, machine in self.machines.items()
@@ -85,7 +84,11 @@ class Group:
     @property
     def num_gpu(self) -> int:
         """Number of gpu in the group"""
-        return sum(machine.num_gpu for machine in self.machines.values())
+        return sum(
+            machine.num_gpu
+            for machine in self.machines.values()
+            if isinstance(machine, GPUMachine)
+        )
 
     ##################### Busy, free informations, valid after scanning #####################
     @property

@@ -396,7 +396,7 @@ class GPUMachine(Machine):
 
             # Retrieve process informations from ns_info
             gpu_percent = float(ns_info[3].replace("-", "0"))  # For redundancy
-            vram_use = Ram.from_string(f"{ns_info[7].replace("-", "0")}MB")
+            vram_use = Ram.from_string(f"{ns_info[9].replace("-", "0")}MB")
             vram_percent = vram_use / self.vram * 100.0
             ps_infos = self._get_ps_infos_from_pid(pid)  # Multiple ps info per pid
 

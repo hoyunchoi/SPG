@@ -229,7 +229,7 @@ class SPG:
         machine = self._find_machine_from_name(machine_name)
 
         # Scanning
-        machine.scan(user_name=None)
+        machine.scan(user_name="")
 
         # When no free core is detected, doule check the run command
         if not machine.num_free_cpu:

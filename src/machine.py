@@ -19,7 +19,6 @@ class Machine:
         "comment",
         "jobs",
         "pid_tree",
-        "free_ram",
         "error",
     ]
 
@@ -37,7 +36,6 @@ class Machine:
         self.error: bool = False  # If error occurs during scanning, set True
         self.jobs: list[Job] = []  # List of running jobs
         self.pid_tree: dict[int, set[int]] = {}  # pid of running jobs with parents
-        self.free_ram: Ram
 
     ####################### Basic informations, regardless of scanning #######################
     @property
@@ -76,6 +74,14 @@ class Machine:
         """Number of available(free) compute units inside machine"""
         return self.num_free_cpu
 
+    @property
+    def free_ram(self) -> Ram:
+        """Absolute value of free RAM"""
+        free_ram = subprocess.check_output(
+            split(f'{self.command_ssh} "{Command.free_ram()}"'), text=True
+        )  # free ram in unit of "Byte"
+        return Ram.from_string(f"{free_ram.strip()}B")
+
     ######################### kill informations, valid after killing #########################
     @property
     def num_kill(self) -> int:
@@ -107,13 +113,6 @@ class Machine:
             return self.name
 
     ###################################### Basic Utility ######################################
-    def _get_free_ram(self) -> Ram:
-        """Absolute value of free RAM"""
-        free_ram = subprocess.check_output(
-            split(f'{self.command_ssh} "{Command.free_ram()}"'), text=True
-        )  # free ram in unit of "Byte"
-        return Ram.from_string(f"{free_ram.strip()}B")
-
     def _get_command_from_pid(self, pid: int) -> str:
         """Find command of job having input pid"""
         # Find list of command sharing same pid
@@ -178,7 +177,7 @@ class Machine:
 
     def scan(
         self,
-        user_name: str | None,
+        user_name: str = "",
         job_condition: JobCondition | None = None,
         include_parents: bool = False,
     ) -> None:
@@ -210,9 +209,6 @@ class Machine:
             self.jobs.append(job)
             if include_parents:
                 self._track_pid_tree(job.pid, job.sid)
-
-        # Update free ram
-        self.free_ram = self._get_free_ram()
 
     def get_user_count(self) -> Counter[str]:
         """Return the Counter of {user name: number of jobs}"""
@@ -375,7 +371,7 @@ class GPUMachine(Machine):
         def filter_by_user(ps_infos: abc.Iterable[str]) -> abc.Iterable[str]:
             """Return iterable of ps_info which belongs to user_name"""
             for ps_info in ps_infos:
-                if user_name is None or ps_info.strip().split()[0] == user_name:
+                if user_name == "" or ps_info.strip().split()[0] == user_name:
                     yield ps_info
 
         # Get list of raw process: Use nvidia-smi
@@ -400,7 +396,7 @@ class GPUMachine(Machine):
 
             # Retrieve process informations from ns_info
             gpu_percent = float(ns_info[3].replace("-", "0"))  # For redundancy
-            vram_use = Ram.from_string(f"{ns_info[7]}MB")
+            vram_use = Ram.from_string(f"{ns_info[7].replace("-", "0")}MB")
             vram_percent = vram_use / self.vram * 100.0
             ps_infos = self._get_ps_infos_from_pid(pid)  # Multiple ps info per pid
 

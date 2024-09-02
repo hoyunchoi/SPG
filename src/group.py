@@ -174,7 +174,7 @@ class Group:
     ############################## Scan Job Information and Save ##############################
     def scan(
         self,
-        user_name: str | None,
+        user_name: str,
         progress_bar: ProgressBar | None,
         job_condition: JobCondition | None = None,
         include_parents: bool = False,

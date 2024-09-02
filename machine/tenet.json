@@ -8,12 +8,12 @@
         "comment": ""
     },
     "tenet2": {
-        "use": "True",
+        "use": "False",
         "name": "tenet2",
         "cpu": "Q9550",
         "num_cpu": "4",
         "ram": "8G",
-        "comment": ""
+        "comment": "power issue (2024.07.11)"
     },
     "tenet3": {
         "use": "True",
@@ -1424,12 +1424,12 @@
         "comment": ""
     },
     "tenet179": {
-        "use": "True",
+        "use": "False",
         "name": "tenet179",
         "cpu": "i7-9700K",
         "num_cpu": "8",
         "ram": "64G",
-        "comment": ""
+        "comment": "power issue (2024.07.11)"
     },
     "tenet180": {
         "use": "False",
@@ -1712,12 +1712,12 @@
         "comment": ""
     },
     "tenet215": {
-        "use": "True",
+        "use": "False",
         "name": "tenet215",
         "cpu": "i7-10700K",
         "num_cpu": "8",
         "ram": "64G",
-        "comment": ""
+        "comment": "Power fail (2024.04.17)"
     },
     "tenet216": {
         "use": "True",

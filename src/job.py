@@ -102,24 +102,26 @@ class Job(ABC):
         if self.cpu_percent > 20.0:
             return True
 
-        if self.ram_use.byte == 0.0:
-            MESSAGE_HANDLER.warning(
-                f"WARNING: {self.machine_name} has zero-memory process {self.pid}"
-            )
-
-        match list(self.state):
-            case ["R", *_]:
-                # State is 'R': Filter job by cpu usage and running time
-                return (self.cpu_percent > 5.0) or (self.time.value > 1)
-            case ["D", *_]:
-                # State is 'D'
-                return True
-            case ["Z", *_]:
-                # State is 'Z'. Warning message
+        if "R" in self.state:
+            # State is 'R': Filter job by cpu usage and running time
+            if self.ram_use.byte == 0.0:
                 MESSAGE_HANDLER.warning(
-                    f"WARNING: {self.machine_name} has Zombie process {self.pid}"
+                    f"WARNING: {self.machine_name} has zero-memory process {self.pid}"
                 )
-                return False
+            return (self.cpu_percent > 5.0) or (self.time.value > 1)
+        elif "D" in self.state:
+            # State is 'D'
+            if self.ram_use.byte == 0.0:
+                MESSAGE_HANDLER.warning(
+                    f"WARNING: {self.machine_name} has zero-memory process {self.pid}"
+                )
+            return True
+        elif "Z" in self.state:
+            # State is 'Z'. Warning message
+            MESSAGE_HANDLER.warning(
+                f"WARNING: {self.machine_name} has Zombie process {self.pid}"
+            )
+            return False
 
         # State is at S state with lower cpu usage
         return False

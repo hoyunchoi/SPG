@@ -494,7 +494,7 @@ class Argument:
 
     silent: bool  # Whether to report progress bar
     option: Option
-    machine: list[str]  # Target machine
+    machine: list[str] = field(default_factory=list)  # Target machine
     group: list[str] = field(default_factory=list)  # Target group
     start_end: tuple[int, int] = (-1, -1)  # Boundary of target group
     all: bool = False  # If true, overwrite user argument to None
@@ -689,7 +689,7 @@ class Argument:
             question += f" with command including '{self.command}'"
 
         # Kill condition of time
-        if self.time:
+        if self.time != Seconds():
             question += f" with running less than '{self.time:human}'"
 
         # Kill condition of start

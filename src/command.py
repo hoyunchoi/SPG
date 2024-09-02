@@ -16,7 +16,7 @@ def ssh_to_machine(machine_name: str) -> str:
 
 
 ################################ ps & free memory commands ################################
-def ps_from_user(user_name: str | None) -> str:
+def ps_from_user(user_name: str) -> str:
     """
     ps command to find job information w.r.t input user
     --format: format to be printed
@@ -31,7 +31,7 @@ def ps_from_user(user_name: str | None) -> str:
                 stime - starting time or date
                 args - command with all its arguments as a string
     """
-    if user_name is None:
+    if user_name == "":
         # When user name is none, take all users registered in SPG except root
         user_name = ",".join(DEFAULT.USERS[1:])
     return (
